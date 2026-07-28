@@ -92,7 +92,7 @@ export default function ClientsPage() {
         services: clientForm.services.join(', '),
         userEmail: profile?.email
       }
-      const res = await fetch('https://script.google.com/macros/s/AKfycbz1Pqo1qWX7g1PbUAalJjQ-8A3krmrFUZYgnMNaDz3YZMywmHKcyfmrS4fiO8v-OQ5v/exec', {
+      const res = await fetch('https://script.google.com/macros/s/AKfycbzlT_gowChPVXwdmA_jH23MtboHmYsJpWPRnXE7qlINo3TIit82y2_qt7BkeD5GsVrh/exec', {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
@@ -130,7 +130,7 @@ export default function ClientsPage() {
     setConfirmDeactivateClient(null)
     setIsUpdating(true)
     try {
-      const res = await fetch('https://script.google.com/macros/s/AKfycbz1Pqo1qWX7g1PbUAalJjQ-8A3krmrFUZYgnMNaDz3YZMywmHKcyfmrS4fiO8v-OQ5v/exec', {
+      const res = await fetch('https://script.google.com/macros/s/AKfycbzlT_gowChPVXwdmA_jH23MtboHmYsJpWPRnXE7qlINo3TIit82y2_qt7BkeD5GsVrh/exec', {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
@@ -171,7 +171,7 @@ export default function ClientsPage() {
     }
     setIsAdding(true)
     try {
-      const res = await fetch('https://script.google.com/macros/s/AKfycbz1Pqo1qWX7g1PbUAalJjQ-8A3krmrFUZYgnMNaDz3YZMywmHKcyfmrS4fiO8v-OQ5v/exec', {
+      const res = await fetch('https://script.google.com/macros/s/AKfycbzlT_gowChPVXwdmA_jH23MtboHmYsJpWPRnXE7qlINo3TIit82y2_qt7BkeD5GsVrh/exec', {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
@@ -226,61 +226,61 @@ export default function ClientsPage() {
       <main className="page-main">
         <TopNav title="Clients" showSearch={false} />
         <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-5 pb-6 animate-fade-in-up">
-          
+
           {/* Page Header Area */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
             <div>
               <h2 className="text-[28px] font-bold text-[#1E1B2E] mb-1 leading-tight">Clients</h2>
               <p className="text-[14px] text-[#6B7280] m-0">Manage client details and active status.</p>
             </div>
-            
+
             <div className="flex items-center gap-4 w-full md:w-auto">
               {(profile?.systemRole === 'Admin' || profile?.systemRole === 'Accountant') && (
-              <div
-                onMouseEnter={e => {
-                  e.currentTarget.style.maxWidth = '300px';
-                  e.currentTarget.style.gap = '8px';
-                  e.currentTarget.style.padding = '0 20px 0 14px';
-                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(112,44,145,0.35)';
-                  const text = e.currentTarget.querySelector('.add-client-text');
-                  if (text) { text.style.maxWidth = '120px'; text.style.width = 'auto'; text.style.opacity = '1'; }
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.maxWidth = '44px';
-                  e.currentTarget.style.gap = '0';
-                  e.currentTarget.style.padding = '0';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(91,33,182,0.06)';
-                  const text = e.currentTarget.querySelector('.add-client-text');
-                  if (text) { text.style.maxWidth = '0'; text.style.width = '0'; text.style.opacity = '0'; }
-                }}
-                onClick={() => {
-                  setNewClientForm({
-                    projectName: '', clientName: '', emails: [''], phones: [''], industry: '', services: [],
-                    projectStartDate: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/(\d{2})\/(\d{2})\/(\d{4}),/, '$3-$2-$1')
-                  })
-                  setShowNewClientModal(true)
-                }}
-                title="Add Client"
-                style={{
-                  height: 44, minWidth: 44, borderRadius: 999, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  maxWidth: 44,
-                  background: 'linear-gradient(to right, #702c91, #ec008c)', color: 'white',
-                  boxShadow: '0 2px 8px rgba(91,33,182,0.06)',
-                  fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 700,
-                  overflow: 'hidden', whiteSpace: 'nowrap', gap: 0,
-                  transition: 'max-width 0.35s ease-out, padding 0.35s ease-out, gap 0.35s ease-out, box-shadow 0.3s ease-out',
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 20, flexShrink: 0 }}>add</span>
-                <span className="add-client-text" style={{ width: 0, maxWidth: 0, opacity: 0, overflow: 'hidden', transition: 'max-width 0.35s ease-out, opacity 0.2s ease-out', whiteSpace: 'nowrap' }}>Add Client</span>
-              </div>
+                <div
+                  onMouseEnter={e => {
+                    e.currentTarget.style.maxWidth = '300px';
+                    e.currentTarget.style.gap = '8px';
+                    e.currentTarget.style.padding = '0 20px 0 14px';
+                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(112,44,145,0.35)';
+                    const text = e.currentTarget.querySelector('.add-client-text');
+                    if (text) { text.style.maxWidth = '120px'; text.style.width = 'auto'; text.style.opacity = '1'; }
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.maxWidth = '44px';
+                    e.currentTarget.style.gap = '0';
+                    e.currentTarget.style.padding = '0';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(91,33,182,0.06)';
+                    const text = e.currentTarget.querySelector('.add-client-text');
+                    if (text) { text.style.maxWidth = '0'; text.style.width = '0'; text.style.opacity = '0'; }
+                  }}
+                  onClick={() => {
+                    setNewClientForm({
+                      projectName: '', clientName: '', emails: [''], phones: [''], industry: '', services: [],
+                      projectStartDate: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/(\d{2})\/(\d{2})\/(\d{4}),/, '$3-$2-$1')
+                    })
+                    setShowNewClientModal(true)
+                  }}
+                  title="Add Client"
+                  style={{
+                    height: 44, minWidth: 44, borderRadius: 999, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    maxWidth: 44,
+                    background: 'linear-gradient(to right, #702c91, #ec008c)', color: 'white',
+                    boxShadow: '0 2px 8px rgba(91,33,182,0.06)',
+                    fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 700,
+                    overflow: 'hidden', whiteSpace: 'nowrap', gap: 0,
+                    transition: 'max-width 0.35s ease-out, padding 0.35s ease-out, gap 0.35s ease-out, box-shadow 0.3s ease-out',
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, flexShrink: 0 }}>add</span>
+                  <span className="add-client-text" style={{ width: 0, maxWidth: 0, opacity: 0, overflow: 'hidden', transition: 'max-width 0.35s ease-out, opacity 0.2s ease-out', whiteSpace: 'nowrap' }}>Add Client</span>
+                </div>
               )}
 
               <div className="relative flex-1 md:flex-none">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#9CA3AF] text-[18px]">search</span>
-                <input 
-                  type="text" 
-                  placeholder="Search clients..." 
+                <input
+                  type="text"
+                  placeholder="Search clients..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full md:w-[300px] h-[42px] pl-10 pr-4 rounded-full border border-[#E5E7EB] bg-white text-[13px] outline-none focus:border-[#702c91] focus:ring-1 focus:ring-[#702c91] transition-all shadow-sm"
@@ -289,88 +289,88 @@ export default function ClientsPage() {
             </div>
           </div>
 
-            {/* Table Container */}
-            <div className="bg-white rounded-[12px] border border-[#E5E7EB] shadow-sm overflow-hidden">
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="block lg:table w-full text-left border-collapse min-w-full lg:min-w-[1000px]">
-                  <thead className="hidden lg:table-header-group">
-                    <tr className="bg-[#F3F4F6] border-b border-[#E5E7EB]">
-                      <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Client ID</th>
-                      <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Project Name</th>
-                      <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Client Name</th>
-                      <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Client Email(s)</th>
-                      <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Phone</th>
-                      <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Industry</th>
-                      <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Project Start Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="block lg:table-row-group divide-y lg:divide-none divide-[#E5E7EB]">
-                    {filteredClients.map((client, idx) => {
-                      return (
-                        <tr 
-                          key={client['Client ID'] || idx} 
-                          className={`block lg:table-row bg-white border-b border-[#E5E7EB] lg:hover:bg-white lg:hover:scale-[1.01] lg:hover:shadow-[0_8px_24px_rgba(91,33,182,0.08)] transition-all duration-200 relative ${idx === filteredClients.length - 1 ? 'border-b-0' : ''}`}
-                          style={{ cursor: 'pointer', zIndex: 1 }}
+          {/* Table Container */}
+          <div className="bg-white rounded-[12px] border border-[#E5E7EB] shadow-sm overflow-hidden">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="block lg:table w-full text-left border-collapse min-w-full lg:min-w-[1000px]">
+                <thead className="hidden lg:table-header-group">
+                  <tr className="bg-[#F3F4F6] border-b border-[#E5E7EB]">
+                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Client ID</th>
+                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Project Name</th>
+                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Client Name</th>
+                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Client Email(s)</th>
+                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Phone</th>
+                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Industry</th>
+                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Project Start Date</th>
+                  </tr>
+                </thead>
+                <tbody className="block lg:table-row-group divide-y lg:divide-none divide-[#E5E7EB]">
+                  {filteredClients.map((client, idx) => {
+                    return (
+                      <tr
+                        key={client['Client ID'] || idx}
+                        className={`block lg:table-row bg-white border-b border-[#E5E7EB] lg:hover:bg-white lg:hover:scale-[1.01] lg:hover:shadow-[0_8px_24px_rgba(91,33,182,0.08)] transition-all duration-200 relative ${idx === filteredClients.length - 1 ? 'border-b-0' : ''}`}
+                        style={{ cursor: 'pointer', zIndex: 1 }}
+                      >
+                        {/* Client ID */}
+                        <td className="block lg:table-cell py-3 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#1E1B2E]">
+                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Client ID:</span>
+                          {client['Client ID']}
+                        </td>
+                        {/* Project Name */}
+                        <td
+                          className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#702c91] cursor-pointer hover:underline"
+                          onClick={() => {
+                            const r = String(profile?.systemRole || '').trim()
+                            if (r === 'Admin' || r === 'Accountant') openClientInfo(client)
+                          }}
                         >
-                          {/* Client ID */}
-                          <td className="block lg:table-cell py-3 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#1E1B2E]">
-                            <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Client ID:</span>
-                            {client['Client ID']}
-                          </td>
-                          {/* Project Name */}
-                          <td
-                            className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#702c91] cursor-pointer hover:underline"
-                            onClick={() => {
-                              const r = String(profile?.systemRole || '').trim()
-                              if (r === 'Admin' || r === 'Accountant') openClientInfo(client)
-                            }}
-                          >
-                            <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Project Name:</span>
-                            {client['Project Name'] || client['Client Name'] || client['Company Name'] || '-'}
-                          </td>
-                          {/* Client Name */}
-                          <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#4B5563]">
-                            <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Client Name:</span>
-                            {client['Project Name'] ? (client['Client Name'] || client['Company Name'] || client['Contact Person'] || '-') : (client['Contact Person'] || '-')}
-                          </td>
-                          {/* Client Email(s) */}
-                          <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#6B7280]">
-                            <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Email(s):</span>
-                            {client['Contact Email'] || client['Email'] || '-'}
-                          </td>
-                          {/* Phone */}
-                          <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#6B7280]">
-                            <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Phone:</span>
-                            {client['Phone'] || '-'}
-                          </td>
-                          {/* Industry */}
-                          <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#6B7280]">
-                            <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Industry:</span>
-                            {client['Industry'] || '-'}
-                          </td>
-                          {/* Project Start Date */}
-                          <td className="block lg:table-cell py-2 px-4 pb-4 lg:py-4 lg:px-6 text-[13px] text-[#4B5563]">
-                            <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Start Date:</span>
-                            {safeDate(client['Project start Date'])}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {filteredClients.length === 0 && (
-                      <tr className="block lg:table-row">
-                        <td colSpan="7" className="block lg:table-cell py-12 text-center text-[#6B7280]">
-                          <div className="flex flex-col items-center justify-center">
-                            <span className="material-symbols-outlined text-[48px] text-gray-300 mb-3">search_off</span>
-                            <p className="text-[14px] font-medium m-0">No clients found matching your criteria.</p>
-                          </div>
+                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Project Name:</span>
+                          {client['Project Name'] || client['Client Name'] || client['Company Name'] || '-'}
+                        </td>
+                        {/* Client Name */}
+                        <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#4B5563]">
+                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Client Name:</span>
+                          {client['Project Name'] ? (client['Client Name'] || client['Company Name'] || client['Contact Person'] || '-') : (client['Contact Person'] || '-')}
+                        </td>
+                        {/* Client Email(s) */}
+                        <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#6B7280]">
+                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Email(s):</span>
+                          {client['Contact Email'] || client['Email'] || '-'}
+                        </td>
+                        {/* Phone */}
+                        <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#6B7280]">
+                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Phone:</span>
+                          {client['Phone'] || '-'}
+                        </td>
+                        {/* Industry */}
+                        <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#6B7280]">
+                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Industry:</span>
+                          {client['Industry'] || '-'}
+                        </td>
+                        {/* Project Start Date */}
+                        <td className="block lg:table-cell py-2 px-4 pb-4 lg:py-4 lg:px-6 text-[13px] text-[#4B5563]">
+                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Start Date:</span>
+                          {safeDate(client['Project start Date'])}
                         </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    );
+                  })}
+                  {filteredClients.length === 0 && (
+                    <tr className="block lg:table-row">
+                      <td colSpan="7" className="block lg:table-cell py-12 text-center text-[#6B7280]">
+                        <div className="flex flex-col items-center justify-center">
+                          <span className="material-symbols-outlined text-[48px] text-gray-300 mb-3">search_off</span>
+                          <p className="text-[14px] font-medium m-0">No clients found matching your criteria.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
+        </div>
       </main>
 
       {/* Client Info Modal (click on row) */}
@@ -415,8 +415,8 @@ export default function ClientsPage() {
                     className={`relative inline-block w-11 h-6 align-middle select-none transition duration-200 ease-in cursor-pointer ${(isUpdating || (profile?.systemRole !== 'Admin' && profile?.systemRole !== 'Accountant')) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={() => { const r = String(profile?.systemRole || '').trim(); if (!isUpdating && (r === 'Admin' || r === 'Accountant')) handleToggleStatus(viewingClient) }}
                   >
-                    <div className={`absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none transition-transform duration-300 ease-in-out z-10 ${(() => { const v = viewingClient['Is Active'] || viewingClient['isActive'] || viewingClient['is_active'] || viewingClient.isActive; return String(v).toLowerCase() === 'yes' || v === true ? 'translate-x-5 border-[#10B981]' : 'translate-x-0 border-gray-300' })()}`}/>
-                    <div className={`block overflow-hidden h-6 rounded-full transition-colors duration-300 ease-in-out ${(() => { const v = viewingClient['Is Active'] || viewingClient['isActive'] || viewingClient['is_active'] || viewingClient.isActive; return String(v).toLowerCase() === 'yes' || v === true ? 'bg-[#10B981]' : 'bg-gray-300' })()}`}/>
+                    <div className={`absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none transition-transform duration-300 ease-in-out z-10 ${(() => { const v = viewingClient['Is Active'] || viewingClient['isActive'] || viewingClient['is_active'] || viewingClient.isActive; return String(v).toLowerCase() === 'yes' || v === true ? 'translate-x-5 border-[#10B981]' : 'translate-x-0 border-gray-300' })()}`} />
+                    <div className={`block overflow-hidden h-6 rounded-full transition-colors duration-300 ease-in-out ${(() => { const v = viewingClient['Is Active'] || viewingClient['isActive'] || viewingClient['is_active'] || viewingClient.isActive; return String(v).toLowerCase() === 'yes' || v === true ? 'bg-[#10B981]' : 'bg-gray-300' })()}`} />
                   </div>
                   <span className={`text-[12px] font-bold ${(() => { const v = viewingClient['Is Active'] || viewingClient['isActive'] || viewingClient['is_active'] || viewingClient.isActive; return String(v).toLowerCase() === 'yes' || v === true ? 'text-[#10B981]' : 'text-gray-400' })()}`}>
                     {(() => { const v = viewingClient['Is Active'] || viewingClient['isActive'] || viewingClient['is_active'] || viewingClient.isActive; return String(v).toLowerCase() === 'yes' || v === true ? 'Active' : 'Inactive' })()}
