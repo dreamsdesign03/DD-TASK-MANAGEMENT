@@ -364,6 +364,8 @@ function doPost(e) {
 
       MailApp.sendEmail({
         to: adminEmail,
+        name: "Dreamsdesk - Dreams Design",
+        replyTo: "marketing.dreamsdesign.in@gmail.com",
         subject: subject,
         htmlBody: htmlBody
       });
@@ -547,6 +549,8 @@ function doPost(e) {
           MailApp.sendEmail({
             to: Session.getActiveUser().getEmail(),
             bcc: adminEmails.join(","),
+            name: "Dreamsdesk - Dreams Design",
+            replyTo: "marketing.dreamsdesign.in@gmail.com",
             subject: subject,
             htmlBody: htmlBody
           });
