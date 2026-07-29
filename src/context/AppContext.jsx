@@ -1932,6 +1932,7 @@ export function AppProvider({ children }) {
   }
 
   const toggleTimer = useCallback((taskToToggle, profileName) => {
+    const nowIST = getISTTime();
     if (activeTimer && activeTimer.taskId === taskToToggle.id) {
       // Stop timer
       const elapsed = Math.floor((Date.now() - activeTimer.startTime) / 1000);
@@ -1944,7 +1945,8 @@ export function AppProvider({ children }) {
         timeData[myName] = elapsed;
       }
 
-      updateTask(taskToToggle.id, { timeTaken: buildMultiUserTimeStr(timeData) });
+      const startIST = activeTimer.istStartTime || taskToToggle.startTime || nowIST;
+      updateTask(taskToToggle.id, { timeTaken: buildMultiUserTimeStr(timeData), startTime: startIST, endTime: nowIST });
       setActiveTimer(null);
 
       const DAILY_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwJ01CKHnASeGp0wZeKW8hCy6HwgulOnnGiDEvHJxqSxPMKLnlDuMHYyvRZ__HIcdf5ng/exec';
@@ -1958,7 +1960,7 @@ export function AppProvider({ children }) {
             name: profile?.name || 'Unknown',
             date: getISTDate(),
             title: taskToToggle.title,
-            endTime: getISTTime()
+            endTime: nowIST
           })
         }).catch(() => {})
       }
@@ -1973,7 +1975,8 @@ export function AppProvider({ children }) {
         addToast("Please stop the active timer before starting a new one.", "error");
         return;
       }
-      setActiveTimer({ taskId: taskToToggle.id, taskTitle: taskToToggle.title, startTime: Date.now() });
+      updateTask(taskToToggle.id, { startTime: nowIST, endTime: '' });
+      setActiveTimer({ taskId: taskToToggle.id, taskTitle: taskToToggle.title, startTime: Date.now(), istStartTime: nowIST });
 
       const DAILY_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwJ01CKHnASeGp0wZeKW8hCy6HwgulOnnGiDEvHJxqSxPMKLnlDuMHYyvRZ__HIcdf5ng/exec';
       if (profile?.email && DAILY_SHEET_URL !== 'YOUR_NEW_APPS_SCRIPT_WEB_APP_URL_HERE') {
@@ -1988,7 +1991,7 @@ export function AppProvider({ children }) {
             project: taskToToggle.client || taskToToggle.project || '',
             title: taskToToggle.title,
             status: taskToToggle.status || '',
-            startTime: getISTTime()
+            startTime: nowIST
           })
         }).catch(() => {})
       }

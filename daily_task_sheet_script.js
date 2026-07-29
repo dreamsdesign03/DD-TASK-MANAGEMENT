@@ -547,6 +547,28 @@ function doPost(e) {
         var dataStartRow = existingRow + 2;
         var blockEnd = findBlockDataEnd(sheet, existingRow);
 
+        // Preserve logged start and end times for tasks in the sheet
+        var existingTimes = {};
+        var allData = sheet.getDataRange().getValues();
+        for (var r = dataStartRow - 1; r < blockEnd - 1; r++) {
+          var rowTitle = String(allData[r][1] || "").trim();
+          var rowST = formatSheetTime(allData[r][3]);
+          var rowET = formatSheetTime(allData[r][4]);
+          if (rowTitle && rowTitle !== "Punched In" && rowTitle !== "Punched Out") {
+            existingTimes[rowTitle] = { startTime: rowST, endTime: rowET };
+          }
+        }
+
+        // Fill in missing start/end times from sheet if client passed empty times
+        for (var k = 0; k < rowsToInsert.length; k++) {
+          var item = rowsToInsert[k];
+          if (!item.isSpecial) {
+            var ex = existingTimes[item.title] || {};
+            if (!item.startTime && ex.startTime) item.startTime = ex.startTime;
+            if (!item.endTime && ex.endTime) item.endTime = ex.endTime;
+          }
+        }
+
         var deleteCount = blockEnd - dataStartRow;
         if (deleteCount > 0) {
           sheet.deleteRows(dataStartRow, deleteCount);
