@@ -611,8 +611,8 @@ export function AppProvider({ children }) {
             project: t.client || t.project || t.projectName || '',
             title: t.title || '',
             status: t.status || 'Pending',
-            startTime: t.startTime || '',
-            endTime: t.endTime || '',
+            startTime: t.startTime || (t.status === 'Done' ? myFirstPunchIn : ''),
+            endTime: t.endTime || (t.status === 'Done' ? outTime : ''),
             remark: (t.comments && t.comments.length > 0) ? t.comments[t.comments.length - 1].text : (t.remarks || '')
           }))
         });
@@ -1916,7 +1916,9 @@ export function AppProvider({ children }) {
             name: profile?.name || 'Unknown',
             date: getISTDate(),
             title: mergedTask.title,
-            status: mergedTask.status
+            status: mergedTask.status,
+            startTime: mergedTask.startTime || getISTTime(),
+            endTime: mergedTask.status === 'Done' ? (mergedTask.endTime || getISTTime()) : (mergedTask.endTime || '')
           })
         }).catch(() => {})
       }

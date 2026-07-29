@@ -391,6 +391,8 @@ function doPost(e) {
       var date = data.date || "";
       var title = data.title || "";
       var status = data.status || "";
+      var startTime = data.startTime || "";
+      var endTime = data.endTime || "";
 
       var sheetName = fullName.split(" ")[0];
       var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -414,6 +416,13 @@ function doPost(e) {
         if (rowTitle === title) {
           sheet.getRange(r + 1, 3).setValue(status);
           sheet.getRange(r + 1, 3).setHorizontalAlignment("center").setBackground(getStatusColor(status));
+
+          if (startTime && !String(sheet.getRange(r + 1, 4).getValue()).trim()) {
+            sheet.getRange(r + 1, 4).setValue(formatTime(startTime)).setHorizontalAlignment("center");
+          }
+          if (endTime) {
+            sheet.getRange(r + 1, 5).setValue(formatTime(endTime)).setHorizontalAlignment("center");
+          }
           updated = true;
           break;
         }
@@ -559,13 +568,17 @@ function doPost(e) {
           }
         }
 
-        // Fill in missing start/end times from sheet if client passed empty times
+        // Fill in missing start/end times from sheet or defaults if client passed empty times
         for (var k = 0; k < rowsToInsert.length; k++) {
           var item = rowsToInsert[k];
           if (!item.isSpecial) {
             var ex = existingTimes[item.title] || {};
             if (!item.startTime && ex.startTime) item.startTime = ex.startTime;
             if (!item.endTime && ex.endTime) item.endTime = ex.endTime;
+            if (String(item.status || "").toLowerCase() === "done") {
+              if (!item.startTime) item.startTime = st;
+              if (!item.endTime) item.endTime = et;
+            }
           }
         }
 
