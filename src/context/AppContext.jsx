@@ -582,8 +582,8 @@ export function AppProvider({ children }) {
           return true;
         };
 
-        // Filter tasks completed/updated today by this user
-        const todaysDoneTasks = (tasks || []).filter(t => {
+        // Filter all tasks assigned/worked on today by this user (Pending, In Progress, Done)
+        const todaysTasks = (tasks || []).filter(t => {
           const assignedEmailClean = (t.assignedEmail || '').toLowerCase();
           const assignedToClean = (t.assignedTo || '').toLowerCase();
           const taskEmpId = String(t.employeeId || '').trim();
@@ -594,13 +594,10 @@ export function AppProvider({ children }) {
 
           if (!isMyTask) return false;
 
-          const isDone = String(t.status || '').trim().toLowerCase() === 'done';
-          if (!isDone) return false;
-
-          return isDateToday(t.statusUpdatedOn);
+          return isDateToday(t.statusUpdatedOn || t.assignedDate || t.assigned);
         });
 
-        console.log('Todays Done Tasks count:', todaysDoneTasks.length);
+        console.log('Todays Tasks count for Daily Sheet:', todaysTasks.length);
 
         const payload = JSON.stringify({
           action: 'log_daily_tasks',
@@ -610,10 +607,12 @@ export function AppProvider({ children }) {
           date: todayIST,
           firstPunchIn: myFirstPunchIn,
           lastPunchOut: outTime,
-          tasks: todaysDoneTasks.map(t => ({
+          tasks: todaysTasks.map(t => ({
             project: t.client || t.project || t.projectName || '',
             title: t.title || '',
-            status: t.status || 'Done',
+            status: t.status || 'Pending',
+            startTime: t.startTime || '',
+            endTime: t.endTime || '',
             remark: (t.comments && t.comments.length > 0) ? t.comments[t.comments.length - 1].text : (t.remarks || '')
           }))
         });

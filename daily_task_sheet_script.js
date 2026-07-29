@@ -485,11 +485,9 @@ function doPost(e) {
         sheet = ss.insertSheet(sheetName);
       }
 
-      // Use client-sent times as primary (client has up-to-date session data, no race condition)
       var firstPunchIn = data.firstPunchIn || data.startTime || "";
       var lastPunchOut = data.lastPunchOut || data.endTime || "";
 
-      // Fallback: if client didn't send times, fetch from Activity Sheet
       if ((!firstPunchIn || !lastPunchOut) && employeeId) {
         var activityTimes = fetchActivityTimes(employeeId, date);
         if (activityTimes) {
@@ -499,177 +497,135 @@ function doPost(e) {
       }
 
       var headerText = makeHeaderText(date);
+      var st = formatTime(firstPunchIn);
+      var et = formatTime(lastPunchOut);
+
+      // Construct list of data rows: Punched In -> Tasks -> Punched Out
+      var rowsToInsert = [];
+      
+      // Punched In row at top
+      rowsToInsert.push({
+        project: "",
+        title: "Punched In",
+        status: "-",
+        startTime: st,
+        endTime: "",
+        remark: "",
+        isSpecial: true
+      });
+
+      // Task rows
+      for (var t = 0; t < tasks.length; t++) {
+        var tk = tasks[t];
+        rowsToInsert.push({
+          project: tk.project || "",
+          title: tk.title || "",
+          status: tk.status || "Pending",
+          startTime: formatTime(tk.startTime || ""),
+          endTime: formatTime(tk.endTime || ""),
+          remark: tk.remark || "",
+          isSpecial: false
+        });
+      }
+
+      // Punched Out row at bottom
+      if (et) {
+        rowsToInsert.push({
+          project: "",
+          title: "Punched Out",
+          status: "-",
+          startTime: "",
+          endTime: et,
+          remark: "",
+          isSpecial: true
+        });
+      }
+
       var existingRow = findHeaderRow(sheet, date);
-
       if (existingRow !== -1) {
-        // ── UPDATE existing block ──
-        var headerRowNum = existingRow;
-        var titleRowNum = headerRowNum + 1;
-        var dataStartRow = titleRowNum + 1;
+        // UPDATE existing block
+        var dataStartRow = existingRow + 2;
+        var blockEnd = findBlockDataEnd(sheet, existingRow);
 
-        var st = formatTime(firstPunchIn);
-
-        // Find where this block ends
-        var blockEnd = dataStartRow;
-        var allData = sheet.getDataRange().getValues();
-        for (var r = dataStartRow - 1; r < allData.length; r++) {
-          var rowVals = allData[r];
-          var isEmpty = true;
-          for (var c = 0; c < 6; c++) {
-            if (String(rowVals[c] || "").trim() !== "") {
-              isEmpty = false;
-              break;
-            }
-          }
-          if (isEmpty || String(rowVals[0]).indexOf("Task :") === 0 || String(rowVals[0]).indexOf("Today Task :") === 0) {
-            blockEnd = r + 1;
-            break;
-          }
-          blockEnd = r + 2;
-        }
-
-        // Delete old data rows, but preserve the empty row or next header
         var deleteCount = blockEnd - dataStartRow;
         if (deleteCount > 0) {
           sheet.deleteRows(dataStartRow, deleteCount);
         }
 
-        // Insert new task rows
-        var et = formatTime(lastPunchOut);
+        for (var i = 0; i < rowsToInsert.length; i++) {
+          var item = rowsToInsert[i];
+          var insertIdx = dataStartRow + i;
+          sheet.insertRowBefore(insertIdx);
 
-        if (tasks.length === 0) {
-          sheet.insertRowsAfter(dataStartRow - 1, 1);
-          var rowIdx = dataStartRow;
-          sheet.getRange(rowIdx, 1).setValue("-");
-          sheet.getRange(rowIdx, 2).setValue("No tasks completed");
-          sheet.getRange(rowIdx, 3).setValue("-");
-          sheet.getRange(rowIdx, 4).setValue(st);
-          sheet.getRange(rowIdx, 5).setValue(et);
-          sheet.getRange(rowIdx, 6).setValue("-");
+          sheet.getRange(insertIdx, 1).setValue(formatSheetProject(item.project));
+          sheet.getRange(insertIdx, 2).setValue(item.title);
+          sheet.getRange(insertIdx, 3).setValue(item.status);
+          sheet.getRange(insertIdx, 4).setValue(item.startTime);
+          sheet.getRange(insertIdx, 5).setValue(item.endTime);
+          sheet.getRange(insertIdx, 6).setValue(item.remark);
 
-          sheet.getRange(rowIdx, 1, 1, 6).setBackground("#ffffff").setFontWeight("normal").setFontColor("#000000");
-          sheet.getRange(rowIdx, 3).setHorizontalAlignment("center");
-          sheet.getRange(rowIdx, 4).setHorizontalAlignment("center");
-          sheet.getRange(rowIdx, 5).setHorizontalAlignment("center");
-          var borderRange = sheet.getRange(rowIdx, 1, 1, 6);
-          borderRange.setBorder(true, true, true, true, true, true);
-        } else {
-          for (var t = 0; t < tasks.length; t++) {
-            var task = tasks[t];
-            var rowST = t === 0 ? st : "";
-            var rowET = t === tasks.length - 1 ? et : "";
-
-            sheet.insertRowsAfter(dataStartRow + t - 1, 1);
-            var rowIdx = dataStartRow + t;
-
-            sheet.getRange(rowIdx, 1).setValue(formatSheetProject(task.project));
-            sheet.getRange(rowIdx, 2).setValue(task.title || "");
-            sheet.getRange(rowIdx, 3).setValue(task.status || "");
-            sheet.getRange(rowIdx, 4).setValue(rowST);
-            sheet.getRange(rowIdx, 5).setValue(rowET);
-            sheet.getRange(rowIdx, 6).setValue(task.remark || "");
-
-            sheet.getRange(rowIdx, 1, 1, 6).setBackground("#ffffff").setFontWeight("normal").setFontColor("#000000");
-            sheet.getRange(rowIdx, 3).setHorizontalAlignment("center").setBackground(getStatusColor(task.status));
-            sheet.getRange(rowIdx, 4).setHorizontalAlignment("center");
-            sheet.getRange(rowIdx, 5).setHorizontalAlignment("center");
-
-            var borderRange = sheet.getRange(rowIdx, 1, 1, 6);
-            borderRange.setBorder(true, true, true, true, true, true);
+          sheet.getRange(insertIdx, 1, 1, 6).setBackground("#ffffff").setFontWeight("normal").setFontColor("#000000");
+          sheet.getRange(insertIdx, 3).setHorizontalAlignment("center");
+          if (!item.isSpecial) {
+            sheet.getRange(insertIdx, 3).setBackground(getStatusColor(item.status));
           }
+          sheet.getRange(insertIdx, 4).setHorizontalAlignment("center");
+          sheet.getRange(insertIdx, 5).setHorizontalAlignment("center");
+          sheet.getRange(insertIdx, 1, 1, 6).setBorder(true, true, true, true, true, true);
         }
 
-        // Blank row after tasks
-        var rowAfterTasks = dataStartRow + (tasks.length === 0 ? 1 : tasks.length);
-        var valAfter = sheet.getRange(rowAfterTasks, 1).getValue();
+        var rowAfter = dataStartRow + rowsToInsert.length;
+        var valAfter = sheet.getRange(rowAfter, 1).getValue();
         if (String(valAfter).indexOf("Task :") === 0) {
-          // If the next row is a header, we need to push it down
-          sheet.insertRowBefore(rowAfterTasks);
+          sheet.insertRowBefore(rowAfter);
         } else {
-          // Otherwise, clear whatever is there to ensure a clean blank space
-          sheet.getRange(rowAfterTasks, 1, 1, 6).clearContent();
+          sheet.getRange(rowAfter, 1, 1, 6).clearContent();
         }
 
         return ContentService.createTextOutput(JSON.stringify({ status: "success", action: "updated" })).setMimeType(ContentService.MimeType.JSON);
       }
 
-      // ── CREATE new block (no existing header) ──
-      var st = formatTime(firstPunchIn);
-      var et = formatTime(lastPunchOut);
-
+      // CREATE new block if no header exists
       var lastRow = sheet.getLastRow();
       if (lastRow > 0) {
         sheet.appendRow(["", "", "", "", "", ""]);
       }
 
-      // Dark green header
+      // Header row (Dark Blue)
       sheet.appendRow([headerText, "", "", "", "", ""]);
-      var headerRowNumber = sheet.getLastRow();
-      var hdrRange = sheet.getRange(headerRowNumber, 1, 1, 6);
-      hdrRange.merge();
-      hdrRange.setBackground("#0b5394");
-      hdrRange.setFontColor("#FFFFFF");
-      hdrRange.setFontWeight("bold");
-      hdrRange.setHorizontalAlignment("center");
-      hdrRange.setBorder(true, true, true, true, true, true);
+      var hdrRow = sheet.getLastRow();
+      var hdrRange = sheet.getRange(hdrRow, 1, 1, 6);
+      hdrRange.merge().setBackground("#0b5394").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true);
 
-      // Light green column headers
+      // Title row (Light Blue)
       sheet.appendRow(["Project name", "Task Title", "Status", "Start Time", "End Time", "Remark"]);
-      var colHeaderRowNumber = sheet.getLastRow();
-      var ttlRange = sheet.getRange(colHeaderRowNumber, 1, 1, 6);
-      ttlRange.setBackground("#9fc5e8");
-      ttlRange.setFontColor("#000000");
-      ttlRange.setFontWeight("bold");
-      ttlRange.setHorizontalAlignment("center");
-      ttlRange.setBorder(true, true, true, true, true, true);
+      var ttlRow = sheet.getLastRow();
+      var ttlRange = sheet.getRange(ttlRow, 1, 1, 6);
+      ttlRange.setBackground("#9fc5e8").setFontColor("#000000").setFontWeight("bold").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true);
 
-      var taskStartRow = sheet.getLastRow() + 1;
-
-      if (tasks.length > 0) {
-        tasks.forEach(function (task, index) {
-          var rowST = index === 0 ? st : "";
-          var rowET = index === tasks.length - 1 ? et : "";
-
-          sheet.appendRow([
-            formatSheetProject(task.project),
-            task.title || "",
-            task.status || "",
-            rowST,
-            rowET,
-            task.remark || ""
-          ]);
-
-          var currentRow = sheet.getLastRow();
-          sheet.getRange(currentRow, 1, 1, 6).setBackground("#ffffff").setFontWeight("normal").setFontColor("#000000");
-          sheet.getRange(currentRow, 3).setHorizontalAlignment("center").setBackground(getStatusColor(task.status));
-          sheet.getRange(currentRow, 4).setHorizontalAlignment("center");
-          sheet.getRange(currentRow, 5).setHorizontalAlignment("center");
-        });
-      } else {
+      for (var i = 0; i < rowsToInsert.length; i++) {
+        var item = rowsToInsert[i];
         sheet.appendRow([
-          "",
-          "No tasks logged",
-          "-",
-          st,
-          et,
-          ""
+          formatSheetProject(item.project),
+          item.title,
+          item.status,
+          item.startTime,
+          item.endTime,
+          item.remark
         ]);
         var currentRow = sheet.getLastRow();
+        sheet.getRange(currentRow, 1, 1, 6).setBackground("#ffffff").setFontWeight("normal").setFontColor("#000000");
         sheet.getRange(currentRow, 3).setHorizontalAlignment("center");
+        if (!item.isSpecial) {
+          sheet.getRange(currentRow, 3).setBackground(getStatusColor(item.status));
+        }
         sheet.getRange(currentRow, 4).setHorizontalAlignment("center");
         sheet.getRange(currentRow, 5).setHorizontalAlignment("center");
-      }
-
-      var taskEndRow = sheet.getLastRow();
-      var numTasks = taskEndRow - taskStartRow + 1;
-      if (numTasks > 0) {
-        var taskRange = sheet.getRange(taskStartRow, 1, numTasks, 6);
-        taskRange.setBorder(true, true, true, true, true, true);
+        sheet.getRange(currentRow, 1, 1, 6).setBorder(true, true, true, true, true, true);
       }
 
       sheet.appendRow(["", "", "", "", "", ""]);
-
-      return ContentService.createTextOutput(JSON.stringify({ status: "success", sheetCreated: sheetName })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", action: "created" })).setMimeType(ContentService.MimeType.JSON);
     }
 
     return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Unknown action" })).setMimeType(ContentService.MimeType.JSON);
