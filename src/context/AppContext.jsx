@@ -554,26 +554,53 @@ export function AppProvider({ children }) {
           : (punchInTime || outTime);
 
         const myName = (profile?.name || '').trim().toLowerCase();
+        const myFirstName = myName.split(' ')[0];
         const myEmail = (prevEmail || '').trim().toLowerCase();
         const myEmpId = String(profile?.employeeId || '').trim();
 
+        // Robust date helper comparing date value against todayIST (YYYY-MM-DD)
+        const isDateToday = (dateVal) => {
+          if (!dateVal) return true;
+          const str = String(dateVal).trim();
+          if (!str) return true;
+          if (str.startsWith(todayIST)) return true;
+          if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.substring(0, 10) === todayIST;
+          const dmY = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+          if (dmY) {
+            const formatted = `${dmY[3]}-${dmY[2].padStart(2, '0')}-${dmY[1].padStart(2, '0')}`;
+            return formatted === todayIST;
+          }
+          try {
+            const d = new Date(str.replace(' ', 'T'));
+            if (!isNaN(d.getTime())) {
+              const yyyy = d.getFullYear();
+              const mm = String(d.getMonth() + 1).padStart(2, '0');
+              const dd = String(d.getDate()).padStart(2, '0');
+              return `${yyyy}-${mm}-${dd}` === todayIST;
+            }
+          } catch (e) {}
+          return true;
+        };
+
         // Filter tasks completed/updated today by this user
         const todaysDoneTasks = (tasks || []).filter(t => {
-          const isMyTask = (t.assignedEmail && t.assignedEmail.toLowerCase() === myEmail) ||
-                           (t.assignedTo && t.assignedTo.toLowerCase().includes(myName)) ||
-                           (myEmpId && String(t.employeeId) === myEmpId);
-          if (!isMyTask) return false;
-          if (t.status !== 'Done') return false;
+          const assignedEmailClean = (t.assignedEmail || '').toLowerCase();
+          const assignedToClean = (t.assignedTo || '').toLowerCase();
+          const taskEmpId = String(t.employeeId || '').trim();
 
-          let updatedToday = false;
-          if (t.statusUpdatedOn) {
-            const datePart = String(t.statusUpdatedOn).split('T')[0];
-            updatedToday = datePart === todayIST;
-          } else {
-            updatedToday = true;
-          }
-          return updatedToday;
+          const isMyTask = (assignedEmailClean && assignedEmailClean === myEmail) ||
+                           (assignedToClean && (assignedToClean.includes(myName) || myName.includes(assignedToClean) || (myFirstName && assignedToClean.includes(myFirstName)))) ||
+                           (myEmpId && taskEmpId && myEmpId === taskEmpId);
+
+          if (!isMyTask) return false;
+
+          const isDone = String(t.status || '').trim().toLowerCase() === 'done';
+          if (!isDone) return false;
+
+          return isDateToday(t.statusUpdatedOn);
         });
+
+        console.log('Todays Done Tasks count:', todaysDoneTasks.length);
 
         const payload = JSON.stringify({
           action: 'log_daily_tasks',
