@@ -544,18 +544,59 @@ export function AppProvider({ children }) {
       body: JSON.stringify({ action: 'punch_out', email: prevEmail })
     }).then(r => r.text()).then(t => console.log('Punch out response:', t)).catch(e => console.warn('Punch out failed:', e))
 
-    // Log punch out to daily sheet (adds "Punched Out" row)
+    // Log daily tasks & punch out to daily sheet
     if (prevEmail) {
       const DAILY_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwhhWEHVQ5LwMMZnlm-tYUG3-bgaLlP59w8-GbxWtz7XyhpUjmDeLF26i-KIwsom7MsNA/exec';
       if (DAILY_SHEET_URL !== 'YOUR_NEW_APPS_SCRIPT_WEB_APP_URL_HERE') {
+        const todayIST = getISTDate();
+        const myFirstPunchIn = (todaysSessions && todaysSessions.length > 0 && todaysSessions[0].in)
+          ? todaysSessions[0].in
+          : (punchInTime || outTime);
+
+        const myName = (profile?.name || '').trim().toLowerCase();
+        const myEmail = (prevEmail || '').trim().toLowerCase();
+        const myEmpId = String(profile?.employeeId || '').trim();
+
+        // Filter tasks completed/updated today by this user
+        const todaysDoneTasks = (tasks || []).filter(t => {
+          const isMyTask = (t.assignedEmail && t.assignedEmail.toLowerCase() === myEmail) ||
+                           (t.assignedTo && t.assignedTo.toLowerCase().includes(myName)) ||
+                           (myEmpId && String(t.employeeId) === myEmpId);
+          if (!isMyTask) return false;
+          if (t.status !== 'Done') return false;
+
+          let updatedToday = false;
+          if (t.statusUpdatedOn) {
+            const datePart = String(t.statusUpdatedOn).split('T')[0];
+            updatedToday = datePart === todayIST;
+          } else {
+            updatedToday = true;
+          }
+          return updatedToday;
+        });
+
         const payload = JSON.stringify({
-          action: 'log_punch_out',
+          action: 'log_daily_tasks',
           email: prevEmail,
           name: profile?.name || 'Unknown',
-          date: getISTDate(),
-          endTime: outTime
+          employeeId: profile?.employeeId || '',
+          date: todayIST,
+          firstPunchIn: myFirstPunchIn,
+          lastPunchOut: outTime,
+          tasks: todaysDoneTasks.map(t => ({
+            project: t.client || t.project || t.projectName || '',
+            title: t.title || '',
+            status: t.status || 'Done',
+            remark: (t.comments && t.comments.length > 0) ? t.comments[t.comments.length - 1].text : (t.remarks || '')
+          }))
         });
-        navigator.sendBeacon(DAILY_SHEET_URL, new Blob([payload], { type: 'text/plain;charset=utf-8' }))
+
+        fetch(DAILY_SHEET_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: payload
+        }).catch(err => console.warn('Daily task sheet sync failed:', err));
       }
     }
   }
@@ -1731,12 +1772,15 @@ export function AppProvider({ children }) {
     const currentTask = tasks.find((t) => t.id === id)
     if (!currentTask) return
 
+    let hasStatusChange = fields.status !== undefined && fields.status !== currentTask.status;
+    if (hasStatusChange && !fields.statusUpdatedOn) {
+      fields.statusUpdatedOn = getISTDate();
+    }
+
     const mergedTask = {
       ...currentTask,
       ...fields
     }
-
-    let hasStatusChange = fields.status !== undefined && fields.status !== currentTask.status;
     let updateType = 'Status Updates'
     let updateTitle = `Task ${id} Updated`
     let updateSubtitle = mergedTask.title
