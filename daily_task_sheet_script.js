@@ -530,8 +530,8 @@ function doPost(e) {
           project: tk.project || "",
           title: tk.title || "",
           status: tk.status || "Pending",
-          startTime: formatTime(tk.startTime || ""),
-          endTime: formatTime(tk.endTime || ""),
+          startTime: formatTime(tk.startTime || "") || "-",
+          endTime: formatTime(tk.endTime || "") || "-",
           remark: tk.remark || "",
           isSpecial: false
         });
@@ -568,17 +568,16 @@ function doPost(e) {
           }
         }
 
-        // Fill in missing start/end times from sheet or defaults if client passed empty times
+        // Fill in missing start/end times from sheet, or set '-' if no timer was run
         for (var k = 0; k < rowsToInsert.length; k++) {
           var item = rowsToInsert[k];
           if (!item.isSpecial) {
             var ex = existingTimes[item.title] || {};
-            if (!item.startTime && ex.startTime) item.startTime = ex.startTime;
-            if (!item.endTime && ex.endTime) item.endTime = ex.endTime;
-            if (String(item.status || "").toLowerCase() === "done") {
-              if (!item.startTime) item.startTime = st;
-              if (!item.endTime) item.endTime = et;
-            }
+            if (!item.startTime && ex.startTime && ex.startTime !== "-") item.startTime = ex.startTime;
+            if (!item.endTime && ex.endTime && ex.endTime !== "-") item.endTime = ex.endTime;
+
+            if (!item.startTime) item.startTime = "-";
+            if (!item.endTime) item.endTime = "-";
           }
         }
 
