@@ -116,7 +116,8 @@ export default function ActivityPage() {
   const now = new Date()
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
-  const currentEmpId = profile?.['Employee ID'] || profile?.id || ''
+  const currentEmpId = profile?.['Employee ID'] || profile?.employeeId || profile?.id || ''
+  const isAdmin = profile?.systemRole === 'Admin' || String(profile?.role || profile?.Role || '').trim().toLowerCase() === 'admin'
   const [selectedEmpId, setSelectedEmpId] = useState('')
   const [activities, setActivities] = useState([])
   const [loading, setLoading] = useState(true)
@@ -150,9 +151,13 @@ export default function ActivityPage() {
   }, [handleClickOutside])
 
   useEffect(() => {
-    if (currentEmpId && !selectedEmpId) setSelectedEmpId(currentEmpId)
-    else if (employees.length > 0 && !selectedEmpId) setSelectedEmpId(employees[0].id)
-  }, [currentEmpId, employees, selectedEmpId])
+    if (!isAdmin) {
+      if (currentEmpId) setSelectedEmpId(currentEmpId)
+    } else {
+      if (currentEmpId && !selectedEmpId) setSelectedEmpId(currentEmpId)
+      else if (employees.length > 0 && !selectedEmpId) setSelectedEmpId(employees[0].id)
+    }
+  }, [isAdmin, currentEmpId, employees, selectedEmpId])
 
   const loadData = async () => {
     setLoading(true)
@@ -165,6 +170,15 @@ export default function ActivityPage() {
   useEffect(() => { loadData() }, [])
 
   const selectedEmployee = useMemo(() => {
+    if (!isAdmin) {
+      return {
+        id: currentEmpId,
+        name: profile?.['Full Name'] || profile?.name || 'My Profile',
+        role: profile?.Role || profile?.role || profile?.systemRole || '',
+        department: profile?.Department || profile?.department || '',
+        email: profile?.['Email Address'] || profile?.email || ''
+      }
+    }
     const emp = employees.find(e => String(e.id).trim() === String(selectedEmpId).trim())
     return emp || {
       id: selectedEmpId,
@@ -173,7 +187,7 @@ export default function ActivityPage() {
       department: profile?.Department || profile?.department || '',
       email: profile?.['Email Address'] || profile?.email || ''
     }
-  }, [employees, selectedEmpId, profile])
+  }, [isAdmin, employees, selectedEmpId, currentEmpId, profile])
 
   const daysInMonth = useMemo(() => new Date(selectedYear, selectedMonth, 0).getDate(), [selectedMonth, selectedYear])
   const dateRangeStr = `${selectedMonth}/1/${selectedYear} to ${selectedMonth}/${daysInMonth}/${selectedYear}`
@@ -192,11 +206,21 @@ export default function ActivityPage() {
 
   const dayStats = useMemo(() => {
     const stats = {}
+    const targetEmpId = isAdmin ? selectedEmpId : currentEmpId
+    const targetEmpName = String(selectedEmployee?.name || '').trim().toLowerCase()
+    const targetEmpEmail = String(selectedEmployee?.email || '').trim().toLowerCase()
+
     const userActivities = activities.filter(act => {
-      if (String(act['Employee ID']).trim() === String(selectedEmpId).trim()) return true
+      const actEmpId = String(act['Employee ID'] || act.employeeId || '').trim()
+      if (targetEmpId && actEmpId && actEmpId === String(targetEmpId).trim()) return true
+
       const actName = String(act['Full Name'] || act['Name'] || act.name || '').trim().toLowerCase()
-      const selName = String(selectedEmployee?.name || '').trim().toLowerCase()
-      return !!(selName && actName && actName === selName)
+      if (targetEmpName && actName && actName === targetEmpName) return true
+
+      const actEmail = String(act['Email Address'] || act.email || '').trim().toLowerCase()
+      if (targetEmpEmail && actEmail && actEmail === targetEmpEmail) return true
+
+      return false
     })
 
     for (let d = 1; d <= daysInMonth; d++) {
@@ -237,7 +261,7 @@ export default function ActivityPage() {
       stats[dateStr] = { day: d, dateStr, sessions, totalSeconds }
     }
     return stats
-  }, [activities, selectedEmpId, selectedMonth, selectedYear, daysInMonth, todayDateStr, currentISTTimeStr])
+  }, [activities, isAdmin, selectedEmpId, currentEmpId, selectedEmployee, selectedMonth, selectedYear, daysInMonth, todayDateStr, currentISTTimeStr])
 
   const totalMonthSeconds = useMemo(() =>
     Object.values(dayStats).reduce((sum, d) => sum + d.totalSeconds, 0),
@@ -276,7 +300,7 @@ export default function ActivityPage() {
                 <h2 className="text-[26px] font-black text-[#702c91] m-0">Punch In / Out Logs</h2>
               </div>
               <div className="flex items-center gap-3 w-full md:w-auto">
-                {profile?.systemRole !== 'Employee' && (
+                {isAdmin && (
                   <select
                     value={selectedEmpId}
                     onChange={e => setSelectedEmpId(e.target.value)}

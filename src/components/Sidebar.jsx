@@ -14,6 +14,7 @@ export default function Sidebar() {
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024)
   const [showComingSoon, setShowComingSoon] = useState(false)
+  const [hoveredNav, setHoveredNav] = useState(null)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1024)
@@ -65,9 +66,7 @@ export default function Sidebar() {
     NAV_ITEMS.push({ icon: 'account_balance', label: 'Clients AC', path: '/account-clients' })
   }
 
-  if (profile?.systemRole !== 'Employee') {
-    NAV_ITEMS.push({ icon: 'monitoring', label: 'Activity', path: '/activity' })
-  }
+  NAV_ITEMS.push({ icon: 'monitoring', label: 'Activity', path: '/activity' })
 
   const handleNavClick = (path) => {
     navigate(path)
@@ -229,6 +228,13 @@ export default function Sidebar() {
                     key={item.path}
                     className={`dd-item${active ? ' dd-active' : ''}`}
                     onClick={() => handleNavClick(item.path)}
+                    onMouseEnter={(e) => {
+                      if (!expanded) {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        setHoveredNav({ label: item.label, top: rect.top + rect.height / 2 })
+                      }
+                    }}
+                    onMouseLeave={() => setHoveredNav(null)}
                     style={{
                       margin: expanded ? '0 10px' : '0 auto',
                       width: expanded ? 'calc(100% - 20px)' : '44px',
@@ -309,8 +315,17 @@ export default function Sidebar() {
                     transition: 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1), margin 0.35s, background 0.2s',
                     overflow: 'hidden', border: 'none', flexShrink: 0,
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f9f9f9'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = '#f9f9f9';
+                    if (!expanded) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setHoveredNav({ label: 'Get Desktop App', top: rect.top + rect.height / 2 });
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = '#fff';
+                    setHoveredNav(null);
+                  }}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: 20, flexShrink: 0 }}>get_app</span>
                   <span style={{
@@ -342,8 +357,17 @@ export default function Sidebar() {
                   transition: 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1), margin 0.35s, background 0.2s',
                   overflow: 'hidden', border: 'none', flexShrink: 0,
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  if (!expanded) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setHoveredNav({ label: 'Logout', top: rect.top + rect.height / 2 });
+                  }
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent';
+                  setHoveredNav(null);
+                }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: 20, flexShrink: 0 }}>logout</span>
                 <span style={{
@@ -358,6 +382,45 @@ export default function Sidebar() {
               </button>
             </div>
           </aside>
+
+          {/* Floating Tooltip in Mini View */}
+          {!expanded && hoveredNav && (
+            <div
+              style={{
+                position: 'fixed',
+                left: 12 + COLLAPSED_W + 10,
+                top: hoveredNav.top,
+                transform: 'translateY(-50%)',
+                background: '#1E1B2E',
+                color: '#ffffff',
+                padding: '6px 14px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 700,
+                fontFamily: "'Inter', sans-serif",
+                whiteSpace: 'nowrap',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                zIndex: 99999,
+                pointerEvents: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                animation: 'fadeIn 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+            >
+              <div style={{
+                position: 'absolute',
+                right: '100%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                borderWidth: 5,
+                borderStyle: 'solid',
+                borderColor: 'transparent #1E1B2E transparent transparent'
+              }} />
+              <span>{hoveredNav.label}</span>
+            </div>
+          )}
 
           {/* ── TOGGLE BUTTON ── */}
           <button
