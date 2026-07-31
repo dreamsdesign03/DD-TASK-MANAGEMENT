@@ -49,6 +49,19 @@ export default function MyTasksPage() {
   const [assignedTo, setAssignedTo] = useState([profile?.name || ''])
   const uniqueTeamMembers = [...new Set([...teamNames, ...assignedTo].filter(Boolean))]
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false)
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('')
+  const assigneeRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (assigneeRef.current && !assigneeRef.current.contains(e.target)) {
+        setIsAssigneeOpen(false)
+        setAssigneeSearchQuery('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
   const [assignedBy] = useState(profile?.name || '')
   const [dueDate, setDueDate] = useState('')
   const [priority, setPriority] = useState('Medium')
@@ -224,19 +237,62 @@ export default function MyTasksPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[11px] font-black text-gray-500 uppercase tracking-wider mb-1.5">ASSIGNEE(S)</label>
-                  <div className="relative">
+                  <div className="relative" ref={assigneeRef}>
                     <div onClick={() => setIsAssigneeOpen(!isAssigneeOpen)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-[14px] text-gray-700 cursor-pointer flex justify-between items-center hover:border-[#702c91] transition-colors shadow-sm">
                       <span className="truncate text-[13px]">{assignedTo.length > 0 ? assignedTo.join(', ') : 'Select'}</span>
                       <span className="material-symbols-outlined text-gray-400 text-[18px]">{isAssigneeOpen ? 'expand_less' : 'expand_more'}</span>
                     </div>
                     {isAssigneeOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-[150px] overflow-y-auto custom-scrollbar">
-                        {uniqueTeamMembers.map((m) => (
-                          <label key={m} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                            <input type="checkbox" checked={assignedTo.includes(m)} onChange={(e) => { if (e.target.checked) setAssignedTo([...assignedTo, m]); else setAssignedTo(assignedTo.filter(name => name !== m)) }} className="accent-[#702c91] w-4 h-4" />
-                            <span className="text-[13px] text-gray-700">{m}</span>
-                          </label>
-                        ))}
+                      <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden border border-gray-100 flex flex-col max-h-[220px]">
+                        {/* Search Input Bar */}
+                        <div className="p-2 border-b border-gray-100 bg-white sticky top-0 z-10">
+                          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-md px-2.5 py-1.5">
+                            <span className="material-symbols-outlined text-[16px] text-gray-400">search</span>
+                            <input
+                              type="text"
+                              value={assigneeSearchQuery}
+                              onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                              placeholder="Search assignees..."
+                              className="w-full bg-transparent text-[12px] font-bold text-gray-700 outline-none placeholder:text-gray-400"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            {assigneeSearchQuery && (
+                              <span
+                                onClick={(e) => { e.stopPropagation(); setAssigneeSearchQuery('') }}
+                                className="material-symbols-outlined text-[14px] text-gray-400 cursor-pointer hover:text-gray-600"
+                              >
+                                close
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* List */}
+                        <div className="overflow-y-auto custom-scrollbar p-1 flex flex-col gap-0.5">
+                          {(() => {
+                            const filtered = uniqueTeamMembers.filter(m =>
+                              m.toLowerCase().includes(assigneeSearchQuery.trim().toLowerCase())
+                            )
+                            if (filtered.length === 0) {
+                              return <div className="p-3 text-[12px] text-gray-400 text-center font-semibold">No assignees match "{assigneeSearchQuery}"</div>
+                            }
+                            return filtered.map((m) => (
+                              <label key={m} className="flex items-center gap-2 px-3 py-2 hover:bg-purple-50/60 rounded-md cursor-pointer transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={assignedTo.includes(m)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setAssignedTo([...assignedTo, m])
+                                    else setAssignedTo(assignedTo.filter(name => name !== m))
+                                  }}
+                                  className="accent-[#702c91] w-4 h-4 cursor-pointer"
+                                />
+                                <span className="text-[13px] text-gray-700 font-semibold">{m}</span>
+                              </label>
+                            ))
+                          })()}
+                        </div>
                       </div>
                     )}
                   </div>
