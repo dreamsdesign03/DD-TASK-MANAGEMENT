@@ -182,6 +182,13 @@ export default function TaskTable() {
   // Unauthorized Access Modal
   const [unauthorizedTaskTitle, setUnauthorizedTaskTitle] = useState(null)
 
+  // Recurring Task Modal State
+  const [recurringTaskObj, setRecurringTaskObj] = useState(null)
+  const [recurringSchedule, setRecurringSchedule] = useState('Weekly')
+  const [recurringDay, setRecurringDay] = useState('Monday')
+  const [recurringMonths, setRecurringMonths] = useState([])
+  const [isRecurringSubmitting, setIsRecurringSubmitting] = useState(false)
+
   // Lock body scroll when modal is active to prevent background scrolling
   useEffect(() => {
     if (taskToDelete || recurringTaskObj || unauthorizedTaskTitle) {
@@ -233,13 +240,6 @@ export default function TaskTable() {
     
     return hasAccess;
   }
-
-  // Recurring Task Modal State
-  const [recurringTaskObj, setRecurringTaskObj] = useState(null)
-  const [recurringSchedule, setRecurringSchedule] = useState('Weekly')
-  const [recurringDay, setRecurringDay] = useState('Monday')
-  const [recurringMonths, setRecurringMonths] = useState([])
-  const [isRecurringSubmitting, setIsRecurringSubmitting] = useState(false)
 
   const handleMakeRecurring = async (e) => {
     e.preventDefault()
