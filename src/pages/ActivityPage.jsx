@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
+import SelectDropdown from '../components/SelectDropdown'
 import { useApp } from '../context/AppContext'
 import { getISTDate, getISTTime, formatDuration } from '../utils/activityLog'
 
@@ -301,15 +302,14 @@ export default function ActivityPage() {
               </div>
               <div className="flex items-center gap-3 w-full md:w-auto">
                 {isAdmin && (
-                  <select
-                    value={selectedEmpId}
-                    onChange={e => setSelectedEmpId(e.target.value)}
-                    className="flex-1 md:flex-none bg-white border border-[#E5E7EB] rounded-lg px-4 py-2 text-[13px] font-bold text-[#1E1B2E] focus:border-[#702c91] outline-none md:min-w-[220px] cursor-pointer shadow-sm hover:bg-gray-50 transition-colors"
-                  >
-                    {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.name} ({emp.role})</option>
-                    ))}
-                  </select>
+                  <div className="flex-1 md:flex-none md:min-w-[240px]">
+                    <SelectDropdown
+                      value={selectedEmpId}
+                      onChange={val => setSelectedEmpId(val)}
+                      options={employees.map(emp => ({ value: emp.id, label: `${emp.name} (${emp.role})` }))}
+                      style={{ height: 40, borderRadius: 8, fontSize: 13, fontWeight: 700 }}
+                    />
+                  </div>
                 )}
                 <button
                   onClick={loadData}
