@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
@@ -10,6 +11,18 @@ export default function MyTasksPage() {
   const location = useLocation()
   const { showNewTaskModal, setShowNewTaskModal, addTask, profile, employees, tasks, clients, addToast, isPunchedIn } = useApp()
   const teamNames = employees ? employees.map(emp => emp.name) : []
+
+  // Lock body scroll when new task modal is open
+  useEffect(() => {
+    if (showNewTaskModal) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [showNewTaskModal])
 
 
   // Derive company list: prefer live Clients sheet from n8n, fallback to task-derived clients
@@ -164,8 +177,8 @@ export default function MyTasksPage() {
       </main>
 
       {/* New Task Modal — Dreamsdesk Layout style */}
-      {showNewTaskModal && (
-        <div className="fixed inset-0 z-[999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      {showNewTaskModal && createPortal(
+        <div className="fixed inset-0 z-[999999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={handleCreateTask}
             className="bg-white w-full max-w-[520px] rounded-2xl shadow-2xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-hidden animate-scale-in"
@@ -356,7 +369,8 @@ export default function MyTasksPage() {
               <button type="submit" disabled={!title.trim()} className={`px-6 py-2 btn-gradient border-none rounded-lg font-bold shadow-md text-[13px] cursor-pointer ${!title.trim() ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}>Create Task</button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

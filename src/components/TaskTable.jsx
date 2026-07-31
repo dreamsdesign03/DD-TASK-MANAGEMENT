@@ -182,6 +182,18 @@ export default function TaskTable() {
   // Unauthorized Access Modal
   const [unauthorizedTaskTitle, setUnauthorizedTaskTitle] = useState(null)
 
+  // Lock body scroll when modal is active to prevent background scrolling
+  useEffect(() => {
+    if (taskToDelete || recurringTaskObj || unauthorizedTaskTitle) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [taskToDelete, recurringTaskObj, unauthorizedTaskTitle])
+
   const canAccessTask = (task) => {
     if (!profile) return false;
     if (profile.systemRole === 'Admin') return true;
@@ -1034,6 +1046,14 @@ export default function TaskTable() {
                                 <tr
                                   className={`hidden md:table-row ${rowClass} transition-all cursor-pointer relative group overflow-hidden`}
                                   style={{ opacity: task.status === 'Done' ? (isDoneLate ? 0.8 : 0.4) : 1 }}
+                                  onClick={(e) => {
+                                    if (e.target.closest('button') || e.target.closest('.inline-status-select')) return
+                                    if (!canAccessTask(task)) {
+                                      setUnauthorizedTaskTitle(task.title)
+                                      return
+                                    }
+                                    navigate(`/tasks/${task.id}`)
+                                  }}
                                   onMouseEnter={(e) => {
                                     if (window.innerWidth >= 768) {
                                       e.currentTarget.style.background = isTaskOverdue ? 'var(--color-error-container)' : isDoneLate ? '#FFF8F0' : 'white'
@@ -1715,8 +1735,8 @@ export default function TaskTable() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {taskToDelete && (
-        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      {taskToDelete && createPortal(
+        <div className="fixed inset-0 z-[999999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[400px] overflow-hidden animate-scale-in flex flex-col border border-outline-variant">
             <div className="flex items-center gap-3 px-6 py-5 border-b border-outline-variant bg-surface-container-low">
               <div className="w-9 h-9 rounded-full bg-error/10 flex items-center justify-center">
@@ -1732,7 +1752,7 @@ export default function TaskTable() {
             <div className="px-6 py-4 bg-surface-container-low border-t border-outline-variant flex justify-end gap-3">
               <button
                 onClick={() => setTaskToDelete(null)}
-                className="px-5 py-2 border border-outline-variant text-secondary rounded-lg font-label-md hover:bg-surface-container-high transition-all text-sm font-bold"
+                className="px-5 py-2 border border-outline-variant text-secondary rounded-lg font-label-md hover:bg-surface-container-high transition-all text-sm font-bold cursor-pointer"
               >
                 Cancel
               </button>
@@ -1741,18 +1761,19 @@ export default function TaskTable() {
                   deleteTask(taskToDelete)
                   setTaskToDelete(null)
                 }}
-                className="px-5 py-2 bg-error text-on-error rounded-lg font-label-md shadow-md hover:brightness-105 active:scale-95 transition-all text-sm font-bold"
+                className="px-5 py-2 bg-error text-on-error rounded-lg font-label-md shadow-md hover:brightness-105 active:scale-95 transition-all text-sm font-bold cursor-pointer"
               >
                 Yes
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Make Recurring Modal */}
-      {recurringTaskObj && (
-        <div className="fixed inset-0 z-[300] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      {recurringTaskObj && createPortal(
+        <div className="fixed inset-0 z-[999999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={handleMakeRecurring}
             className="bg-surface-container-lowest w-full max-w-[500px] rounded-xl shadow-2xl p-6 flex flex-col gap-6 animate-scaleIn border border-outline-variant"
@@ -1765,7 +1786,7 @@ export default function TaskTable() {
               <button
                 type="button"
                 onClick={() => setRecurringTaskObj(null)}
-                className="text-outline hover:text-on-surface transition-colors"
+                className="text-outline hover:text-on-surface transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -1855,24 +1876,25 @@ export default function TaskTable() {
               <button
                 type="button"
                 onClick={() => setRecurringTaskObj(null)}
-                className="px-5 py-2 border border-outline-variant text-secondary rounded-lg font-label-md hover:bg-surface-container-high transition-all text-sm font-bold"
+                className="px-5 py-2 border border-outline-variant text-secondary rounded-lg font-label-md hover:bg-surface-container-high transition-all text-sm font-bold cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isRecurringSubmitting || (recurringSchedule === 'Monthly' && recurringMonths.length === 0)}
-                className="px-5 py-2 btn-gradient rounded-lg font-label-md shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-bold"
+                className="px-5 py-2 btn-gradient rounded-lg font-label-md shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-bold cursor-pointer"
               >
                 {isRecurringSubmitting ? 'Saving...' : 'Save Schedule'}
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {unauthorizedTaskTitle && (
-        <div className="fixed inset-0 z-[400] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      {unauthorizedTaskTitle && createPortal(
+        <div className="fixed inset-0 z-[999999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[400px] overflow-hidden animate-scale-in flex flex-col border border-gray-200">
             <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 bg-gray-50">
               <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center">
@@ -1888,13 +1910,14 @@ export default function TaskTable() {
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end">
               <button
                 onClick={() => setUnauthorizedTaskTitle(null)}
-                className="px-5 py-2 bg-gray-800 text-white rounded-lg text-[12px] font-bold hover:bg-gray-700 transition-all"
+                className="px-5 py-2 bg-gray-800 text-white rounded-lg text-[12px] font-bold hover:bg-gray-700 transition-all cursor-pointer"
               >
                 Got it
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )
