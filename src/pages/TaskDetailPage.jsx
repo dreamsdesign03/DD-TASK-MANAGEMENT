@@ -236,8 +236,8 @@ export default function TaskDetailPage() {
         if (v.includes('@')) emails.push(v)
       }
     })
-    // Always keep current user assigned
-    if (profile?.email && !emails.some(e => e.toLowerCase() === profile.email.toLowerCase())) {
+    // Always keep current user assigned (except Admin managing others' tasks)
+    if (role !== 'Admin' && profile?.email && !emails.some(e => e.toLowerCase() === profile.email.toLowerCase())) {
       const selfEmp = employees?.find(e => e.email?.toLowerCase() === profile.email.toLowerCase())
       if (selfEmp) {
         names.push(selfEmp.name)
@@ -690,6 +690,7 @@ export default function TaskDetailPage() {
   const myEmailStr = String(profile?.email || '').trim().toLowerCase()
   const isAssignee = String(task?.assignedTo || '').toLowerCase().includes(myNameStr) || String(task?.assignedEmail || '').toLowerCase().includes(myEmailStr)
   const isAssigner = String(task?.assignedBy || '').toLowerCase() === myNameStr
+  const canManageTask = isAssigner || role === 'Admin'
   const restrictedDepts = ['HR', 'ACCOUNT', 'SALES']
   const taskDept = (task?.department || '').toUpperCase()
   const role = profile?.systemRole || 'Employee'
@@ -797,7 +798,7 @@ export default function TaskDetailPage() {
                     ) : (
                       <>
                         <span>{task.title}</span>
-                        {(isAssignee || isAssigner) && !isTaskDone && (
+                        {(isAssignee || isAssigner || role === 'Admin') && !isTaskDone && (
                           <button
                             onClick={() => { setEditTitleContent(task.title); setIsEditingTitle(true) }}
                             className="material-symbols-outlined text-[20px] text-gray-400 hover:text-[#702c91] transition-colors bg-transparent border-none cursor-pointer p-0 leading-none"
@@ -878,13 +879,13 @@ export default function TaskDetailPage() {
                   )}
                   <span
                     onClick={() => {
-                      if (isAssigner && !isTaskDone) {
+                      if (canManageTask && !isTaskDone) {
                         const emails = (task.assignedEmail || '').split(',').map(s => s.trim()).filter(Boolean)
                         setSelectedAssignees(emails.length > 0 ? emails : (task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean))
                         setIsAssigneeModalOpen(true)
                       }
                     }}
-                    className={`bg-gray-100 text-gray-600 border border-gray-200 text-[12px] font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${isAssigner && !isTaskDone ? 'cursor-pointer hover:bg-purple-50 hover:border-purple-200 hover:text-[#702c91] transition-colors' : ''}`}
+                    className={`bg-gray-100 text-gray-600 border border-gray-200 text-[12px] font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${canManageTask && !isTaskDone ? 'cursor-pointer hover:bg-purple-50 hover:border-purple-200 hover:text-[#702c91] transition-colors' : ''}`}
                   >
                     <span className="material-symbols-outlined text-[14px]">person</span>
                     Assigned to: {task.assignedTo || 'Unassigned'}
@@ -981,7 +982,7 @@ export default function TaskDetailPage() {
                 <div className="flex items-center gap-2">
                   <h3 className="text-[13px] font-black text-[#4B5563] uppercase tracking-wider mb-4 flex items-center gap-2 m-0">
                     Description
-                    {profile?.name === task.assignedBy && !isEditingDescription && !isTaskDone && (
+                    {(profile?.name === task.assignedBy || role === 'Admin') && !isEditingDescription && !isTaskDone && (
                       <span
                         onClick={handleEditDescriptionClick}
                         className="material-symbols-outlined text-[16px] text-gray-400 cursor-pointer hover:text-[#702c91] ml-2"
@@ -1427,7 +1428,7 @@ export default function TaskDetailPage() {
                           </div>
                         )
                       })}
-                      {!isTaskDone && isAssigner && (
+                      {!isTaskDone && canManageTask && (
                         <button
                           onClick={() => {
                             const emails = (task.assignedEmail || '').split(',').map(s => s.trim()).filter(Boolean)
@@ -1472,7 +1473,7 @@ export default function TaskDetailPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-[13px] text-gray-500 w-1/3">Due Date</span>
-                    {isAssigner && !isTaskDone ? (
+                    {canManageTask && !isTaskDone ? (
                       isEditingDueDate ? (
                         <input
                           type="date"
@@ -1769,15 +1770,15 @@ export default function TaskDetailPage() {
                 const value = memberEmail || m.name
                 const isSelf = memberEmail && profile?.email && memberEmail.toLowerCase() === profile.email.toLowerCase()
                 return (
-                  <label key={memberEmail || m.name} className={`flex items-center gap-4 px-3 py-2.5 rounded-lg transition-colors group ${isSelf ? 'opacity-70' : 'hover:bg-purple-50/50 cursor-pointer'}`}>
+                  <label key={memberEmail || m.name} className={`flex items-center gap-4 px-3 py-2.5 rounded-lg transition-colors group ${isSelf && role !== 'Admin' ? 'opacity-70' : 'hover:bg-purple-50/50 cursor-pointer'}`}>
                     <input
                       type="checkbox"
                       checked={isChecked}
-                      disabled={isSelf}
+                      disabled={isSelf && role !== 'Admin'}
                       onChange={(e) => {
                         if (e.target.checked) {
                           setSelectedAssignees([...selectedAssignees.filter(v => v !== m.name && v !== memberEmail), value])
-                        } else if (!isSelf) {
+                        } else if (!isSelf || role === 'Admin') {
                           setSelectedAssignees(selectedAssignees.filter(v => v !== value && v !== m.name && v !== memberEmail))
                         }
                       }}
