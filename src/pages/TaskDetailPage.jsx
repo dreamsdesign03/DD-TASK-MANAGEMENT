@@ -361,6 +361,14 @@ export default function TaskDetailPage() {
       return emp ? { name: emp.name, email: emp.email } : { name: email, email }
     })].map(m => [String(m.email).toLowerCase(), m])
   ).values()]
+
+  // Only users assigned to the MAIN task can be picked as subtask assignees
+  const mainTaskAssignees = [...new Map(
+    (task.assignedTo || '').split(',').map(n => n.trim()).filter(Boolean).map(name => {
+      const emp = employees?.find(e => e.name === name)
+      return emp ? { name: emp.name, email: emp.email } : { name, email: '' }
+    }).map(m => [String((m.email || m.name)).toLowerCase(), m])
+  ).values()]
   const [isUploading, setIsUploading] = useState(false)
   const scrollRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -1239,7 +1247,7 @@ export default function TaskDetailPage() {
                                 </div>
                               </div>
                               <div className="overflow-y-auto custom-scrollbar p-1 flex flex-col gap-0.5">
-                                {uniqueTeamMembers
+                                {mainTaskAssignees
                                   .filter(m => m.name.toLowerCase().includes(subtaskAssigneeSearch.trim().toLowerCase()))
                                   .map((m) => {
                                     const isChecked = newSubtaskAssignee.includes(m.name)
@@ -1261,8 +1269,8 @@ export default function TaskDetailPage() {
                                       </label>
                                     )
                                   })}
-                                {uniqueTeamMembers.filter(m => m.name.toLowerCase().includes(subtaskAssigneeSearch.trim().toLowerCase())).length === 0 && (
-                                  <div className="p-3 text-[12px] text-gray-400 text-center font-semibold">No users match "{subtaskAssigneeSearch}"</div>
+                                {mainTaskAssignees.filter(m => m.name.toLowerCase().includes(subtaskAssigneeSearch.trim().toLowerCase())).length === 0 && (
+                                  <div className="p-3 text-[12px] text-gray-400 text-center font-semibold">No main task assignees match "{subtaskAssigneeSearch}"</div>
                                 )}
                               </div>
                             </div>
