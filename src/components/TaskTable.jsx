@@ -564,6 +564,7 @@ export default function TaskTable() {
       statusUpdatedOn: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }),
       department: newDept,
       assignedTo: finalAssignees.join(', '),
+      assignedBy: profile?.name || '',
       employeeId: assignedEmps.length > 0 ? assignedEmps.map(e => e.id).join(', ') : (profile?.id || ''),
       assignedEmail: assignedEmps.length > 0 ? assignedEmps.map(e => e.email).join(', ') : (profile?.email || ''),
       description: { intro: 'No description provided.', bullets: [], outro: '' },
