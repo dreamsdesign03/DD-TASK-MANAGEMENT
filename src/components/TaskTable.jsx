@@ -1707,10 +1707,7 @@ export default function TaskTable() {
                         {/* Add Task Button at bottom of column body */}
                         {quickAddCol !== colName && (
                           <button
-                            onClick={() => {
-                              setQuickAddCol(colName)
-                              setQuickAddTitle('')
-                            }}
+                            onClick={() => setShowNewTaskModal(true)}
                             className="w-full mt-2 py-3 flex items-center justify-center gap-2 text-[13px] font-bold text-[#9CA3AF] hover:text-[#702c91] border-2 border-dashed border-[#E5E7EB] hover:border-[#702c91] hover:bg-[#F5F3FF] rounded-full transition-all"
                           >
                             <span className="material-symbols-outlined text-[18px]">add_circle</span>
