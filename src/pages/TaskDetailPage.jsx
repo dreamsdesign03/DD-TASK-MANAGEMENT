@@ -690,10 +690,10 @@ export default function TaskDetailPage() {
   const myEmailStr = String(profile?.email || '').trim().toLowerCase()
   const isAssignee = String(task?.assignedTo || '').toLowerCase().includes(myNameStr) || String(task?.assignedEmail || '').toLowerCase().includes(myEmailStr)
   const isAssigner = String(task?.assignedBy || '').toLowerCase() === myNameStr
-  const canManageTask = isAssigner || role === 'Admin'
   const restrictedDepts = ['HR', 'ACCOUNT', 'SALES']
   const taskDept = (task?.department || '').toUpperCase()
   const role = profile?.systemRole || 'Employee'
+  const canManageTask = isAssigner || role === 'Admin'
   const isSameDept = (role === 'HR' && taskDept === 'HR') || (role === 'Accountant' && taskDept === 'ACCOUNT') || (role === 'Sales' && taskDept === 'SALES')
   const canManageTimer = isAssignee || isAssigner || role === 'Admin' || isSameDept || (role !== 'Employee' && !restrictedDepts.includes(taskDept))
 
