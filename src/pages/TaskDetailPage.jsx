@@ -150,7 +150,10 @@ export default function TaskDetailPage() {
   const [selectedAssignees, setSelectedAssignees] = useState([])
   const [attachmentToDelete, setAttachmentToDelete] = useState(null)
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
-  const [newSubtaskAssignee, setNewSubtaskAssignee] = useState('')
+  const [newSubtaskAssignee, setNewSubtaskAssignee] = useState([])
+  const [isSubtaskAssigneeOpen, setIsSubtaskAssigneeOpen] = useState(false)
+  const [subtaskAssigneeSearch, setSubtaskAssigneeSearch] = useState('')
+  const subtaskAssigneeRef = useRef(null)
   const [newSubtaskDueDate, setNewSubtaskDueDate] = useState('')
   const [newSubtaskPriority, setNewSubtaskPriority] = useState('Medium')
   const [isSubtaskInputActive, setIsSubtaskInputActive] = useState(false)
@@ -216,6 +219,16 @@ export default function TaskDetailPage() {
     }
     setNewSubtaskDueDate(val);
   }
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (subtaskAssigneeRef.current && !subtaskAssigneeRef.current.contains(event.target)) {
+        setIsSubtaskAssigneeOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const isTracking = activeTimer?.taskId === task.id;
   const sessionSecs = isTracking ? globalSessionSecs : 0;
@@ -300,7 +313,7 @@ export default function TaskDetailPage() {
       }
     }
 
-    const assignedEmps = employees?.filter(e => (newSubtaskAssignee || '').split(',').map(s => s.trim()).includes(e.name)) || [];
+    const assignedEmps = employees?.filter(e => (newSubtaskAssignee || []).map(s => String(s).trim()).includes(e.name)) || [];
 
     const newSt = {
       id: newStId,
@@ -311,7 +324,7 @@ export default function TaskDetailPage() {
       project: task.project,
       department: task.department,
       status: 'Pending',
-      assignedTo: newSubtaskAssignee,
+      assignedTo: (newSubtaskAssignee || []).join(', '),
       assignedBy: profile?.name || 'Mansi Shah',
       employeeId: assignedEmps.map(e => e.id).filter(Boolean).join(', '),
       assignedEmail: assignedEmps.map(e => e.email).filter(Boolean).join(', '),
@@ -323,13 +336,23 @@ export default function TaskDetailPage() {
     addTask(newSt)
 
     setNewSubtaskTitle('')
-    setNewSubtaskAssignee('')
+    setNewSubtaskAssignee([])
     setNewSubtaskPriority('Medium')
     setNewSubtaskDueDate('')
+    setIsSubtaskAssigneeOpen(false)
     setIsSubtaskInputActive(false)
   }
 
   const subtasks = tasks.filter(t => String(t.mainTaskId) === String(task.id) && (t.taskType === 'Sub Task' || t.taskType === 'Subtask'))
+
+  const isSubtaskAssignee = (st) => {
+    if (!profile) return false
+    const myName = String(profile.name || '').toLowerCase().replace(/[^\w]/g, '').trim()
+    const myEmail = String(profile.email || '').toLowerCase().trim()
+    const assigneeNames = String(st.assignedTo || '').split(',').map(n => String(n || '').toLowerCase().replace(/[^\w]/g, '').trim()).filter(Boolean)
+    const assigneeEmails = String(st.assignedEmail || '').split(',').map(e => String(e || '').toLowerCase().trim()).filter(Boolean)
+    return assigneeNames.includes(myName) || (myEmail && assigneeEmails.includes(myEmail))
+  }
 
   const teamMembers = employees ? employees.map(e => ({ name: e.name, email: e.email })) : []
   const uniqueTeamMembers = [...new Map(
@@ -1055,12 +1078,7 @@ export default function TaskDetailPage() {
                         <input
                           type="checkbox"
                           checked={st.status === 'Done'}
-                          disabled={isTaskDone || (() => {
-                            if (!profile) return true;
-                            const myName = String(profile.name || '').toLowerCase().replace(/[^\w]/g, '').trim();
-                            const subAssignee = String(st.assignedTo || '').toLowerCase().replace(/[^\w]/g, '').trim();
-                            return myName !== subAssignee;
-                          })()}
+                          disabled={isTaskDone || !isSubtaskAssignee(st)}
                           onChange={(e) => {
                             if (isTaskDone) return;
                             const newStatus = e.target.checked ? 'Done' : 'Pending'
@@ -1074,7 +1092,7 @@ export default function TaskDetailPage() {
                               }
                             }
                           }}
-                          className={`w-5 h-5 accent-primary rounded ${isTaskDone || (st.assignedTo && String(profile?.name || '').toLowerCase().replace(/[^\w]/g, '').trim() !== String(st.assignedTo).toLowerCase().replace(/[^\w]/g, '').trim()) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          className={`w-5 h-5 accent-primary rounded ${isTaskDone || !isSubtaskAssignee(st) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                         />
                         <div className={`flex-1 ${st.status === 'Done' ? 'line-through text-secondary' : 'text-on-surface'}`}>
                           <p className={`font-medium text-[14px] ${st.overdue ? 'text-urgent-red' : ''}`}>{st.title}</p>
@@ -1103,7 +1121,7 @@ export default function TaskDetailPage() {
                         {st.assignedTo && (
                           <div className="flex items-center gap-1.5 bg-surface-container px-2.5 py-1 rounded-full border border-outline-variant/50 shrink-0">
                             <span className="material-symbols-outlined text-[13px] text-secondary">person</span>
-                            <span className="text-[11px] font-bold text-secondary truncate max-w-[100px]">{st.assignedTo}</span>
+                            <span className="text-[11px] font-bold text-secondary truncate max-w-[150px]">{st.assignedTo.split(',').map(n => n.trim()).filter(Boolean).join(', ')}</span>
                           </div>
                         )}
                         {!isTaskDone && (
@@ -1187,8 +1205,69 @@ export default function TaskDetailPage() {
 
                     <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {/* Assignee Selector */}
-                        <SelectDropdown value={newSubtaskAssignee} onChange={setNewSubtaskAssignee} options={[...new Set((task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean))].map(m => ({ value: m, label: m }))} style={{ minHeight: 32, fontSize: 12 }} />
+                        {/* Assignee Selector (multi-select) */}
+                        <div className="relative" ref={subtaskAssigneeRef}>
+                          <button
+                            type="button"
+                            onClick={() => { setIsSubtaskAssigneeOpen(o => { if (o) setSubtaskAssigneeSearch(''); return !o }) }}
+                            className={`flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant/50 rounded-lg h-[32px] px-2.5 cursor-pointer transition-colors ${isSubtaskAssigneeOpen ? 'border-primary' : ''}`}
+                            title="Assign to multiple users"
+                          >
+                            <span className="material-symbols-outlined text-[14px] text-secondary">person</span>
+                            <span className="text-[12px] font-bold text-secondary max-w-[120px] truncate">
+                              {newSubtaskAssignee.length > 0 ? newSubtaskAssignee.join(', ') : 'Assign'}
+                            </span>
+                            {newSubtaskAssignee.length > 0 && (
+                              <span className="bg-primary text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">{newSubtaskAssignee.length}</span>
+                            )}
+                            <span className="material-symbols-outlined text-[14px] text-secondary">{isSubtaskAssigneeOpen ? 'expand_less' : 'expand_more'}</span>
+                          </button>
+
+                          {isSubtaskAssigneeOpen && (
+                            <div className="absolute top-full left-0 mt-1 w-[220px] bg-white border border-outline-variant/50 rounded-lg shadow-xl z-50 flex flex-col max-h-[220px] overflow-hidden animate-fade-in-up">
+                              <div className="p-2 border-b border-gray-100 bg-white sticky top-0 z-10">
+                                <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-md px-2.5 py-1.5">
+                                  <span className="material-symbols-outlined text-[14px] text-gray-400">search</span>
+                                  <input
+                                    type="text"
+                                    value={subtaskAssigneeSearch}
+                                    onChange={(e) => setSubtaskAssigneeSearch(e.target.value)}
+                                    placeholder="Search users..."
+                                    className="w-full bg-transparent text-[12px] font-bold text-gray-700 outline-none placeholder:text-gray-400"
+                                    autoFocus
+                                  />
+                                </div>
+                              </div>
+                              <div className="overflow-y-auto custom-scrollbar p-1 flex flex-col gap-0.5">
+                                {uniqueTeamMembers
+                                  .filter(m => m.name.toLowerCase().includes(subtaskAssigneeSearch.trim().toLowerCase()))
+                                  .map((m) => {
+                                    const isChecked = newSubtaskAssignee.includes(m.name)
+                                    return (
+                                      <label key={m.email || m.name} className="flex items-center gap-2 px-3 py-2 hover:bg-purple-50/60 rounded-md cursor-pointer transition-colors">
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setNewSubtaskAssignee([...newSubtaskAssignee, m.name])
+                                            } else {
+                                              setNewSubtaskAssignee(newSubtaskAssignee.filter(n => n !== m.name))
+                                            }
+                                          }}
+                                          className="accent-[#702c91] w-4 h-4 cursor-pointer"
+                                        />
+                                        <span className="text-[13px] text-gray-700 font-semibold truncate">{m.name}</span>
+                                      </label>
+                                    )
+                                  })}
+                                {uniqueTeamMembers.filter(m => m.name.toLowerCase().includes(subtaskAssigneeSearch.trim().toLowerCase())).length === 0 && (
+                                  <div className="p-3 text-[12px] text-gray-400 text-center font-semibold">No users match "{subtaskAssigneeSearch}"</div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
 
                         {/* Due Date Selector */}
                         <div className="relative group flex items-center bg-surface-container hover:bg-surface-container-high border border-outline-variant/50 rounded-lg h-[32px] overflow-hidden transition-colors w-[120px]">
