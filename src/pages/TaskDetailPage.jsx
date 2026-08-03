@@ -157,6 +157,14 @@ export default function TaskDetailPage() {
   const [newSubtaskDueDate, setNewSubtaskDueDate] = useState('')
   const [newSubtaskPriority, setNewSubtaskPriority] = useState('Medium')
   const [isSubtaskInputActive, setIsSubtaskInputActive] = useState(false)
+  const [editingSubtask, setEditingSubtask] = useState(null)
+  const [editSubtaskTitle, setEditSubtaskTitle] = useState('')
+  const [editSubtaskAssignee, setEditSubtaskAssignee] = useState([])
+  const [editSubtaskPriority, setEditSubtaskPriority] = useState('Medium')
+  const [editSubtaskDueDate, setEditSubtaskDueDate] = useState('')
+  const [isEditAssigneeOpen, setIsEditAssigneeOpen] = useState(false)
+  const [editAssigneeSearch, setEditAssigneeSearch] = useState('')
+  const editAssigneeRef = useRef(null)
   const [infoModal, setInfoModal] = useState(null)
   const [lightboxUrl, setLightboxUrl] = useState(null)
   const [taskToDelete, setTaskToDelete] = useState(null)
@@ -224,6 +232,9 @@ export default function TaskDetailPage() {
     const handleClickOutside = (event) => {
       if (subtaskAssigneeRef.current && !subtaskAssigneeRef.current.contains(event.target)) {
         setIsSubtaskAssigneeOpen(false)
+      }
+      if (editAssigneeRef.current && !editAssigneeRef.current.contains(event.target)) {
+        setIsEditAssigneeOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -341,6 +352,41 @@ export default function TaskDetailPage() {
     setNewSubtaskDueDate('')
     setIsSubtaskAssigneeOpen(false)
     setIsSubtaskInputActive(false)
+  }
+
+  const openEditSubtask = (st) => {
+    setEditingSubtask(st)
+    setEditSubtaskTitle(st.title || '')
+    setEditSubtaskAssignee(String(st.assignedTo || '').split(',').map(n => n.trim()).filter(Boolean))
+    setEditSubtaskPriority(st.priority || 'Medium')
+    setEditSubtaskDueDate(st.dueDate || '')
+    setIsEditAssigneeOpen(false)
+    setEditAssigneeSearch('')
+  }
+
+  const handleSaveSubtaskEdit = () => {
+    if (!editingSubtask) return
+    const title = editSubtaskTitle.trim()
+    if (!title) {
+      addToast('Subtask title cannot be empty', 'error')
+      return
+    }
+    const assignedEmps = employees?.filter(e => editSubtaskAssignee.map(s => String(s).trim()).includes(e.name)) || []
+    let calculatedOverdue = 'No'
+    if (editSubtaskDueDate) {
+      const dueTime = new Date(editSubtaskDueDate).setHours(23, 59, 59, 999)
+      if (dueTime < Date.now()) calculatedOverdue = 'Yes'
+    }
+    updateTask(editingSubtask.id, {
+      title,
+      assignedTo: (editSubtaskAssignee || []).join(', '),
+      assignedEmail: assignedEmps.map(e => e.email).filter(Boolean).join(', '),
+      employeeId: assignedEmps.map(e => e.id).filter(Boolean).join(', '),
+      priority: editSubtaskPriority,
+      dueDate: editSubtaskDueDate,
+      daysOverdue: calculatedOverdue
+    })
+    setEditingSubtask(null)
   }
 
   const subtasks = tasks.filter(t => String(t.mainTaskId) === String(task.id) && (t.taskType === 'Sub Task' || t.taskType === 'Subtask'))
@@ -725,6 +771,7 @@ export default function TaskDetailPage() {
   const taskDept = (task?.department || '').toUpperCase()
   const role = profile?.systemRole || 'Employee'
   const canManageTask = isAssigner || role === 'Admin'
+  const canEditSubtask = (st) => role === 'Admin' || isSubtaskAssignee(st)
   const isSameDept = (role === 'HR' && taskDept === 'HR') || (role === 'Accountant' && taskDept === 'ACCOUNT') || (role === 'Sales' && taskDept === 'SALES')
   const canManageTimer = isAssignee || isAssigner || role === 'Admin' || isSameDept || (role !== 'Employee' && !restrictedDepts.includes(taskDept))
 
@@ -1167,6 +1214,15 @@ export default function TaskDetailPage() {
                               })()}
                             </span>
                           </>
+                        )}
+                        {!isTaskDone && canEditSubtask(st) && (
+                          <button
+                            onClick={() => openEditSubtask(st)}
+                            className="p-1 transition-colors shrink-0 text-secondary hover:text-primary cursor-pointer border-none flex items-center justify-center"
+                            title="Edit Subtask"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                          </button>
                         )}
                         {profile?.systemRole !== 'Employee' && (
                           <button
@@ -1968,6 +2024,144 @@ export default function TaskDetailPage() {
         </div>
       )}
       {/* Delete Subtask Confirmation Modal */}
+      {editingSubtask && (
+        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[440px] overflow-hidden animate-scale-in flex flex-col border border-outline-variant">
+            <div className="flex items-center gap-3 px-6 py-5 border-b border-outline-variant bg-surface-container-low">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary text-[20px]">edit</span>
+              </div>
+              <h2 className="text-label-lg font-bold text-on-surface">Edit Subtask</h2>
+            </div>
+            <div className="px-6 py-5 bg-surface-container-lowest flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-bold text-secondary uppercase tracking-wider pl-1">Title</label>
+                <input
+                  type="text"
+                  value={editSubtaskTitle}
+                  onChange={e => setEditSubtaskTitle(e.target.value)}
+                  placeholder="Subtask title"
+                  autoFocus
+                  className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-[14px] font-semibold text-on-surface outline-none focus:border-primary transition-colors"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleSaveSubtaskEdit()
+                    if (e.key === 'Escape') setEditingSubtask(null)
+                  }}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-bold text-secondary uppercase tracking-wider pl-1">Assignees</label>
+                <div className="relative" ref={editAssigneeRef}>
+                  <button
+                    type="button"
+                    onClick={() => { setIsEditAssigneeOpen(o => { if (o) setEditAssigneeSearch(''); return !o }) }}
+                    className={`w-full flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant/50 rounded-lg h-[36px] px-2.5 cursor-pointer transition-colors ${isEditAssigneeOpen ? 'border-primary' : ''}`}
+                    title="Assign to multiple users"
+                  >
+                    <span className="material-symbols-outlined text-[14px] text-secondary">person</span>
+                    <span className="text-[12px] font-bold text-secondary flex-1 text-left truncate">
+                      {editSubtaskAssignee.length > 0 ? editSubtaskAssignee.join(', ') : 'Assign'}
+                    </span>
+                    {editSubtaskAssignee.length > 0 && (
+                      <span className="bg-primary text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">{editSubtaskAssignee.length}</span>
+                    )}
+                    <span className="material-symbols-outlined text-[14px] text-secondary">{isEditAssigneeOpen ? 'expand_less' : 'expand_more'}</span>
+                  </button>
+
+                  {isEditAssigneeOpen && (
+                    <div className="absolute top-full left-0 mt-1 w-full bg-white border border-outline-variant/50 rounded-lg shadow-xl z-50 flex flex-col max-h-[220px] overflow-hidden animate-fade-in-up">
+                      <div className="p-2 border-b border-gray-100 bg-white sticky top-0 z-10">
+                        <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-md px-2.5 py-1.5">
+                          <span className="material-symbols-outlined text-[14px] text-gray-400">search</span>
+                          <input
+                            type="text"
+                            value={editAssigneeSearch}
+                            onChange={(e) => setEditAssigneeSearch(e.target.value)}
+                            placeholder="Search users..."
+                            className="w-full bg-transparent text-[12px] font-bold text-gray-700 outline-none placeholder:text-gray-400"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="overflow-y-auto custom-scrollbar p-1 flex flex-col gap-0.5">
+                        {mainTaskAssignees
+                          .filter(m => m.name.toLowerCase().includes(editAssigneeSearch.trim().toLowerCase()))
+                          .map((m) => {
+                            const isChecked = editSubtaskAssignee.includes(m.name)
+                            return (
+                              <label key={m.email || m.name} className="flex items-center gap-2 px-3 py-2 hover:bg-purple-50/60 rounded-md cursor-pointer transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditSubtaskAssignee([...editSubtaskAssignee, m.name])
+                                    } else {
+                                      setEditSubtaskAssignee(editSubtaskAssignee.filter(n => n !== m.name))
+                                    }
+                                  }}
+                                  className="accent-[#702c91] w-4 h-4 cursor-pointer"
+                                />
+                                <span className="text-[13px] text-gray-700 font-semibold truncate">{m.name}</span>
+                              </label>
+                            )
+                          })}
+                        {mainTaskAssignees.filter(m => m.name.toLowerCase().includes(editAssigneeSearch.trim().toLowerCase())).length === 0 && (
+                          <div className="p-3 text-[12px] text-gray-400 text-center font-semibold">No main task assignees match "{editAssigneeSearch}"</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <label className="text-[12px] font-bold text-secondary uppercase tracking-wider pl-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={editSubtaskDueDate}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (!val) {
+                        setEditSubtaskDueDate('')
+                        return
+                      }
+                      const d = new Date(val + 'T00:00:00')
+                      if (d.getDay() === 0) {
+                        addToast('Sundays cannot be selected as a due date. Please select another day.', 'error')
+                        return
+                      }
+                      setEditSubtaskDueDate(val)
+                    }}
+                    className="w-full bg-surface-container border border-outline-variant/50 rounded-lg h-[36px] px-2.5 text-[12px] font-semibold text-secondary outline-none focus:border-primary transition-colors"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <label className="text-[12px] font-bold text-secondary uppercase tracking-wider pl-1">Priority</label>
+                  <SelectDropdown value={editSubtaskPriority} onChange={setEditSubtaskPriority} options={['Low', 'Medium', 'High', 'Urgent']} style={{ height: 36, fontSize: 12 }} />
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-surface-container-low border-t border-outline-variant flex justify-end gap-3">
+              <button
+                onClick={() => setEditingSubtask(null)}
+                className="px-5 py-2 border border-outline-variant text-secondary rounded-lg font-label-md hover:bg-surface-container-high transition-all text-sm font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSubtaskEdit}
+                className="px-5 py-2 bg-primary text-on-primary rounded-lg font-label-md shadow-md hover:brightness-105 active:scale-95 transition-all text-sm font-bold"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {subtaskToDelete && (
         <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[400px] overflow-hidden animate-scale-in flex flex-col border border-outline-variant">
