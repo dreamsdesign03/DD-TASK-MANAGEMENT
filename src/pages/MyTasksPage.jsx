@@ -9,7 +9,7 @@ import { useApp } from '../context/AppContext'
 
 export default function MyTasksPage() {
   const location = useLocation()
-  const { showNewTaskModal, setShowNewTaskModal, addTask, profile, employees, tasks, clients, addToast, isPunchedIn } = useApp()
+  const { showNewTaskModal, setShowNewTaskModal, addTask, profile, employees, tasks, clients, addToast, isPunchedIn, newTaskPrefillDept, setNewTaskPrefillDept } = useApp()
   const teamNames = employees ? employees.map(emp => emp.name) : []
 
   // Lock body scroll when new task modal is open
@@ -46,6 +46,15 @@ export default function MyTasksPage() {
   const [client, setClient] = useState(() => companyList[0] || '')
   const defaultDept = profile?.systemRole === 'HR' ? 'HR' : profile?.systemRole === 'Accountant' ? 'ACCOUNT' : profile?.systemRole === 'Sales' ? 'SALES' : 'COMMON'
   const [department, setDepartment] = useState(defaultDept)
+
+  // Apply board-column department prefill when the modal opens
+  useEffect(() => {
+    if (showNewTaskModal && newTaskPrefillDept) {
+      setDepartment(newTaskPrefillDept)
+      setNewTaskPrefillDept('')
+    }
+  }, [showNewTaskModal])
+
   const [assignedTo, setAssignedTo] = useState([profile?.name || ''])
   const uniqueTeamMembers = [...new Set([...teamNames, ...assignedTo].filter(Boolean))]
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false)

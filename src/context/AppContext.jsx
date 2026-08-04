@@ -385,6 +385,7 @@ export function AppProvider({ children }) {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [showNewTaskModal, setShowNewTaskModal] = useState(false)
+  const [newTaskPrefillDept, setNewTaskPrefillDept] = useState('')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   useEffect(() => {
     // Set CSS variable so all page layouts react to sidebar toggle
@@ -2695,6 +2696,8 @@ export function AppProvider({ children }) {
         setGroupMembers,
         showNewTaskModal,
         setShowNewTaskModal,
+        newTaskPrefillDept,
+        setNewTaskPrefillDept,
         isSidebarOpen,
         setIsSidebarOpen,
         fetchSyncedTasks,

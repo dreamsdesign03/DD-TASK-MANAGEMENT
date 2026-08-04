@@ -146,7 +146,7 @@ function InlineStatusSelect({ value, onChange, disabled }) {
 
 
 export default function TaskTable() {
-  const { tasks, searchQuery, deleteTask, profile, employees, messagesByChatId, lastSeenTimestamps, updateTask, addTask, addToast, setShowNewTaskModal, clients } = useApp()
+  const { tasks, searchQuery, deleteTask, profile, employees, messagesByChatId, lastSeenTimestamps, updateTask, addTask, addToast, setShowNewTaskModal, setNewTaskPrefillDept, clients } = useApp()
   const location = useLocation()
   const [activeFilter, setActiveFilter] = useState('All')
   const [sortBy, setSortBy] = useState('Task ID (Descending)')
@@ -1372,7 +1372,7 @@ export default function TaskTable() {
           >
             <div className="flex gap-4 min-w-max items-start">
               {(() => {
-                const deptCols = ['COMMON', 'SOCIAL MEDIA', 'WEBSITE', 'SEO', 'GRAPHIC', 'HR', 'ACCOUNT', 'AMC', 'SALES', 'COMPLETE'];
+                const deptCols = ['COMMON', 'SOCIAL MEDIA', 'WEBSITE', 'SEO', 'GRAPHIC', 'UI/UX', 'HR', 'ACCOUNT', 'AMC', 'SALES', 'COMPLETE'];
                 const processCols = ['Pending', 'In Progress', 'Review', 'Done', 'Blocked'];
 
                 const baseCols = boardGrouping === 'Process Stage' ? processCols : deptCols;
@@ -1407,6 +1407,7 @@ export default function TaskTable() {
                     if (name === 'SEO') return '#6366F1'; // indigo
                     if (name === 'SOCIAL MEDIA') return '#702c91'; // purple
                     if (name === 'GRAPHIC') return '#F43F5E'; // rose
+                    if (name === 'UI/UX') return '#8B5CF6'; // violet
                     if (name === 'SALES') return '#F59E0B'; // amber
                     if (name === 'WEBSITE') return '#3B82F6'; // blue
                     if (name === 'HR') return '#EC4899'; // pink
@@ -1707,7 +1708,10 @@ export default function TaskTable() {
                         {/* Add Task Button at bottom of column body */}
                         {quickAddCol !== colName && (
                           <button
-                            onClick={() => setShowNewTaskModal(true)}
+                            onClick={() => {
+                              setNewTaskPrefillDept(colName === 'COMPLETE' ? 'COMMON' : colName)
+                              setShowNewTaskModal(true)
+                            }}
                             className="w-full mt-2 py-3 flex items-center justify-center gap-2 text-[13px] font-bold text-[#9CA3AF] hover:text-[#702c91] border-2 border-dashed border-[#E5E7EB] hover:border-[#702c91] hover:bg-[#F5F3FF] rounded-full transition-all"
                           >
                             <span className="material-symbols-outlined text-[18px]">add_circle</span>
