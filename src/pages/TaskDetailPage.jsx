@@ -645,35 +645,60 @@ export default function TaskDetailPage() {
   }
 
   const handleReplyPaste = (e) => {
-    const items = e.clipboardData?.items
-    if (!items) return
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.startsWith('image/')) {
-        e.preventDefault()
-        const blob = items[i].getAsFile()
-        if (!blob) continue
-        if (blob.size > 4 * 1024 * 1024) {
-          setInfoModal({
-            title: 'File Too Large',
-            message: 'File size should be less than 4MB',
-            icon: 'warning',
-            color: 'text-[#f59e0b]'
-          })
-          return
+    const cd = e.clipboardData
+    if (!cd) return
+    let blob = null
+    let name = 'pasted-image.png'
+    let type = 'image/png'
+
+    if (cd.items) {
+      for (let i = 0; i < cd.items.length; i++) {
+        if (cd.items[i].type.startsWith('image/')) {
+          e.preventDefault()
+          blob = cd.items[i].getAsFile()
+          if (blob) {
+            name = blob.name || 'pasted-image.png'
+            type = blob.type
+          }
+          break
         }
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          setReplyAttachment({
-            name: blob.name || 'pasted-image.png',
-            type: blob.type,
-            dataUrl: event.target.result,
-            file: blob
-          })
-        }
-        reader.readAsDataURL(blob)
-        return
       }
     }
+    if (!blob && cd.files && cd.files.length > 0) {
+      for (let i = 0; i < cd.files.length; i++) {
+        if (cd.files[i].type.startsWith('image/')) {
+          e.preventDefault()
+          blob = cd.files[i]
+          if (blob) {
+            name = blob.name || 'pasted-image.png'
+            type = blob.type
+          }
+          break
+        }
+      }
+    }
+    if (!blob) return
+
+    if (blob.size > 4 * 1024 * 1024) {
+      setInfoModal({
+        title: 'File Too Large',
+        message: 'File size should be less than 4MB',
+        icon: 'warning',
+        color: 'text-[#f59e0b]'
+      })
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      setReplyAttachment({
+        name,
+        type,
+        dataUrl: event.target.result,
+        file: blob
+      })
+      addToast('Screenshot pasted — click Send to post it', 'success')
+    }
+    reader.readAsDataURL(blob)
   }
 
   const scrollToMessage = (msgId, sender, text) => {
@@ -1508,10 +1533,34 @@ export default function TaskDetailPage() {
                           if (!isTaskDone) handleReplyPaste(e)
                         }}
                       ></textarea>
+                      {replyAttachment && (
+                        <div className="flex items-center gap-3 px-3 py-2 border-t border-[#E5E7EB] bg-purple-50/40 animate-fade-in">
+                          {replyAttachment.type?.startsWith('image/') ? (
+                            <img src={replyAttachment.dataUrl} alt="pasted" className="w-12 h-12 object-cover rounded-lg border border-[#E5E7EB] shadow-sm" />
+                          ) : (
+                            <span className="material-symbols-outlined text-[20px] text-[#702c91]">insert_drive_file</span>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-bold text-[#1E1B2E] truncate">{replyAttachment.name}</p>
+                            <p className="text-[10px] text-gray-400 font-medium">Pasted image — ready to send</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setReplyAttachment(null)}
+                            className="border-none bg-transparent text-gray-400 hover:text-[#EF4444] cursor-pointer p-1 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                            title="Remove attachment"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">close</span>
+                          </button>
+                        </div>
+                      )}
                       <div className="bg-gray-50 p-3 border-t border-[#E5E7EB] flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <span className="text-[12px] text-gray-400 font-medium">
                             {reply.length} / 1000
+                          </span>
+                          <span className="hidden sm:inline text-[11px] text-gray-300 font-medium">
+                            Ctrl+V to paste a screenshot
                           </span>
                         </div>
                         <button
