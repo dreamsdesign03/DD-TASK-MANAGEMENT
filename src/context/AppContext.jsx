@@ -2036,7 +2036,7 @@ export function AppProvider({ children }) {
     recentTaskUpdates.current[newTask.id] = { timestamp: Date.now(), fields: newTask, isNew: true }
     try {
       const url = 'https://script.google.com/macros/s/AKfycbxIoBk4LlvzB8jKG4mgjqH02Gn6H0ymG2DvQvdIemC7aoYHxVCx4PitSdbl2O_hzAq2/exec'
-      await fetch(url, {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
@@ -2069,12 +2069,16 @@ export function AppProvider({ children }) {
           recurringMonths: newTask.recurringMonths || ''
         })
       })
+      if (res.ok) {
+        addToast('Task added successfully!', 'success')
+      }
       if (mqttClient && mqttClient.connected) {
         setTimeout(() => {
           mqttClient.publish('dd_task_engine_v1/sync', JSON.stringify({ action: 'sync' }))
         }, 1000)
       }
     } catch (err) {
+      addToast('Task added locally, but failed to sync to Google Sheets.', 'error')
       console.warn('Failed to sync new task to Google Sheets:', err)
     }
   }
