@@ -6,7 +6,7 @@ import SelectDropdown from '../components/SelectDropdown'
 import { useApp, parseMultiUserTimeStr, formatTimeStr } from '../context/AppContext'
 import { processMessagesList, renderMessageText } from './ChatPage'
 import { renderAvatar } from '../utils/avatar'
-import { formatTime, formatDateTime } from '../utils/dateFormat'
+import { formatTime, formatDateTime, computeRecurringDueDate } from '../utils/dateFormat'
 import CHAT_BACKGROUNDS from '../data/chatBackgrounds'
 /* â”€â”€â”€ Priority badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function PriorityBadge({ priority }) {
@@ -202,7 +202,8 @@ export default function TaskDetailPage() {
         isRecurring: true,
         recurringSchedule,
         recurringDay: recurringSchedule === 'Weekly' ? recurringDay : '',
-        recurringMonths: recurringSchedule === 'Monthly' ? recurringMonths.join(', ') : ''
+        recurringMonths: recurringSchedule === 'Monthly' ? recurringMonths.join(', ') : '',
+        dueDate: computeRecurringDueDate(recurringSchedule, recurringDay, recurringMonths)
       })
       addToast('Task successfully set as recurring!', 'success')
       setShowRecurringModal(false)

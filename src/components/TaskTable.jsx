@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { getUserColor, getInitials } from '../utils/avatar'
+import { computeRecurringDueDate } from '../utils/dateFormat'
 import TaskCalendar from './TaskCalendar'
 import VoiceBot from './VoiceBot'
 import SelectDropdown from './SelectDropdown'
@@ -250,7 +251,8 @@ export default function TaskTable() {
         isRecurring: true,
         recurringSchedule,
         recurringDay: recurringSchedule === 'Weekly' ? recurringDay : '',
-        recurringMonths: recurringSchedule === 'Monthly' ? recurringMonths.join(', ') : ''
+        recurringMonths: recurringSchedule === 'Monthly' ? recurringMonths.join(', ') : '',
+        dueDate: computeRecurringDueDate(recurringSchedule, recurringDay, recurringMonths)
       })
       addToast('Task successfully set as recurring!', 'success')
       setRecurringTaskObj(null)

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
+import { computeRecurringDueDate } from '../utils/dateFormat'
 import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 import TaskTable from '../components/TaskTable'
@@ -346,7 +347,13 @@ export default function MyTasksPage() {
 
               {/* Recurring Task */}
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="recurring" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} className="w-4 h-4 cursor-pointer accent-[#702c91]" />
+                <input type="checkbox" id="recurring" checked={isRecurring} onChange={(e) => {
+                  setIsRecurring(e.target.checked)
+                  if (e.target.checked) {
+                    const nextDue = computeRecurringDueDate(recurringSchedule, recurringDay, recurringMonths)
+                    if (nextDue) setDueDate(nextDue)
+                  }
+                }} className="w-4 h-4 cursor-pointer accent-[#702c91]" />
                 <label htmlFor="recurring" className="text-[14px] font-bold text-[#1E1B2E] cursor-pointer">Make this a recurring task</label>
               </div>
 
@@ -364,6 +371,8 @@ export default function MyTasksPage() {
                             setRecurringSchedule(val)
                             setRecurringDay('Monday')
                             setRecurringMonths([])
+                            const nextDue = computeRecurringDueDate(val, 'Monday', [])
+                            if (nextDue) setDueDate(nextDue)
                           }}
                           options={['Weekly', 'Monthly', 'Yearly']}
                         />
@@ -375,7 +384,11 @@ export default function MyTasksPage() {
                           <label className="text-[11px] font-extrabold text-[#6B7280] uppercase tracking-wider pl-1">
                             Day of the Week
                           </label>
-                          <SelectDropdown value={recurringDay} onChange={setRecurringDay} options={['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']} />
+                          <SelectDropdown value={recurringDay} onChange={(val) => {
+                            setRecurringDay(val)
+                            const nextDue = computeRecurringDueDate(recurringSchedule, val, recurringMonths)
+                            if (nextDue) setDueDate(nextDue)
+                          }} options={['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']} />
                         </div>
                       )}
 
@@ -391,8 +404,10 @@ export default function MyTasksPage() {
                                   type="checkbox"
                                   checked={recurringMonths.includes(mon)}
                                   onChange={(e) => {
-                                    if (e.target.checked) setRecurringMonths([...recurringMonths, mon])
-                                    else setRecurringMonths(recurringMonths.filter(m => m !== mon))
+                                    const newMonths = e.target.checked ? [...recurringMonths, mon] : recurringMonths.filter(m => m !== mon)
+                                    setRecurringMonths(newMonths)
+                                    const nextDue = computeRecurringDueDate(recurringSchedule, recurringDay, newMonths)
+                                    if (nextDue) setDueDate(nextDue)
                                   }}
                                   className="accent-[#702c91]"
                                 />
