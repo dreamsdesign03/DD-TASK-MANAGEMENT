@@ -542,7 +542,8 @@ export default function TaskTable() {
       }
     })
     const nextIdNum = maxIdNum > 0 ? maxIdNum + 1 : 1
-    const nextIdStr = `T-${String(nextIdNum).padStart(4, '0')}`
+    // Timestamp suffix keeps IDs unique even when two users create a task at the same time
+    const nextIdStr = `T-${String(nextIdNum).padStart(4, '0')}${Date.now().toString().slice(-6)}`
 
     const isComplete = boardGrouping === 'Department' && department === 'COMPLETE'
     const newDept = boardGrouping === 'Process Stage' ? 'COMMON' : (isComplete ? 'COMMON' : department)

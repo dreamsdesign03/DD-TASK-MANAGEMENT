@@ -314,7 +314,8 @@ export default function TaskDetailPage() {
       }
     });
     const nextSubIdNum = maxSubIdNum + 1;
-    const newStId = `${task.id}-${String(nextSubIdNum).padStart(2, '0')}`;
+    // Timestamp suffix keeps subtask IDs unique even when two users add a subtask at the same time
+    const newStId = `${task.id}-${String(nextSubIdNum).padStart(2, '0')}${Date.now().toString().slice(-6)}`;
 
     let calculatedOverdue = 'No';
     if (newSubtaskDueDate) {

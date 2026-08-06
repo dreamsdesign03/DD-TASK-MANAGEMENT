@@ -418,7 +418,8 @@ function VoiceBotInner({ onTaskAdd }) {
           if (match) { const num = parseInt(match[1], 10); if (num > maxSubIdNum) maxSubIdNum = num; }
       });
       const nextSubIdNum = maxSubIdNum + 1;
-      const newStId = `${parentMatch.id}-${String(nextSubIdNum).padStart(2, '0')}`;
+      // Timestamp suffix keeps subtask IDs unique even when two users add at the same time
+      const newStId = `${parentMatch.id}-${String(nextSubIdNum).padStart(2, '0')}${Date.now().toString().slice(-6)}`;
 
       // Resolve assignee
       let assigneeName = '';
@@ -627,7 +628,8 @@ function VoiceBotInner({ onTaskAdd }) {
           });
         }
         const nextIdNum = maxIdNum > 0 ? maxIdNum + 1 : 1;
-        const nextIdStr = `T-${String(nextIdNum).padStart(4, '0')}`;
+        // Timestamp suffix keeps task IDs unique even when two users create at the same time
+        const nextIdStr = `T-${String(nextIdNum).padStart(4, '0')}${Date.now().toString().slice(-6)}`;
 
         // Get Assignees with Validation & Fuzzy Matching
         const rawAssignee = params.assignee;
