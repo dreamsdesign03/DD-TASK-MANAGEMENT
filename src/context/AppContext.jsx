@@ -430,6 +430,9 @@ export function AppProvider({ children }) {
   }, [todaysSessions])
   const [isSessionRestored, setIsSessionRestored] = useState(false)
   const [activityLog, setActivityLog] = useState([])
+  const [pendingAutoPunchOut, setPendingAutoPunchOut] = useState(null)
+  const autoPunchOutDoneRef = useRef(new Set())
+  const tasksLoadedRef = useRef(false)
 
   useEffect(() => {
     if (!profile?.email) return
@@ -441,6 +444,7 @@ export function AppProvider({ children }) {
         const todayPrefix = getISTDate()
         const mySessions = []
         let activeTime = null
+        let staleSession = null
         data.forEach(row => {
           if ((row["Full Name"] === profile.name || row["Employee ID"] === profile.employeeId) && row["Login Date and Time"]) {
             // e.g. "2026-07-10 13:02:55"
@@ -463,6 +467,13 @@ export function AppProvider({ children }) {
               const outTime = outStr ? String(outStr).split(' ')[1] : null
               mySessions.push({ in: inTime, out: outTime })
               if (!outTime) activeTime = inTime
+            } else if (!row["Logout Date and Time"]) {
+              const staleDate = String(loginStr).substring(0, 10)
+              if (/^\d{4}-\d{2}-\d{2}$/.test(staleDate) && staleDate < todayPrefix) {
+                if (!staleSession || staleDate > staleSession.date) {
+                  staleSession = { date: staleDate, in: String(loginStr).split(' ')[1] || "" }
+                }
+              }
             }
           }
         })
@@ -480,6 +491,7 @@ export function AppProvider({ children }) {
         }
         sessionRestoredRef.current = true
         setIsSessionRestored(true)
+        if (staleSession) setPendingAutoPunchOut(staleSession)
       } catch (err) {
         console.error("Failed to fetch activities from sheet:", err)
         sessionRestoredRef.current = true
@@ -627,6 +639,106 @@ export function AppProvider({ children }) {
       }
     }
   }
+
+  // Auto punch-out: if the user forgot to punch out on a previous day, close that
+  // session and log that day's tasks to the daily task sheet (frontend-only fix)
+  const handleAutoPunchOut = useCallback((session) => {
+    const sessionDate = session.date
+    const sessionIn = session.in || ''
+    const myName = (profile?.name || '').trim().toLowerCase()
+    const myFirstName = myName.split(' ')[0]
+    const myEmail = (profile?.email || '').trim().toLowerCase()
+    const myEmpId = String(profile?.employeeId || '').trim()
+
+    const isDateMatch = (dateVal) => {
+      if (!dateVal) return true
+      const str = String(dateVal).trim()
+      if (!str) return true
+      if (str.startsWith(sessionDate)) return true
+      if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.substring(0, 10) === sessionDate
+      const dmY = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/)
+      if (dmY) {
+        const formatted = `${dmY[3]}-${dmY[2].padStart(2, '0')}-${dmY[1].padStart(2, '0')}`
+        return formatted === sessionDate
+      }
+      try {
+        const d = new Date(str.replace(' ', 'T'))
+        if (!isNaN(d.getTime())) {
+          const yyyy = d.getFullYear()
+          const mm = String(d.getMonth() + 1).padStart(2, '0')
+          const dd = String(d.getDate()).padStart(2, '0')
+          return `${yyyy}-${mm}-${dd}` === sessionDate
+        }
+      } catch (e) {}
+      return true
+    }
+
+    const dayTasks = (tasks || []).filter(t => {
+      const assignedEmailClean = (t.assignedEmail || '').toLowerCase()
+      const assignedToClean = (t.assignedTo || '').toLowerCase()
+      const taskEmpId = String(t.employeeId || '').trim()
+
+      const isMyTask = (assignedEmailClean && assignedEmailClean === myEmail) ||
+        (assignedToClean && (assignedToClean.includes(myName) || myName.includes(assignedToClean) || (myFirstName && assignedToClean.includes(myFirstName)))) ||
+        (myEmpId && taskEmpId && myEmpId === taskEmpId)
+
+      if (!isMyTask) return false
+      return isDateMatch(t.statusUpdatedOn || t.assignedDate || t.assigned)
+    })
+
+    const rawEnds = dayTasks.map(t => t.endTime).filter(Boolean)
+    const autoOutTime = rawEnds.length > 0 ? rawEnds.sort().slice(-1)[0] : '23:59'
+
+    // 1. Close the open session on the main backend
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIoBk4LlvzB8jKG4mgjqH02Gn6H0ymG2DvQvdIemC7aoYHxVCx4PitSdbl2O_hzAq2/exec'
+    fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'punch_out', email: profile?.email })
+    }).then(r => r.text()).then(t => console.log('Auto punch out response:', t)).catch(e => console.warn('Auto punch out failed:', e))
+
+    // 2. Log that day's tasks to the daily task sheet
+    const DAILY_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzrLvG8wg2zPqchsavvLbgIR5vD_iPAxwSRxMRJMjQgW3YuUuaoRYSXUDF7_A1sWswqxA/exec'
+    if (profile?.email && DAILY_SHEET_URL !== 'YOUR_NEW_APPS_SCRIPT_WEB_APP_URL_HERE') {
+      const payload = JSON.stringify({
+        action: 'log_daily_tasks',
+        email: profile?.email,
+        name: profile?.name || 'Unknown',
+        employeeId: profile?.employeeId || '',
+        date: sessionDate,
+        firstPunchIn: sessionIn,
+        lastPunchOut: autoOutTime,
+        tasks: dayTasks.map(t => ({
+          project: t.client || t.project || t.projectName || '',
+          title: t.title || '',
+          status: t.status || 'Pending',
+          startTime: t.startTime || (t.status === 'Done' ? sessionIn : ''),
+          endTime: t.endTime || (t.status === 'Done' ? autoOutTime : ''),
+          remark: (t.comments && t.comments.length > 0) ? t.comments[t.comments.length - 1].text : (t.remarks || '')
+        }))
+      })
+      fetch(DAILY_SHEET_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: payload
+      }).catch(err => console.warn('Auto daily task sheet sync failed:', err))
+    }
+
+    addToast(`Auto punched out for ${sessionDate} and logged your tasks`, 'success')
+  }, [profile, tasks, addToast])
+
+  // Trigger auto punch-out once the day's tasks have been synced
+  useEffect(() => {
+    if (!pendingAutoPunchOut || !profile?.email || !sessionRestoredRef.current || !tasksLoadedRef.current) return
+    const key = pendingAutoPunchOut.date
+    if (autoPunchOutDoneRef.current.has(key)) {
+      setPendingAutoPunchOut(null)
+      return
+    }
+    autoPunchOutDoneRef.current.add(key)
+    setPendingAutoPunchOut(null)
+    handleAutoPunchOut(pendingAutoPunchOut)
+  }, [pendingAutoPunchOut, profile, handleAutoPunchOut])
 
   // Activity tracking: log punch in, heartbeat every 30s
   const heartbeatRef = useRef(null)
@@ -2335,6 +2447,7 @@ export function AppProvider({ children }) {
     } catch (err) {
       console.warn('Direct Google Sheet task fetch failed:', err)
     }
+    tasksLoadedRef.current = true
   }
 
   const updateTeamAndChats = useCallback((fetchedTeam) => {
