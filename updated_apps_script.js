@@ -394,10 +394,10 @@ function doPost(e) {
       var sheet = ss.getSheetByName("Clients");
       if (!sheet) {
         sheet = ss.insertSheet("Clients");
-        sheet.appendRow(["Client ID", "Project Name", "Client Name", "Contact Email", "Phone", "Project start Date", "Industry", "Is Active", "Services", "Project Completion Date", "Drive Folder Link"]);
+        sheet.appendRow(["Client ID", "Project Name", "Client Name", "Contact Email", "Phone", "Project start Date", "Industry", "Is Active", "Services", "Project Completion Date", "Drive Folder Link", "Important Links"]);
       } else {
         // Write the canonical header row so column order always matches appendRow indices
-        var requiredHeaders = ["Client ID", "Project Name", "Client Name", "Contact Email", "Phone", "Project start Date", "Industry", "Is Active", "Services", "Project Completion Date", "Drive Folder Link"];
+        var requiredHeaders = ["Client ID", "Project Name", "Client Name", "Contact Email", "Phone", "Project start Date", "Industry", "Is Active", "Services", "Project Completion Date", "Drive Folder Link", "Important Links"];
         var existingHeaders = sheet.getDataRange().getValues()[0];
         var needsUpdate = existingHeaders.length !== requiredHeaders.length;
         if (!needsUpdate) {
@@ -462,7 +462,8 @@ function doPost(e) {
         "Yes",
         payload.services || "",
         "", // Project Completion Date — set on deactivation
-        folderUrl
+        folderUrl,
+        payload.importantLinks || ""
       ]);
 
       // Also add to Payment sheet
@@ -601,6 +602,7 @@ function doPost(e) {
             }
           }
           if (payload.services !== undefined) sheet.getRange(i + 1, 9).setValue(payload.services);
+          if (payload.importantLinks !== undefined) sheet.getRange(i + 1, 12).setValue(payload.importantLinks);
           found = true;
 
           // Also sync common fields to Payment sheet
@@ -1009,7 +1011,7 @@ function doGet(e) {
     var sheet = ss.getSheetByName("Clients");
     if (!sheet) return ContentService.createTextOutput(JSON.stringify({ clients: [] })).setMimeType(ContentService.MimeType.JSON);
     // Ensure canonical header order so dynamic key mapping reads correct columns
-    var requiredHeaders = ["Client ID", "Project Name", "Client Name", "Contact Email", "Phone", "Project start Date", "Industry", "Is Active", "Services", "Project Completion Date", "Drive Folder Link"];
+    var requiredHeaders = ["Client ID", "Project Name", "Client Name", "Contact Email", "Phone", "Project start Date", "Industry", "Is Active", "Services", "Project Completion Date", "Drive Folder Link", "Important Links"];
     var existingHeaders = sheet.getDataRange().getValues()[0];
     var needsUpdate = existingHeaders.length !== requiredHeaders.length;
     if (!needsUpdate) {

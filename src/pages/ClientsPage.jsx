@@ -34,7 +34,8 @@ export default function ClientsPage() {
     emails: [''],
     phones: [''],
     industry: '',
-    services: []
+    services: [],
+    importantLinks: []
   })
   const [viewingClient, setViewingClient] = useState(null)
   const [confirmDeactivateClient, setConfirmDeactivateClient] = useState(null)
@@ -47,6 +48,7 @@ export default function ClientsPage() {
     phones: [''],
     industry: '',
     services: [],
+    importantLinks: [],
     projectStartDate: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/(\d{2})\/(\d{2})\/(\d{4}),/, '$3-$2-$1')
   })
 
@@ -69,6 +71,14 @@ export default function ClientsPage() {
     const phones = client['Phone'] ? String(client['Phone']).split(',').map(p => p.trim()) : ['']
     const servicesStr = client['Services'] || client['services'] || ''
     const servicesList = servicesStr ? String(servicesStr).split(',').map(s => s.trim()) : []
+    const linksRaw = client['Important Links'] || ''
+    let linksList = []
+    try {
+      const parsed = linksRaw ? JSON.parse(linksRaw) : []
+      linksList = Array.isArray(parsed) ? parsed.filter(l => l && (l.title || l.url)) : []
+    } catch (e) {
+      linksList = []
+    }
     setEditingClient(client)
     setClientForm({
       projectName: client['Project Name'] || '',
@@ -76,7 +86,8 @@ export default function ClientsPage() {
       emails: emails.length > 0 && emails[0] ? emails : [''],
       phones: phones.length > 0 && phones[0] ? phones : [''],
       industry: client['Industry'] || '',
-      services: servicesList
+      services: servicesList,
+      importantLinks: linksList
     })
   }
 
@@ -95,6 +106,7 @@ export default function ClientsPage() {
         phone: clientForm.phones.filter(p => p.trim() !== '').join(', '),
         industry: clientForm.industry.trim(),
         services: clientForm.services.join(', '),
+        importantLinks: JSON.stringify(clientForm.importantLinks.filter(l => (l.title || '').trim() || (l.url || '').trim())),
         userEmail: profile?.email
       }
       const res = await fetch('https://script.google.com/macros/s/AKfycbyXw94Hkemv8knVvSR6Uq0t8hH6V5z5QikP6u1Ms63RBsyZIB_Ax2mKbKz5JRra8sQT/exec', {
@@ -188,6 +200,7 @@ export default function ClientsPage() {
           projectStartDate: newClientForm.projectStartDate,
           industry: newClientForm.industry.trim(),
           services: newClientForm.services.join(', '),
+          importantLinks: JSON.stringify(newClientForm.importantLinks.filter(l => (l.title || '').trim() || (l.url || '').trim())),
           userEmail: profile?.email
         })
       })
@@ -196,7 +209,7 @@ export default function ClientsPage() {
         addToast('Client added successfully!', 'success')
         setShowNewClientModal(false)
         setNewClientForm({
-          projectName: '', clientName: '', emails: [''], phones: [''], industry: '', services: [],
+          projectName: '', clientName: '', emails: [''], phones: [''], industry: '', services: [], importantLinks: [],
           projectStartDate: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/(\d{2})\/(\d{2})\/(\d{4}),/, '$3-$2-$1')
         })
         await fetchClients()
@@ -260,7 +273,7 @@ export default function ClientsPage() {
                   }}
                   onClick={() => {
                     setNewClientForm({
-                      projectName: '', clientName: '', emails: [''], phones: [''], industry: '', services: [],
+                      projectName: '', clientName: '', emails: [''], phones: [''], industry: '', services: [], importantLinks: [],
                       projectStartDate: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/(\d{2})\/(\d{2})\/(\d{4}),/, '$3-$2-$1')
                     })
                     setShowNewClientModal(true)
@@ -454,6 +467,37 @@ export default function ClientsPage() {
                   </a>
                 </div>
               )}
+
+              {/* Important Links (shown if set) */}
+              {(() => {
+                let links = []
+                const raw = viewingClient['Important Links']
+                try {
+                  const parsed = raw ? JSON.parse(raw) : []
+                  links = Array.isArray(parsed) ? parsed.filter(l => l && (l.title || l.url)) : []
+                } catch (e) {
+                  links = []
+                }
+                return links.length > 0 ? (
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">IMPORTANT LINKS</label>
+                    <div className="flex flex-col gap-2">
+                      {links.map((link, idx) => (
+                        <a
+                          key={idx}
+                          href={link.url || '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[13px] text-[#702c91] hover:underline font-medium m-0 flex items-center gap-2 w-fit"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">link</span>
+                          {link.title || link.url}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ) : null
+              })()}
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
@@ -656,6 +700,56 @@ export default function ClientsPage() {
                   ))}
                 </div>
               </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] font-black text-gray-500 uppercase tracking-wider">IMPORTANT LINKS (OPTIONAL)</label>
+                  <button
+                    type="button"
+                    onClick={() => setNewClientForm({ ...newClientForm, importantLinks: [...newClientForm.importantLinks, { title: '', url: '' }] })}
+                    className="bg-transparent border-none text-[#702c91] cursor-pointer hover:bg-purple-50 p-0.5 rounded flex items-center transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add_link</span>
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {newClientForm.importantLinks.map((link, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={link.title}
+                        onChange={e => {
+                          const n = [...newClientForm.importantLinks]
+                          n[idx] = { ...n[idx], title: e.target.value }
+                          setNewClientForm({ ...newClientForm, importantLinks: n })
+                        }}
+                        placeholder="Title e.g. Client Drive"
+                        className="w-full md:w-[40%] bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-[14px] text-gray-800 outline-none focus:border-[#702c91] transition-colors shadow-sm placeholder:text-gray-400"
+                      />
+                      <input
+                        type="url"
+                        value={link.url}
+                        onChange={e => {
+                          const n = [...newClientForm.importantLinks]
+                          n[idx] = { ...n[idx], url: e.target.value }
+                          setNewClientForm({ ...newClientForm, importantLinks: n })
+                        }}
+                        placeholder="https://example.com"
+                        className="w-full flex-1 bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-[14px] text-gray-800 outline-none focus:border-[#702c91] transition-colors shadow-sm placeholder:text-gray-400"
+                      />
+                      {newClientForm.importantLinks.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setNewClientForm({ ...newClientForm, importantLinks: newClientForm.importantLinks.filter((_, i) => i !== idx) })}
+                          className="text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md px-2.5 flex items-center border border-gray-200 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 mt-2 pt-4 border-t border-gray-200">
@@ -839,6 +933,56 @@ export default function ClientsPage() {
                     />
                     <span className="text-[13px] group-hover:text-[#702c91] transition-colors">{service}</span>
                   </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Important Links (Optional)</label>
+                <button
+                  type="button"
+                  onClick={() => setClientForm({ ...clientForm, importantLinks: [...clientForm.importantLinks, { title: '', url: '' }] })}
+                  className="text-[#702c91] hover:bg-purple-50 rounded-full p-0.5 flex items-center transition-colors bg-transparent border-none cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add_link</span>
+                </button>
+              </div>
+              <div className="space-y-2">
+                {clientForm.importantLinks.map((link, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={link.title}
+                      onChange={e => {
+                        const n = [...clientForm.importantLinks]
+                        n[idx] = { ...n[idx], title: e.target.value }
+                        setClientForm({ ...clientForm, importantLinks: n })
+                      }}
+                      placeholder="Title e.g. Client Drive"
+                      className="w-full md:w-[40%] bg-[#f4f3f7] border border-gray-200 rounded-md px-3 py-2.5 text-[13px] text-gray-800 focus:border-[#702c91] focus:bg-white outline-none transition-colors shadow-sm"
+                    />
+                    <input
+                      type="url"
+                      value={link.url}
+                      onChange={e => {
+                        const n = [...clientForm.importantLinks]
+                        n[idx] = { ...n[idx], url: e.target.value }
+                        setClientForm({ ...clientForm, importantLinks: n })
+                      }}
+                      placeholder="https://example.com"
+                      className="w-full flex-1 bg-[#f4f3f7] border border-gray-200 rounded-md px-3 py-2.5 text-[13px] text-gray-800 focus:border-[#702c91] focus:bg-white outline-none transition-colors shadow-sm"
+                    />
+                    {clientForm.importantLinks.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setClientForm({ ...clientForm, importantLinks: clientForm.importantLinks.filter((_, i) => i !== idx) })}
+                        className="text-red-500 hover:bg-red-50 rounded-md px-2 flex items-center transition-colors bg-transparent border-none cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">remove</span>
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
