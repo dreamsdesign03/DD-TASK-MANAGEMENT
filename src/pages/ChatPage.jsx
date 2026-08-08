@@ -18,7 +18,7 @@ export function renderMessageTextWithMentions(text, isSent = false, employeeName
     namePattern = sortedNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   }
 
-  const regex = new RegExp(`(@(?:all|${namePattern})|https?:\\/\\/[^\\s]+)`, 'g');
+  const regex = new RegExp(`(@(?:all|${namePattern})|https?:\\/\\/[^\\s]+|www\\.[^\\s]+|[\\w.+-]+@[\\w-]+\\.[\\w.-]+)`, 'g');
   const parts = text.split(regex);
 
   return (
@@ -33,11 +33,19 @@ export function renderMessageTextWithMentions(text, isSent = false, employeeName
             </span>
           )
         }
+        let linkHref = null;
         if (part.match(/^https?:\/\//i)) {
+          linkHref = part;
+        } else if (part.match(/^www\./i)) {
+          linkHref = 'https://' + part;
+        } else if (part.match(/^[\w.+-]+@[\w-]+\.[\w.-]+$/i)) {
+          linkHref = 'mailto:' + part;
+        }
+        if (linkHref) {
           return (
             <a
               key={i}
-              href={part}
+              href={linkHref}
               target="_blank"
               rel="noopener noreferrer"
               className={`underline underline-offset-2 hover:opacity-80 transition-opacity ${isSent ? 'text-white font-semibold' : 'text-primary font-semibold'}`}

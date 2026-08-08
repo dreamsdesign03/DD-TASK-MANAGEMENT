@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 import SelectDropdown from '../components/SelectDropdown'
+import LinkifiedText from '../components/LinkifiedText'
 import { useApp, parseMultiUserTimeStr, formatTimeStr } from '../context/AppContext'
 import { processMessagesList, renderMessageText } from './ChatPage'
 import { renderAvatar } from '../utils/avatar'
@@ -1129,15 +1130,15 @@ export default function TaskDetailPage() {
                   </div>
                 ) : (
                   <div className="text-[15px] leading-relaxed text-[#3D3D3D] space-y-4 whitespace-pre-wrap">
-                    <p>{task.description.intro}</p>
+                    <p><LinkifiedText text={task.description.intro} /></p>
                     {task.description.bullets && task.description.bullets.length > 0 && (
                       <ul className="list-disc pl-6 space-y-2">
                         {task.description.bullets.map((b, i) => (
-                          <li key={i}>{b}</li>
+                          <li key={i}><LinkifiedText text={b} /></li>
                         ))}
                       </ul>
                     )}
-                    {task.description.outro && <p>{task.description.outro}</p>}
+                    {task.description.outro && <p><LinkifiedText text={task.description.outro} /></p>}
                   </div>
                 )}
                 <div className="h-[1px] w-full bg-gray-200 my-6"></div>
