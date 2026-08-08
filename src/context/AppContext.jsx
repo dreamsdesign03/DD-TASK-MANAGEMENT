@@ -2795,6 +2795,40 @@ export function AppProvider({ children }) {
     });
   }, [tasks, profile]);
 
+  // Auto-reload the web app when a new version is deployed
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const res = await fetch(`/version.txt?t=${Date.now()}`)
+        if (!res.ok) return
+        const version = (await res.text()).trim()
+        if (!version) return
+        const stored = localStorage.getItem('dd_app_version')
+        if (stored && stored !== version) {
+          localStorage.setItem('dd_app_version', version)
+          addToast('New version available - refreshing...', 'success')
+          setTimeout(() => window.location.reload(), 1500)
+        } else if (!stored) {
+          localStorage.setItem('dd_app_version', version)
+        }
+      } catch (e) {
+        // ignore network/parse errors; retry on next check
+      }
+    }
+    checkVersion()
+    const interval = setInterval(checkVersion, 300000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') checkVersion()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', checkVersion)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', checkVersion)
+    }
+  }, [addToast])
+
   return (
     <AppContext.Provider
       value={{
