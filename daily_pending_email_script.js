@@ -1,9 +1,10 @@
 /**
  * Daily Pending Task Email — Standalone Apps Script
  * ==================================================
- * Runs on a time trigger every day at 9:00 AM, reads pending (not Done) tasks
- * from the shared DD Task Management spreadsheet and emails each team member a
- * summary of their pending tasks.
+ * Runs on a time trigger at 9:30 AM on weekdays (Monday-Friday; Saturday and
+ * Sunday are skipped), reads pending (not Done) tasks from the shared DD Task
+ * Management spreadsheet and emails each team member a summary of their
+ * pending tasks in a single email.
  *
  * - Emails are sent FROM the Google account that owns THIS script project
  *   (e.g. marketing.dreamdesign.in).
@@ -27,10 +28,17 @@ var T_COL = { TITLE: 3, CLIENT: 1, ASSIGNED_TO: 8, EMPLOYEE_IDS: 9, ASSIGNED_EMA
 var TE_COL = { NAME: 1, EMAIL: 2, IS_ACTIVE: 7 };
 
 /**
- * Main entry point — attach this to a 9 AM daily time trigger.
+ * Main entry point — runs at 9:30 AM on weekdays via the time trigger.
  * Also callable manually from the Apps Script editor (Run -> sendDailyPendingEmails).
  */
 function sendDailyPendingEmails() {
+  // Guard: only send on weekdays (Mon-Fri), even if a daily trigger is used.
+  var todayDay = new Date().getDay(); // 0=Sunday, 6=Saturday
+  if (todayDay === 0 || todayDay === 6) {
+    console.info('Weekend - skipping pending task emails.');
+    return 0;
+  }
+
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
   var taskSheet = ss.getSheetByName(TASK_SHEET);
@@ -237,20 +245,31 @@ function testEmail() {
 }
 
 /**
- * Install (or refresh) the daily 9:00 AM trigger.
+ * Install (or refresh) the weekday 9:30 AM triggers.
  * Run this once from the editor; it removes any existing triggers first to
- * avoid duplicates. Timezone is Asia/Kolkata.
+ * avoid duplicates. Creates one trigger per weekday (Mon-Fri) at 9:30 AM in
+ * Asia/Kolkata — Saturday and Sunday get no trigger.
  */
 function createDailyTrigger() {
   var handlers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < handlers.length; i++) {
     ScriptApp.deleteTrigger(handlers[i]);
   }
-  ScriptApp.newTrigger('sendDailyPendingEmails')
-    .timeBased()
-    .everyDays(1)
-    .atHour(9)
-    .inTimezone('Asia/Kolkata')
-    .create();
-  console.info('Daily 9:00 AM trigger installed (Asia/Kolkata).');
+  var weekdays = [
+    ScriptApp.WeekDay.MONDAY,
+    ScriptApp.WeekDay.TUESDAY,
+    ScriptApp.WeekDay.WEDNESDAY,
+    ScriptApp.WeekDay.THURSDAY,
+    ScriptApp.WeekDay.FRIDAY
+  ];
+  for (var w = 0; w < weekdays.length; w++) {
+    ScriptApp.newTrigger('sendDailyPendingEmails')
+      .timeBased()
+      .onWeekDay(weekdays[w])
+      .atHour(9)
+      .atMinute(30)
+      .inTimezone('Asia/Kolkata')
+      .create();
+  }
+  console.info('Weekday 9:30 AM triggers installed (Mon-Fri, Asia/Kolkata).');
 }
