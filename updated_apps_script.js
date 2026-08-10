@@ -1270,7 +1270,7 @@ function recordActivityLogout(ss, email) {
 // ============================================
 // DAILY PENDING TASK EMAIL (added feature)
 // Runs Mon-Fri at 9:00 AM IST via a time trigger (see createDailyPendingEmailTrigger).
-// Emails each team member a single email with all their pending (not Done) tasks.
+// Emails each team member a single email with all their Pending (status = "Pending") tasks.
 // Saturday/Sunday are skipped. This block only ADDS functions; it does not
 // modify any existing code above.
 // ============================================
@@ -1329,7 +1329,8 @@ function sendDailyPendingEmails() {
   for (var r = 1; r < tasks.length; r++) {
     var row = tasks[r];
     var status = String(row[PENDING_TASK_COL.STATUS] || "").trim();
-    if (status === "Done") continue;
+    // Only tasks with status "Pending" are included in the email.
+    if (status !== "Pending") continue;
 
     var taskEmails = parsePendingEmails(row[PENDING_TASK_COL.ASSIGNED_EMAILS]);
     if (taskEmails.length === 0) {
