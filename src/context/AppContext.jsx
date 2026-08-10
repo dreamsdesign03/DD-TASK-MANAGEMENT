@@ -115,7 +115,7 @@ const mapWebhookTaskToApp = (item) => {
 
   // Department Mapping
   const rawDept = data.Department || data.department || data.Dept || data.dept || ''
-  const validDepartments = ['SEO', 'SOCIAL MEDIA', 'WEBSITE', 'GRAPHIC', 'HR', 'ACCOUNT', 'AMC', 'SALES', 'COMMON']
+  const validDepartments = ['SEO', 'SOCIAL MEDIA', 'WEBSITE', 'GRAPHIC', 'HR', 'ACCOUNT', 'AMC', 'SALES', 'APPLICATION', 'COMMON']
   let mappedDept = 'COMMON'
   if (rawDept) {
     const upper = String(rawDept).toUpperCase().trim()

@@ -71,7 +71,7 @@ export default function ProjectOverviewPage() {
 
   const uniqueDepts = useMemo(() => {
     const rawDepts = projectTasks.map(t => t.department || 'COMMON')
-    const allDepts = ['All Departments', 'COMMON', 'SOCIAL MEDIA', 'WEBSITE', 'SEO', 'GRAPHIC', 'HR', 'ACCOUNT', 'AMC', 'SALES', ...new Set(rawDepts.map(d => d.toUpperCase()))]
+    const allDepts = ['All Departments', 'COMMON', 'SOCIAL MEDIA', 'WEBSITE', 'SEO', 'GRAPHIC', 'HR', 'ACCOUNT', 'AMC', 'SALES', 'APPLICATION', ...new Set(rawDepts.map(d => d.toUpperCase()))]
     const role = profile?.systemRole || 'Employee'
     const hidden = role === 'Admin' ? [] : role === 'HR' ? ['ACCOUNT', 'SALES'] : role === 'Accountant' ? ['HR', 'SALES'] : role === 'Sales' ? ['HR', 'ACCOUNT'] : ['HR', 'ACCOUNT', 'SALES']
     return allDepts.filter(d => !hidden.includes(d))

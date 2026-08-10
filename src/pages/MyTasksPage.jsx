@@ -239,7 +239,7 @@ export default function MyTasksPage() {
                 <div>
                   <label className="block text-[11px] font-black text-gray-500 uppercase tracking-wider mb-1.5">DEPARTMENT</label>
                   <div className="relative">
-                    <SelectDropdown value={department} onChange={setDepartment} options={['COMMON', 'SEO', 'SOCIAL MEDIA', 'WEBSITE', 'GRAPHIC', 'UI/UX', 'HR', 'ACCOUNT', 'AMC', 'SALES']} />
+                    <SelectDropdown value={department} onChange={setDepartment} options={['COMMON', 'SEO', 'SOCIAL MEDIA', 'WEBSITE', 'GRAPHIC', 'UI/UX', 'HR', 'ACCOUNT', 'AMC', 'SALES', 'APPLICATION']} />
                   </div>
                 </div>
               </div>

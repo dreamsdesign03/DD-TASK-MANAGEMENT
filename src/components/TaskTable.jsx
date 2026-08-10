@@ -367,7 +367,7 @@ export default function TaskTable() {
   const uniqueUsers = ['All Users', ...new Set(tasks.flatMap((t) => (t.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean)))]
 
   // Extract unique departments
-  const allDepts = ['All Departments', 'COMMON', 'SOCIAL MEDIA', 'WEBSITE', 'SEO', 'GRAPHIC', 'HR', 'ACCOUNT', 'AMC', 'SALES', ...new Set(tasks.map(t => (t.department || 'COMMON').toUpperCase()))]
+  const allDepts = ['All Departments', 'COMMON', 'SOCIAL MEDIA', 'WEBSITE', 'SEO', 'GRAPHIC', 'HR', 'ACCOUNT', 'AMC', 'SALES', 'APPLICATION', ...new Set(tasks.map(t => (t.department || 'COMMON').toUpperCase()))]
   const role = profile?.systemRole || 'Employee'
   const hiddenDepts = role === 'Admin' ? [] : role === 'HR' ? ['ACCOUNT', 'SALES'] : role === 'Accountant' ? ['HR', 'SALES'] : role === 'Sales' ? ['HR', 'ACCOUNT'] : ['HR', 'ACCOUNT', 'SALES']
   const uniqueDepartments = allDepts.filter(d => !hiddenDepts.includes(d))
@@ -865,7 +865,7 @@ export default function TaskTable() {
                     </tr>
                   ) : (
                     (() => {
-                      const DEPARTMENTS = ['COMMON', 'SOCIAL MEDIA', 'WEBSITE', 'SEO', 'GRAPHIC', 'HR', 'ACCOUNT', 'AMC', 'SALES'];
+                      const DEPARTMENTS = ['COMMON', 'SOCIAL MEDIA', 'WEBSITE', 'SEO', 'GRAPHIC', 'HR', 'ACCOUNT', 'AMC', 'SALES', 'APPLICATION'];
                       const taskDepts = [...new Set(currentTasks.map(t => (t.department || 'COMMON').toUpperCase()))];
                       taskDepts.sort((a, b) => {
                         const idxA = DEPARTMENTS.indexOf(a);
@@ -1375,7 +1375,7 @@ export default function TaskTable() {
           >
             <div className="flex gap-4 min-w-max items-start">
               {(() => {
-                const deptCols = ['COMMON', 'SOCIAL MEDIA', 'WEBSITE', 'SEO', 'GRAPHIC', 'UI/UX', 'HR', 'ACCOUNT', 'AMC', 'SALES', 'COMPLETE'];
+                const deptCols = ['COMMON', 'SOCIAL MEDIA', 'WEBSITE', 'SEO', 'GRAPHIC', 'UI/UX', 'HR', 'ACCOUNT', 'AMC', 'SALES', 'APPLICATION', 'COMPLETE'];
                 const processCols = ['Pending', 'In Progress', 'Review', 'Done', 'Blocked'];
 
                 const baseCols = boardGrouping === 'Process Stage' ? processCols : deptCols;
@@ -1415,6 +1415,7 @@ export default function TaskTable() {
                     if (name === 'WEBSITE') return '#3B82F6'; // blue
                     if (name === 'HR') return '#EC4899'; // pink
                     if (name === 'ACCOUNT') return '#0EA5E9'; // sky
+                    if (name === 'APPLICATION') return '#14B8A6'; // teal
                     return '#9CA3AF'; // COMMON
                   };
 
