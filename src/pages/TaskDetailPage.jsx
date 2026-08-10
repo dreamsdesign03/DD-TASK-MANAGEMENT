@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 import SelectDropdown from '../components/SelectDropdown'
 import LinkifiedText from '../components/LinkifiedText'
-import { useApp, parseMultiUserTimeStr, formatTimeStr } from '../context/AppContext'
+import { useApp, parseMultiUserTimeStr, formatTimeStr, getActiveTimerMs } from '../context/AppContext'
 import { processMessagesList, renderMessageText } from './ChatPage'
 import { renderAvatar } from '../utils/avatar'
 import { formatTime, formatDateTime, computeRecurringDueDate } from '../utils/dateFormat'
@@ -1234,7 +1234,7 @@ export default function TaskDetailPage() {
                                 const myName = profile?.name || 'Mansi Shah';
                                 const secs = td[myName] || 0;
                                 const isSubTracking = activeTimer?.taskId === st.id;
-                                const totalSecs = isSubTracking ? secs + (activeTimer ? Math.floor((Date.now() - activeTimer.startTime) / 1000) : 0) : secs;
+                                const totalSecs = isSubTracking ? secs + (activeTimer ? Math.floor(getActiveTimerMs(activeTimer) / 1000) : 0) : secs;
                                 if (totalSecs === 0) return '';
                                 const h = Math.floor(totalSecs / 3600);
                                 const m = Math.floor((totalSecs % 3600) / 60);

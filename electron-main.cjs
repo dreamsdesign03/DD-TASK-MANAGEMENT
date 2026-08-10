@@ -409,6 +409,10 @@ ipcMain.on('timer-stop', () => {
   }
 })
 
+// System-wide idle time (seconds) so the renderer can auto-pause the task timer
+// when the user hasn't moved the mouse/used the keyboard for 5 minutes.
+ipcMain.handle('get-system-idle-time', () => powerMonitor.getSystemIdleTime())
+
 app.whenReady().then(() => {
   log('app ready')
   

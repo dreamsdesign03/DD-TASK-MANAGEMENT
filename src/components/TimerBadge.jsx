@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { useApp } from '../context/AppContext'
+import { useApp, getActiveTimerMs } from '../context/AppContext'
 
 function formatAdaptive(totalSecs) {
   if (totalSecs < 60) return String(totalSecs)
@@ -39,7 +39,7 @@ export default function TimerBadge() {
         const orig = document.title
         const interval = setInterval(() => {
           if (document.hidden) {
-            const elapsed = Math.floor((Date.now() - activeTimer.startTime) / 1000)
+            const elapsed = Math.floor(getActiveTimerMs(activeTimer) / 1000)
             document.title = `\u23F1 ${formatAdaptive(elapsed)} - Dreamsdesk`
           }
         }, 1000)
