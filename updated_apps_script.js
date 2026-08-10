@@ -1269,10 +1269,10 @@ function recordActivityLogout(ss, email) {
 
 // ============================================
 // DAILY PENDING TASK EMAIL (added feature)
-// Runs Mon-Fri at 9:30 AM via a time trigger. Emails each team member a
-// single email with all their pending (not Done) tasks. Saturday/Sunday are
-// skipped. This block only ADDS functions; it does not modify any existing
-// code above.
+// Runs Mon-Fri at 9:00 AM IST via a time trigger (see createDailyPendingEmailTrigger).
+// Emails each team member a single email with all their pending (not Done) tasks.
+// Saturday/Sunday are skipped. This block only ADDS functions; it does not
+// modify any existing code above.
 // ============================================
 
 var PENDING_EMAIL_SPREADSHEET_ID = "1DLdlDT21vVwsggGlPg8xpSt2zjNJ_-z7W_GbFr7qIXs";
@@ -1511,10 +1511,11 @@ function testPendingTasksEmail() {
 }
 
 /**
- * Install (or refresh) the weekday 9:30 AM triggers for sendDailyPendingEmails.
- * Run once from the Apps Script editor. Creates one trigger per weekday
- * (Mon-Fri) at 9:30 AM in Asia/Kolkata. Only deletes triggers belonging to
- * this function, so it never touches any other triggers in the project.
+ * Install (or refresh) the weekday 9:00 AM triggers for sendDailyPendingEmails.
+ * Run ONCE from the Apps Script editor after deploying the updated script.
+ * Creates one trigger per weekday (Mon-Fri) at 9:00 AM in Asia/Kolkata (IST).
+ * Only deletes triggers belonging to this function, so it never touches any
+ * other triggers in the project.
  */
 function createDailyPendingEmailTrigger() {
   var existing = ScriptApp.getProjectTriggers();
@@ -1535,9 +1536,9 @@ function createDailyPendingEmailTrigger() {
       .timeBased()
       .onWeekDay(weekdays[w])
       .atHour(9)
-      .atMinute(30)
+      .atMinute(0)
       .inTimezone("Asia/Kolkata")
       .create();
   }
-  console.info("Weekday 9:30 AM triggers installed (Mon-Fri, Asia/Kolkata).");
+  console.info("Weekday 9:00 AM IST triggers installed (Mon-Fri, Asia/Kolkata).");
 }
