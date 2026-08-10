@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import mqtt from 'mqtt'
 import { useToast } from './ToastContext'
-import { updateHeartbeat, logShutdown, getActiveUsers, getAllUsersMonthlyActivity, formatDuration, getAllLoggedUsers, getISTDate, getISTTime } from '../utils/activityLog'
+import { updateHeartbeat, logShutdown, getActiveUsers, getAllUsersMonthlyActivity, formatDuration, getAllLoggedUsers, getISTDate, getISTTime, getISTTimeAt } from '../utils/activityLog'
 import { formatDateShort, formatDateTime, computeRecurringDueDate } from '../utils/dateFormat'
 import { isElectron } from '../utils/isElectron'
 
@@ -270,13 +270,11 @@ export const buildMultiUserTimeStr = (data) => {
   }).join(', ');
 }
 
-// Effective elapsed ms for the active timer. The timer auto-pauses after 5 min of
-// inactivity: accumMs holds time counted before the pause, startTime is the start of
-// the current running segment (frozen while paused), isPaused flags the idle state.
-export const getActiveTimerMs = (t) => {
+// Effective elapsed ms for the active timer, optionally up to a given end timestamp.
+// On idle auto-stop the timer is truly stopped and restarted on the next activity.
+export const getActiveTimerMs = (t, endMs = Date.now()) => {
   if (!t) return 0
-  const accum = t.accumMs || 0
-  return t.isPaused ? accum : accum + (Date.now() - t.startTime)
+  return Math.max(0, endMs - t.startTime)
 }
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000
@@ -336,63 +334,9 @@ export function AppProvider({ children }) {
     return () => clearInterval(interval);
   }, [activeTimer])
 
-  // ── Auto-pause timer after 5 min of system inactivity, resume on activity ──
+  // ── Auto-stop timer after 5 min of system inactivity, auto-restart on activity ──
   const lastActivityRef = useRef(Date.now())
-  const pausedTimerIdRef = useRef(activeTimer)
-
-  useEffect(() => {
-    pausedTimerIdRef.current = activeTimer
-  }, [activeTimer])
-
-  const getIdleSecs = useCallback(async () => {
-    if (isElectron()) {
-      try {
-        const { ipcRenderer } = window.require('electron')
-        return await ipcRenderer.invoke('get-system-idle-time')
-      } catch { }
-    }
-    return (Date.now() - lastActivityRef.current) / 1000
-  }, [])
-
-  const checkIdleState = useCallback(async () => {
-    const t = pausedTimerIdRef.current
-    if (!t) return
-    const idleSecs = await getIdleSecs()
-    if (idleSecs >= IDLE_TIMEOUT_MS / 1000 && !t.isPaused) {
-      setActiveTimer(prev => {
-        if (!prev || prev.isPaused) return prev
-        const next = {
-          ...prev,
-          accumMs: (prev.accumMs || 0) + (Date.now() - prev.startTime),
-          isPaused: true,
-        }
-        pausedTimerIdRef.current = next
-        return next
-      })
-      addToast('Timer auto-paused: no activity for 5 minutes', 'info')
-    } else if (idleSecs < IDLE_TIMEOUT_MS / 1000 && t.isPaused) {
-      setActiveTimer(prev => {
-        if (!prev || !prev.isPaused) return prev
-        const next = { ...prev, isPaused: false, startTime: Date.now() }
-        pausedTimerIdRef.current = next
-        return next
-      })
-    }
-  }, [getIdleSecs, addToast])
-
-  // Browser fallback: window activity also updates the last-activity ref
-  useEffect(() => {
-    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel', 'click']
-    const onActivity = () => { lastActivityRef.current = Date.now() }
-    events.forEach(e => window.addEventListener(e, onActivity, { passive: true }))
-    return () => events.forEach(e => window.removeEventListener(e, onActivity))
-  }, [])
-
-  useEffect(() => {
-    if (!activeTimer) return
-    const id = setInterval(checkIdleState, 5000)
-    return () => clearInterval(id)
-  }, [activeTimer, checkIdleState])
+  const [pendingRestart, setPendingRestart] = useState(null) // { taskId, taskTitle }
 
   // ── IPC to Electron overlay (always runs when in Electron) ──
   useEffect(() => {
@@ -2115,11 +2059,14 @@ export function AppProvider({ children }) {
     setNotifications((prev) => prev.filter((n) => n.id !== id))
   }
 
-  const toggleTimer = useCallback((taskToToggle, profileName) => {
+  const toggleTimer = useCallback((taskToToggle, profileName, opts = {}) => {
+    if (!opts.auto) setPendingRestart(null)
     const nowIST = getISTTime();
     if (activeTimer && activeTimer.taskId === taskToToggle.id) {
       // Stop timer
-      const elapsed = Math.floor(getActiveTimerMs(activeTimer) / 1000);
+      const endMs = opts.endMs || Date.now();
+      const endIST = getISTTimeAt(endMs);
+      const elapsed = Math.floor(getActiveTimerMs(activeTimer, endMs) / 1000);
       const timeData = parseMultiUserTimeStr(taskToToggle.timeTaken);
       const myName = profileName || 'Mansi Shah';
 
@@ -2130,7 +2077,7 @@ export function AppProvider({ children }) {
       }
 
       const startIST = activeTimer.istStartTime || taskToToggle.startTime || nowIST;
-      updateTask(taskToToggle.id, { timeTaken: buildMultiUserTimeStr(timeData), startTime: startIST, endTime: nowIST });
+      updateTask(taskToToggle.id, { timeTaken: buildMultiUserTimeStr(timeData), startTime: startIST, endTime: endIST });
       setActiveTimer(null);
 
       const DAILY_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyciTUZaV5aCCQnpKZDE1T4PFAQgq9LIWkwcq7fDNIbYhDScPKMoKmBIO12EENlMxh5Xg/exec';
@@ -2144,7 +2091,7 @@ export function AppProvider({ children }) {
             name: profile?.name || 'Unknown',
             date: getISTDate(),
             title: taskToToggle.title,
-            endTime: nowIST
+            endTime: endIST
           })
         }).catch(() => {})
       }
@@ -2159,8 +2106,10 @@ export function AppProvider({ children }) {
         addToast("Please stop the active timer before starting a new one.", "error");
         return;
       }
-      updateTask(taskToToggle.id, { startTime: nowIST, endTime: '' });
-      setActiveTimer({ taskId: taskToToggle.id, taskTitle: taskToToggle.title, startTime: Date.now(), istStartTime: nowIST, accumMs: 0, isPaused: false });
+      const startMs = opts.startMs || Date.now();
+      const startIST = getISTTimeAt(startMs);
+      updateTask(taskToToggle.id, { startTime: startIST, endTime: '' });
+      setActiveTimer({ taskId: taskToToggle.id, taskTitle: taskToToggle.title, startTime: startMs, istStartTime: startIST });
 
       const DAILY_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyciTUZaV5aCCQnpKZDE1T4PFAQgq9LIWkwcq7fDNIbYhDScPKMoKmBIO12EENlMxh5Xg/exec';
       if (profile?.email && DAILY_SHEET_URL !== 'YOUR_NEW_APPS_SCRIPT_WEB_APP_URL_HERE') {
@@ -2175,12 +2124,66 @@ export function AppProvider({ children }) {
             project: taskToToggle.client || taskToToggle.project || '',
             title: taskToToggle.title,
             status: taskToToggle.status || '',
-            startTime: nowIST
+            startTime: startIST
           })
         }).catch(() => {})
       }
     }
   }, [activeTimer, profile, addToast])
+
+  // ── Idle detection: auto-stop after 5 min inactivity, auto-restart on activity ──
+  const activeTimerIdRef = useRef(activeTimer)
+  useEffect(() => {
+    activeTimerIdRef.current = activeTimer
+  }, [activeTimer])
+
+  const getIdleSecs = useCallback(async () => {
+    if (isElectron()) {
+      try {
+        const { ipcRenderer } = window.require('electron')
+        return await ipcRenderer.invoke('get-system-idle-time')
+      } catch { }
+    }
+    return (Date.now() - lastActivityRef.current) / 1000
+  }, [])
+
+  const checkIdleState = useCallback(async () => {
+    const idleSecs = await getIdleSecs()
+    const t = activeTimerIdRef.current
+    if (t && idleSecs >= IDLE_TIMEOUT_MS / 1000) {
+      // No activity for 5 min → auto-stop, store end time in the daily sheet
+      const lastActiveMs = Date.now() - idleSecs * 1000
+      const task = tasksRef.current.find(x => x.id === t.taskId)
+      if (task) {
+        toggleTimer(task, profile?.name || 'Mansi Shah', { endMs: lastActiveMs, auto: true })
+        setPendingRestart({ taskId: task.id, taskTitle: task.title })
+        addToast('Timer auto-stopped: no activity for 5 minutes', 'info')
+      }
+    } else if (!t && pendingRestart && idleSecs < IDLE_TIMEOUT_MS / 1000) {
+      // Activity resumed → auto-restart, log a fresh start time in the daily sheet
+      const task = tasksRef.current.find(x => x.id === pendingRestart.taskId)
+      setPendingRestart(null)
+      if (task && task.status !== 'Done') {
+        const lastActiveMs = Date.now() - idleSecs * 1000
+        toggleTimer(task, profile?.name || 'Mansi Shah', { startMs: lastActiveMs, auto: true })
+        addToast('Timer restarted: activity detected', 'success')
+      }
+    }
+  }, [getIdleSecs, toggleTimer, pendingRestart, profile, addToast])
+
+  // Browser fallback: window activity also updates the last-activity ref
+  useEffect(() => {
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel', 'click']
+    const onActivity = () => { lastActivityRef.current = Date.now() }
+    events.forEach(e => window.addEventListener(e, onActivity, { passive: true }))
+    return () => events.forEach(e => window.removeEventListener(e, onActivity))
+  }, [])
+
+  useEffect(() => {
+    if (!activeTimer && !pendingRestart) return
+    const id = setInterval(checkIdleState, 5000)
+    return () => clearInterval(id)
+  }, [activeTimer, pendingRestart, checkIdleState])
 
   // Listen for timer stop from Electron overlay
   useEffect(() => {

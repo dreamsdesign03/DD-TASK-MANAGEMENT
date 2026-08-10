@@ -16,6 +16,15 @@ export function getISTTime() {
   return `${h}:${m}:${s}`
 }
 
+// Convert an epoch ms timestamp to IST time string (HH:MM:SS)
+export function getISTTimeAt(ms) {
+  const d = new Date(ms + 5.5 * 60 * 60 * 1000)
+  const h = String(d.getUTCHours()).padStart(2, '0')
+  const m = String(d.getUTCMinutes()).padStart(2, '0')
+  const s = String(d.getUTCSeconds()).padStart(2, '0')
+  return `${h}:${m}:${s}`
+}
+
 export function getISTTimestamp() {
   return Date.now()
 }
