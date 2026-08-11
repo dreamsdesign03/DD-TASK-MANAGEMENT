@@ -5,9 +5,10 @@ import { GoogleLogin } from '@react-oauth/google'
 import { jwtDecode } from 'jwt-decode'
 import SelectDropdown from '../components/SelectDropdown'
 import { isElectron } from '../utils/isElectron'
+import { API_BASE_URL } from '../config'
 
 const LOGO_SRC = '/logo.png'
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec'
+const SCRIPT_URL = API_BASE_URL
 
 // Animated chevron arrow for the button
 const ChevronRight = () => (
@@ -81,7 +82,7 @@ export default function LoginPage() {
           const urlObj = new URL(url)
           if (urlObj.protocol === 'dreamsdesk:') {
             let linkEmail = urlObj.searchParams.get('email')
-            if (linkEmail) {
+            if (SCRIPT_URL && linkEmail) {
               linkEmail = linkEmail.replace(/\/$/, '')
               setLoading(true)
               const res = await fetch(SCRIPT_URL, {
@@ -131,6 +132,7 @@ export default function LoginPage() {
     let intervalId = null;
     if (pendingApprovalEmail) {
       intervalId = setInterval(async () => {
+        if (!SCRIPT_URL) return
         try {
           const res = await fetch(SCRIPT_URL, {
             method: 'POST',
@@ -166,6 +168,11 @@ export default function LoginPage() {
 
   const handleManualAuth = async (e) => {
     e.preventDefault()
+
+    if (!SCRIPT_URL) {
+      setErrorMsg('Backend not configured. Please set VITE_API_BASE_URL.')
+      return
+    }
 
     setLoading(true)
     setErrorMsg('')
@@ -241,6 +248,11 @@ export default function LoginPage() {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
+      if (!SCRIPT_URL) {
+        setLoading(false)
+        setErrorMsg('Backend not configured. Please set VITE_API_BASE_URL.')
+        return
+      }
       const decoded = jwtDecode(credentialResponse.credential)
       const userEmail = decoded.email || ''
 

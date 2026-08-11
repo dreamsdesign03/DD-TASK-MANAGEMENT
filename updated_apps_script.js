@@ -161,7 +161,6 @@ function doPost(e) {
           return ContentService.createTextOutput(JSON.stringify({ "ok": true, "error": "not_found" })).setMimeType(ContentService.MimeType.JSON);
         }
       }
-
       // Find the first empty row to prevent skipping pre-formatted blank rows
       var dataAll = sheet.getDataRange().getValues();
       var insertRow = dataAll.length + 1;

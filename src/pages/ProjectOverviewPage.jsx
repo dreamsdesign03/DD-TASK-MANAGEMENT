@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext'
 import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 import SelectDropdown from '../components/SelectDropdown'
+import { API_BASE_URL } from '../config'
 
 export default function ProjectOverviewPage() {
   const { projectName } = useParams()
@@ -47,8 +48,9 @@ export default function ProjectOverviewPage() {
   // Fetch documents directly from Google Drive for this project
   useEffect(() => {
     if (!projectName) return
+    if (!API_BASE_URL) return
     setIsLoadingDocs(true)
-    const url = `https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec?action=get_project_files&projectName=${encodeURIComponent(projectName)}&t=${Date.now()}`
+    const url = `${API_BASE_URL}?action=get_project_files&projectName=${encodeURIComponent(projectName)}&t=${Date.now()}`
     fetch(url)
       .then(res => res.json())
       .then(data => {
@@ -224,7 +226,7 @@ export default function ProjectOverviewPage() {
         reader.onerror = reject
         reader.readAsDataURL(file)
       })
-      const res = await fetch('https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec', {
+      const res = await fetch(API_BASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({

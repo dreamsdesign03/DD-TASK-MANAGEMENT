@@ -4,6 +4,7 @@ import { useToast } from './ToastContext'
 import { updateHeartbeat, logShutdown, getActiveUsers, getAllUsersMonthlyActivity, formatDuration, getAllLoggedUsers, getISTDate, getISTTime, getISTTimeAt } from '../utils/activityLog'
 import { formatDateShort, formatDateTime, computeRecurringDueDate } from '../utils/dateFormat'
 import { isElectron } from '../utils/isElectron'
+import { API_BASE_URL, DAILY_SHEET_WEB_APP_URL } from '../config'
 
 export const mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt')
 
@@ -451,8 +452,8 @@ export function AppProvider({ children }) {
     if (!profile?.email) return
     const fetchActivities = async () => {
       try {
-        const res = await fetch('https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec?action=get_activities')
-        const data = await res.json()
+        const res = API_BASE_URL ? await fetch(API_BASE_URL + '?action=get_activities') : null
+        const data = res ? await res.json() : []
         setActivityLog(data)
         const todayPrefix = getISTDate()
         const mySessions = []
@@ -525,14 +526,14 @@ export function AppProvider({ children }) {
     })
     addToast('Punched In successfully', 'success')
 
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec';
-    fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'punch_in', email: profile.email })
-    }).then(r => r.text()).then(t => console.log('Punch in response:', t)).catch(e => console.warn('Punch in failed:', e))
+    if (API_BASE_URL) {
+      fetch(API_BASE_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'punch_in', email: profile.email })
+      }).then(r => r.text()).then(t => console.log('Punch in response:', t)).catch(e => console.warn('Punch in failed:', e))
+    }
 
-    const DAILY_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyciTUZaV5aCCQnpKZDE1T4PFAQgq9LIWkwcq7fDNIbYhDScPKMoKmBIO12EENlMxh5Xg/exec';
-    if (profile?.email && DAILY_SHEET_WEB_APP_URL !== 'YOUR_NEW_APPS_SCRIPT_WEB_APP_URL_HERE') {
+    if (profile?.email && DAILY_SHEET_WEB_APP_URL) {
       const payload = JSON.stringify({
         action: 'log_punch_in',
         email: profile?.email,
@@ -563,17 +564,16 @@ export function AppProvider({ children }) {
     })
     addToast('Punched Out successfully', 'success')
 
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec';
-    fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors', keepalive: true,
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'punch_out', email: prevEmail })
-    }).then(r => r.text()).then(t => console.log('Punch out response:', t)).catch(e => console.warn('Punch out failed:', e))
+    if (API_BASE_URL) {
+      fetch(API_BASE_URL, {
+        method: 'POST', mode: 'no-cors', keepalive: true,
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'punch_out', email: prevEmail })
+      }).then(r => r.text()).then(t => console.log('Punch out response:', t)).catch(e => console.warn('Punch out failed:', e))
+    }
 
     // Log daily tasks & punch out to daily sheet
-    if (prevEmail) {
-      const DAILY_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyciTUZaV5aCCQnpKZDE1T4PFAQgq9LIWkwcq7fDNIbYhDScPKMoKmBIO12EENlMxh5Xg/exec';
-      if (DAILY_SHEET_URL !== 'YOUR_NEW_APPS_SCRIPT_WEB_APP_URL_HERE') {
+    if (prevEmail && DAILY_SHEET_WEB_APP_URL) {
         const todayIST = getISTDate();
         const myFirstPunchIn = (todaysSessions && todaysSessions.length > 0 && todaysSessions[0].in)
           ? todaysSessions[0].in
@@ -643,13 +643,12 @@ export function AppProvider({ children }) {
           }))
         });
 
-        fetch(DAILY_SHEET_URL, {
+        fetch(DAILY_SHEET_WEB_APP_URL, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: payload
         }).catch(err => console.warn('Daily task sheet sync failed:', err));
-      }
     }
   }
 
@@ -703,16 +702,16 @@ export function AppProvider({ children }) {
     const autoOutTime = rawEnds.length > 0 ? rawEnds.sort().slice(-1)[0] : '23:59'
 
     // 1. Close the open session on the main backend
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec'
-    fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'punch_out', email: profile?.email })
-    }).then(r => r.text()).then(t => console.log('Auto punch out response:', t)).catch(e => console.warn('Auto punch out failed:', e))
+    if (API_BASE_URL) {
+      fetch(API_BASE_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'punch_out', email: profile?.email })
+      }).then(r => r.text()).then(t => console.log('Auto punch out response:', t)).catch(e => console.warn('Auto punch out failed:', e))
+    }
 
     // 2. Log that day's tasks to the daily task sheet
-    const DAILY_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyciTUZaV5aCCQnpKZDE1T4PFAQgq9LIWkwcq7fDNIbYhDScPKMoKmBIO12EENlMxh5Xg/exec'
-    if (profile?.email && DAILY_SHEET_URL !== 'YOUR_NEW_APPS_SCRIPT_WEB_APP_URL_HERE') {
+    if (profile?.email && DAILY_SHEET_WEB_APP_URL) {
       const payload = JSON.stringify({
         action: 'log_daily_tasks',
         email: profile?.email,
@@ -730,7 +729,7 @@ export function AppProvider({ children }) {
           remark: (t.comments && t.comments.length > 0) ? t.comments[t.comments.length - 1].text : (t.remarks || '')
         }))
       })
-      fetch(DAILY_SHEET_URL, {
+      fetch(DAILY_SHEET_WEB_APP_URL, {
         method: 'POST', mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: payload
@@ -1158,21 +1157,23 @@ export function AppProvider({ children }) {
       }
 
       // ALSO SEND TO SHEET so it persists
-      const sheetPayload = {
-        id: String(Date.now()),
-        action: 'send',
-        roomId: chatId,
-        senderId: senderEmail,
-        senderName: profileRef.current?.name || 'Mansi Shah',
-        message: `[ReadReceipt:${senderEmail}|${lastMsgTime}]`,
-        timestamp: new Date().toISOString(),
-        type: 'personal'
+      if (API_BASE_URL) {
+        const sheetPayload = {
+          id: String(Date.now()),
+          action: 'send',
+          roomId: chatId,
+          senderId: senderEmail,
+          senderName: profileRef.current?.name || 'Mansi Shah',
+          message: `[ReadReceipt:${senderEmail}|${lastMsgTime}]`,
+          timestamp: new Date().toISOString(),
+          type: 'personal'
+        }
+        fetch(API_BASE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(sheetPayload)
+        }).catch(err => console.warn('Failed to send read receipt to sheet:', err))
       }
-      fetch('https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(sheetPayload)
-      }).catch(err => console.warn('Failed to send read receipt to sheet:', err))
     }
   }, [profile?.email])
 
@@ -1266,14 +1267,15 @@ export function AppProvider({ children }) {
 
   // Fetch messages from n8n CHAT_ENGINE Webhook
   const fetchMessages = useCallback(async () => {
+    if (!API_BASE_URL) return
     try {
-      const url = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec'
+      const url = API_BASE_URL
 
       let res = null;
       try {
         res = await fetch(url)
       } catch (err) {
-        console.warn(`Failed fetch from Apps Script:`, err)
+        console.warn(`Failed fetch from backend:`, err)
       }
 
       if (res && res.ok) {
@@ -1981,7 +1983,8 @@ export function AppProvider({ children }) {
     }
 
     try {
-      const url = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec'
+      if (!API_BASE_URL) return
+      const url = API_BASE_URL
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2030,24 +2033,21 @@ export function AppProvider({ children }) {
     }
 
     // Sync status change to daily sheet row
-    if (hasStatusChange && profile?.email && isPunchedIn) {
-      const DAILY_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyciTUZaV5aCCQnpKZDE1T4PFAQgq9LIWkwcq7fDNIbYhDScPKMoKmBIO12EENlMxh5Xg/exec';
-      if (DAILY_SHEET_URL !== 'YOUR_NEW_APPS_SCRIPT_WEB_APP_URL_HERE') {
-        fetch(DAILY_SHEET_URL, {
-          method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'log_task_status_update',
-            email: profile.email,
-            name: profile?.name || 'Unknown',
-            date: getISTDate(),
-            title: mergedTask.title,
-            status: mergedTask.status,
-            startTime: mergedTask.startTime || getISTTime(),
-            endTime: mergedTask.status === 'Done' ? (mergedTask.endTime || getISTTime()) : (mergedTask.endTime || '')
-          })
-        }).catch(() => {})
-      }
+    if (hasStatusChange && profile?.email && isPunchedIn && DAILY_SHEET_WEB_APP_URL) {
+      fetch(DAILY_SHEET_WEB_APP_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'log_task_status_update',
+          email: profile.email,
+          name: profile?.name || 'Unknown',
+          date: getISTDate(),
+          title: mergedTask.title,
+          status: mergedTask.status,
+          startTime: mergedTask.startTime || getISTTime(),
+          endTime: mergedTask.status === 'Done' ? (mergedTask.endTime || getISTTime()) : (mergedTask.endTime || '')
+        })
+      }).catch(() => {})
     }
   }
 
@@ -2080,9 +2080,8 @@ export function AppProvider({ children }) {
       updateTask(taskToToggle.id, { timeTaken: buildMultiUserTimeStr(timeData), startTime: startIST, endTime: endIST });
       setActiveTimer(null);
 
-      const DAILY_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyciTUZaV5aCCQnpKZDE1T4PFAQgq9LIWkwcq7fDNIbYhDScPKMoKmBIO12EENlMxh5Xg/exec';
-      if (profile?.email && DAILY_SHEET_URL !== 'YOUR_NEW_APPS_SCRIPT_WEB_APP_URL_HERE') {
-        fetch(DAILY_SHEET_URL, {
+      if (profile?.email && DAILY_SHEET_WEB_APP_URL) {
+        fetch(DAILY_SHEET_WEB_APP_URL, {
           method: 'POST', mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
@@ -2111,9 +2110,8 @@ export function AppProvider({ children }) {
       updateTask(taskToToggle.id, { startTime: startIST, endTime: '' });
       setActiveTimer({ taskId: taskToToggle.id, taskTitle: taskToToggle.title, startTime: startMs, istStartTime: startIST });
 
-      const DAILY_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyciTUZaV5aCCQnpKZDE1T4PFAQgq9LIWkwcq7fDNIbYhDScPKMoKmBIO12EENlMxh5Xg/exec';
-      if (profile?.email && DAILY_SHEET_URL !== 'YOUR_NEW_APPS_SCRIPT_WEB_APP_URL_HERE') {
-        fetch(DAILY_SHEET_URL, {
+      if (profile?.email && DAILY_SHEET_WEB_APP_URL) {
+        fetch(DAILY_SHEET_WEB_APP_URL, {
           method: 'POST', mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
@@ -2219,7 +2217,8 @@ export function AppProvider({ children }) {
     // Prevent this new task from being wiped out by an immediate sync
     recentTaskUpdates.current[newTask.id] = { timestamp: Date.now(), fields: newTask, isNew: true }
     try {
-      const url = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec'
+      if (!API_BASE_URL) return
+      const url = API_BASE_URL
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2268,8 +2267,9 @@ export function AppProvider({ children }) {
   }
 
   const deleteTask = async (id) => {
+    if (!API_BASE_URL) return
     try {
-      const url = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec'
+      const url = API_BASE_URL
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2490,8 +2490,13 @@ export function AppProvider({ children }) {
       }
     }
 
+    if (!API_BASE_URL) {
+      tasksLoadedRef.current = true
+      return
+    }
+
     try {
-      const url = `https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec?action=get_tasks&t=${Date.now()}`
+      const url = `${API_BASE_URL}?action=get_tasks&t=${Date.now()}`
       const res = await fetch(url)
 
       if (res.ok) {
@@ -2584,11 +2589,12 @@ export function AppProvider({ children }) {
   }, [profile, employees, deletedPersonalChatIds, updateTeamAndChats])
 
   const fetchTeam = async () => {
+    if (!API_BASE_URL) return
     let fetchedTeam = []
     let success = false
 
     try {
-      const url = `https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec?action=get_team&t=${Date.now()}`
+      const url = `${API_BASE_URL}?action=get_team&t=${Date.now()}`
       const res = await fetch(url)
 
       if (res.ok) {
@@ -2632,8 +2638,9 @@ export function AppProvider({ children }) {
   }
 
   const fetchClients = async () => {
+    if (!API_BASE_URL) return
     try {
-      const url = `https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec?action=get_clients&t=${Date.now()}`
+      const url = `${API_BASE_URL}?action=get_clients&t=${Date.now()}`
       const res = await fetch(url)
 
       if (res.ok) {
@@ -2656,8 +2663,9 @@ export function AppProvider({ children }) {
   }
 
   const fetchPayments = async () => {
+    if (!API_BASE_URL) return
     try {
-      const url = `https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec?action=get_payments&t=${Date.now()}`
+      const url = `${API_BASE_URL}?action=get_payments&t=${Date.now()}`
       const res = await fetch(url)
       if (res.ok) {
         const text = await res.text()
@@ -2678,8 +2686,9 @@ export function AppProvider({ children }) {
   }
 
   const updatePayment = async (paymentData) => {
+    if (!API_BASE_URL) return false
     try {
-      const url = `https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec`
+      const url = API_BASE_URL
       const res = await fetch(url, {
         method: 'POST',
         body: JSON.stringify({ ...paymentData, userEmail: profile?.email }),
@@ -2702,8 +2711,9 @@ export function AppProvider({ children }) {
   }
 
   const fetchActivities = async () => {
+    if (!API_BASE_URL) return []
     try {
-      const url = `https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec?action=get_activities&t=${Date.now()}`
+      const url = `${API_BASE_URL}?action=get_activities&t=${Date.now()}`
       const res = await fetch(url)
       if (res.ok) {
         const text = await res.text()

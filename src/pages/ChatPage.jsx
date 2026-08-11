@@ -7,6 +7,7 @@ import { useToast } from '../context/ToastContext'
 import { renderAvatar } from '../utils/avatar'
 import { useGoogleLogin } from '@react-oauth/google'
 import CHAT_BACKGROUNDS from '../data/chatBackgrounds'
+import { API_BASE_URL } from '../config'
 export function renderMessageTextWithMentions(text, isSent = false, employeeNames = []) {
   if (!text) return null
 
@@ -678,10 +679,11 @@ export default function ChatPage() {
           })
         }
 
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec'
+        const SCRIPT_URL = API_BASE_URL
 
         let success = false
         try {
+          if (!SCRIPT_URL) return
           const res = await fetch(SCRIPT_URL, {
             method: 'POST',
             // CRITICAL: Must use text/plain to bypass Apps Script CORS preflight block
@@ -692,7 +694,7 @@ export default function ChatPage() {
             success = true
           }
         } catch (err) {
-          console.warn(`Failed call to Apps Script:`, err)
+          console.warn(`Failed call to backend:`, err)
         }
 
         if (success && tempId) {

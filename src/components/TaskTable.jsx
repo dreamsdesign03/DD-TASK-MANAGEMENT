@@ -11,6 +11,7 @@ import { computeRecurringDueDate } from '../utils/dateFormat'
 import TaskCalendar from './TaskCalendar'
 import VoiceBot from './VoiceBot'
 import SelectDropdown from './SelectDropdown'
+import { API_BASE_URL } from '../config'
 
 const PRIORITY_STYLES = {
   Urgent: 'bg-[#E74C3C] text-white',
@@ -310,7 +311,8 @@ export default function TaskTable() {
 
       const currentClient = selectedClient
 
-      const url = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec'
+      const url = API_BASE_URL
+      if (!url) return
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },

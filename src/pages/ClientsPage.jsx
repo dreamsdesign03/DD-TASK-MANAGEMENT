@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 import { useApp, mqttClient } from '../context/AppContext'
 import { formatDateShort } from '../utils/dateFormat'
+import { API_BASE_URL } from '../config'
 
 const safeDate = (val) => val ? formatDateShort(val) : '-'
 
@@ -109,7 +110,7 @@ export default function ClientsPage() {
         importantLinks: JSON.stringify(clientForm.importantLinks.filter(l => (l.title || '').trim() || (l.url || '').trim())),
         userEmail: profile?.email
       }
-      const res = await fetch('https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec', {
+      const res = await fetch(API_BASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
@@ -147,7 +148,7 @@ export default function ClientsPage() {
     setConfirmDeactivateClient(null)
     setIsUpdating(true)
     try {
-      const res = await fetch('https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec', {
+      const res = await fetch(API_BASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
@@ -188,7 +189,7 @@ export default function ClientsPage() {
     }
     setIsAdding(true)
     try {
-      const res = await fetch('https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec', {
+      const res = await fetch(API_BASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({

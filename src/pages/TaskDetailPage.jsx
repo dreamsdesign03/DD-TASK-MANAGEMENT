@@ -9,6 +9,7 @@ import { processMessagesList, renderMessageText } from './ChatPage'
 import { renderAvatar } from '../utils/avatar'
 import { formatTime, formatDateTime, computeRecurringDueDate } from '../utils/dateFormat'
 import CHAT_BACKGROUNDS from '../data/chatBackgrounds'
+import { API_BASE_URL } from '../config'
 /* â”€â”€â”€ Priority badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function PriorityBadge({ priority }) {
   const map = {
@@ -451,8 +452,9 @@ export default function TaskDetailPage() {
           reader.readAsDataURL(file)
         })
 
-        // Send to Apps Script
-        const url = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec'
+        // Send to backend
+        const url = API_BASE_URL
+        if (!url) return
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -562,7 +564,8 @@ export default function TaskDetailPage() {
           reader.readAsDataURL(replyAttachment.file)
         })
 
-        const url = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec'
+        const url = API_BASE_URL
+        if (!url) return
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -627,12 +630,13 @@ export default function TaskDetailPage() {
         }
       })
 
-      const url = 'https://script.google.com/macros/s/AKfycbzs69465Gintz_UEvY_IjcncUVK_8SGKYxRolbUGpmh--HzqRzxNCYUNX36koPlYrWg/exec'
-      fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      }).catch(e => console.warn(e))
+      if (API_BASE_URL) {
+        fetch(API_BASE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        }).catch(e => console.warn(e))
+      }
 
       // Webhook fallback already catches this
 
