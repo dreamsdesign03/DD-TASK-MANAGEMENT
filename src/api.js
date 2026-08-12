@@ -130,6 +130,16 @@ function notifyRegistrationEmail(info) {
   }
 }
 
+function isUserActive(row) {
+  if (!row) return false
+  const status = String(row.status || '').trim().toLowerCase()
+  if (status === 'pending' || status === 'rejected') return false
+  const active = row.is_active
+  if (active === true || active === 'true' || active === 'Yes' || active === 'yes' || active === 1 || active === '1') return true
+  if (status === 'approved' || status === 'active') return true
+  return false
+}
+
 async function login(payload) {
   const email = String(payload.email || '').trim().toLowerCase()
   const password = String(payload.password || '').trim()
@@ -144,7 +154,7 @@ async function login(payload) {
   if (!row) return { ok: false, error: 'No account found with this email.' }
   if (row.password_token !== password) return { ok: false, error: 'Invalid password.' }
   
-  if (!row.is_active) {
+  if (!isUserActive(row)) {
     return { ok: false, error: 'Your account is pending admin approval.' }
   }
 
@@ -164,7 +174,7 @@ async function googleLogin(payload) {
   if (error) return { ok: false, error: error.message }
   if (!row) return { ok: false, error: 'not_registered' }
 
-  if (!row.is_active) {
+  if (!isUserActive(row)) {
     return { ok: false, error: 'Your account is pending admin approval.' }
   }
 
