@@ -131,9 +131,6 @@ function notifyRegistrationEmail(info) {
 
 function isUserActive(row) {
   if (!row) return false
-  const email = String(row.email_address || row['Email Address'] || '').trim().toLowerCase()
-  if (email === 'dreamsdesign.in03@gmail.com') return true
-
   const active = row.is_active
   const status = String(row.status || '').trim().toLowerCase()
 
