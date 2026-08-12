@@ -7,7 +7,7 @@ import { AppProvider } from './context/AppContext.jsx'
 import { ToastProvider } from './context/ToastContext.jsx'
 
 // TODO: Replace with your actual Google OAuth Client ID
-const GOOGLE_CLIENT_ID = "373508071148-0vvaiv7dovfb4r0f4ti9fnakf0ct17lq.apps.googleusercontent.com"
+const GOOGLE_CLIENT_ID = "373508071148-ojanlaa59kbbp0epfe4lb40hgtph3luc.apps.googleusercontent.com"
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
