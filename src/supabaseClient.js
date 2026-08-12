@@ -158,27 +158,30 @@ export function rowToSheet(row, map) {
   return out
 }
 
+// Normalize a key so 'Project Name', 'project_name', and 'projectName' all match
+const normKey = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+
 export function sheetToDb(obj, map) {
   if (!obj) return {}
   const out = {}
   const reverse = {}
   for (const [col, sheetKey] of Object.entries(map)) {
-    reverse[sheetKey.toLowerCase()] = col
-    reverse[col] = col
+    reverse[normKey(sheetKey)] = col
+    reverse[normKey(col)] = col
   }
   for (const [key, value] of Object.entries(obj)) {
-    const col = reverse[String(key).toLowerCase()]
+    const col = reverse[normKey(key)]
     if (col && value !== undefined && value !== null) out[col] = normalizeValue(value)
   }
   return out
 }
 
-// Legacy 'Yes'/'No'/'' booleans -> DB boolean
+// Legacy 'Yes'/'No'/'' booleans -> DB boolean (empty strings stay empty)
 function normalizeValue(value) {
   if (typeof value === 'string') {
     const t = value.trim().toLowerCase()
     if (t === 'yes' || t === 'true' || t === '1') return true
-    if (t === 'no' || t === 'false' || t === '0' || t === '') return false
+    if (t === 'no' || t === 'false' || t === '0') return false
   }
   return value
 }
