@@ -1,13 +1,17 @@
 // ============================================================================
 // Dreamsdesk Registration Email & One-Click Approval Script
-// Deployed URL: https://script.google.com/macros/s/AKfycbyqqLi4FCRg79Xj3Ph_J0m-iDFdEGtyjRbq_NmEafUNjB7oAjAqM2ILWGpd4_OAYioI/exec
+// Deployed Web App URL: https://script.google.com/macros/s/AKfycbyqqLi4FCRg79Xj3Ph_J0m-iDFdEGtyjRbq_NmEafUNjB7oAjAqM2ILWGpd4_OAYioI/exec
+// Live Production URL: https://dd-task-management.vercel.app
 // ============================================================================
 
 var SUPABASE_URL = "https://balrgagdbbfagmgryrwv.supabase.co";
 var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhbHJnYWdkYmJmYWdtZ3J5cnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDYxNTQsImV4cCI6MjEwMjAyMjE1NH0.5R4abl_tx3jVX5Z98Pm5Mp0eePYsTFXThjYZA-_bapg";
+var VERCEL_APP_URL = "https://dd-task-management.vercel.app/login";
+var ADMIN_EMAIL = "dreamsdesign.in03@gmail.com";
+var WEB_APP_EXEC_URL = "https://script.google.com/macros/s/AKfycbyqqLi4FCRg79Xj3Ph_J0m-iDFdEGtyjRbq_NmEafUNjB7oAjAqM2ILWGpd4_OAYioI/exec";
 
 /**
- * Updates the user in Supabase setting is_active = true and status = 'Approved'
+ * Updates user in Supabase: sets is_active = true and status = 'Approved'
  */
 function approveUserInSupabase(email) {
   if (!email) return false;
@@ -56,14 +60,16 @@ function doGet(e) {
         <title>User Approval - Dreamsdesk</title>
         <style>
           body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #F3F4F6; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-          .card { background: #ffffff; padding: 40px 32px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); text-align: center; max-width: 440px; width: 100%; border: 1px solid #E5E7EB; }
-          .icon-container { width: 64px; height: 64px; background: #ECFDF5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
-          .icon { color: #10B981; font-size: 32px; font-weight: bold; }
-          h1 { color: #111827; font-size: 22px; font-weight: 700; margin: 0 0 10px 0; }
-          p { color: #4B5563; font-size: 15px; line-height: 1.5; margin: 0 0 20px 0; }
+          .card { background: #ffffff; padding: 44px 36px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); text-align: center; max-width: 450px; width: 100%; border: 1px solid #E5E7EB; }
+          .icon-container { width: 68px; height: 68px; background: #ECFDF5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+          .icon { color: #10B981; font-size: 36px; font-weight: bold; }
+          h1 { color: #111827; font-size: 24px; font-weight: 700; margin: 0 0 10px 0; }
+          p { color: #4B5563; font-size: 15px; line-height: 1.5; margin: 0 0 24px 0; }
           .email-highlight { color: #4C1D95; font-weight: 600; word-break: break-all; }
-          .badge { display: inline-block; background: #D1FAE5; color: #065F46; font-weight: 700; padding: 8px 20px; border-radius: 9999px; font-size: 14px; }
-          .footer { margin-top: 28px; font-size: 12px; color: #9CA3AF; }
+          .badge { display: inline-block; background: #D1FAE5; color: #065F46; font-weight: 700; padding: 8px 20px; border-radius: 9999px; font-size: 14px; margin-bottom: 28px; }
+          .btn-login { display: inline-block; background-color: #4C1D95; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; transition: background 0.2s; }
+          .btn-login:hover { background-color: #3B1477; }
+          .footer { margin-top: 32px; font-size: 12px; color: #9CA3AF; border-top: 1px solid #F3F4F6; padding-top: 16px; }
         </style>
       </head>
       <body>
@@ -72,9 +78,12 @@ function doGet(e) {
             <span class="icon">✓</span>
           </div>
           <h1>User Access Approved!</h1>
-          <p>The account for <span class="email-highlight">${email}</span> has been activated successfully in Dreamsdesk.</p>
+          <p>The account for <span class="email-highlight">${email}</span> has been activated in Dreamsdesk.</p>
           <div>
             <span class="badge">Status: Approved</span>
+          </div>
+          <div>
+            <a href="${VERCEL_APP_URL}" class="btn-login" target="_blank">Open Dreamsdesk Web App</a>
           </div>
           <div class="footer">
             Dreamsdesk Automated Administration System
@@ -112,8 +121,7 @@ function doPost(e) {
     var requestedRole = data.requestedRole || data.systemRole || data.role || 'Employee';
 
     // Dynamic Web App approval link
-    var webAppUrl = "https://script.google.com/macros/s/AKfycbyqqLi4FCRg79Xj3Ph_J0m-iDFdEGtyjRbq_NmEafUNjB7oAjAqM2ILWGpd4_OAYioI/exec";
-    var approvalLink = webAppUrl + "?action=approve_user&email=" + encodeURIComponent(emailAddress);
+    var approvalLink = WEB_APP_EXEC_URL + "?action=approve_user&email=" + encodeURIComponent(emailAddress);
 
     var htmlBody = `
       <div style="background-color: #F3F4F6; padding: 40px 10px; font-family: Arial, sans-serif;">
@@ -160,7 +168,7 @@ function doPost(e) {
     `;
 
     MailApp.sendEmail({
-      to: "dreamsdesign.in03@gmail.com",
+      to: ADMIN_EMAIL,
       subject: `New User Registration Approval Request - Dreamsdesk`,
       htmlBody: htmlBody,
       name: "Dreamsdesk - Dreams Design"
