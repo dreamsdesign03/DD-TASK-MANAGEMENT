@@ -145,14 +145,7 @@ async function login(payload) {
   if (row.password_token !== password) return { ok: false, error: 'Invalid password.' }
   
   if (!row.is_active) {
-    if (email === 'dreamsdesign.in03@gmail.com') {
-      await supabase.from('team').update({ is_active: true, status: 'Approved', role: 'Admin' }).eq('employee_id', row.employee_id)
-      row.is_active = true
-      row.status = 'Approved'
-      row.role = 'Admin'
-    } else {
-      return { ok: false, error: 'Your account is pending admin approval.' }
-    }
+    return { ok: false, error: 'Your account is pending admin approval.' }
   }
 
   const user = await completeLogin(row)
@@ -172,14 +165,7 @@ async function googleLogin(payload) {
   if (!row) return { ok: false, error: 'not_registered' }
 
   if (!row.is_active) {
-    if (email === 'dreamsdesign.in03@gmail.com') {
-      await supabase.from('team').update({ is_active: true, status: 'Approved', role: 'Admin' }).eq('employee_id', row.employee_id)
-      row.is_active = true
-      row.status = 'Approved'
-      row.role = 'Admin'
-    } else {
-      return { ok: false, error: 'Your account is pending admin approval.' }
-    }
+    return { ok: false, error: 'Your account is pending admin approval.' }
   }
 
   const user = await completeLogin(row)
