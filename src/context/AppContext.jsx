@@ -2545,7 +2545,8 @@ export function AppProvider({ children }) {
           const avatar = item.Avatar || item.avatar || item["Profile Image"] || ""
           const id = item["Employee ID"] || item.employeeId || item.id || `emp-${idx}`
           const isActive = item["Is Active"] || 'Yes'
-          const status = isActive === 'No' ? 'Offline' : (item.Status || item.status || 'Online')
+          const rawStatus = item.Status || item.status || ''
+          const status = rawStatus || (isActive === 'No' ? 'Offline' : 'Online')
           const location = item.Location || item.location || 'Remote'
 
           return { id, name, email, role, avatar, status, department, location, isActive }

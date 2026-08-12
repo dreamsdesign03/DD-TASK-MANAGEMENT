@@ -154,6 +154,14 @@ async function approveUser(email) {
   return { ok: true }
 }
 
+async function rejectUser(email) {
+  const clean = String(email || '').trim().toLowerCase()
+  if (!clean) return { ok: false, error: 'No email provided.' }
+  const { error } = await supabase.from('team').delete().eq('email_address', clean)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, deleted: true }
+}
+
 async function setPresence(email, status) {
   const clean = String(email || '').trim().toLowerCase()
   if (!clean) return { ok: false, error: 'No email provided.' }
@@ -448,6 +456,7 @@ const POST_HANDLERS = {
   register,
   login,
   google_login: googleLogin,
+  reject_user: rejectUser,
   user_online: (p) => setPresence(p.email, 'Online'),
   user_offline: (p) => setPresence(p.email, 'Offline'),
   punch_in: punchIn,

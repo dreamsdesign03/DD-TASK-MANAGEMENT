@@ -3,17 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 import { useApp } from '../context/AppContext'
+import { api } from '../api'
 import { renderAvatar } from '../utils/avatar'
 
 
 const INITIAL_EMPLOYEES = []
 
 export default function TeamPage() {
-  const { setSearchQuery, profile, employees: dynamicEmployees, tasks, addToast } = useApp()
+  const { setSearchQuery, profile, employees: dynamicEmployees, tasks, addToast, fetchTeam } = useApp()
   const navigate = useNavigate()
   const [localEmployees, setLocalEmployees] = useState([])
   const [search, setSearch] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [approving, setApproving] = useState(null)
 
   // Add Member Form States
   const [newName, setNewName] = useState('')
@@ -56,14 +58,52 @@ export default function TeamPage() {
     return { ...emp, taskCount }
   })
 
+  const isPending = (e) => String(e.isActive).toLowerCase() === 'no'
+  const pendingMembers = employees.filter(isPending)
+  const approvedMembers = employees.filter(e => !isPending(e))
+
   // Filter Employees (search only)
-  const filtered = employees.filter((e) => {
+  const filtered = approvedMembers.filter((e) => {
     const query = search.toLowerCase()
     return !query ||
       (e.name || '').toLowerCase().includes(query) ||
       (e.role || '').toLowerCase().includes(query) ||
       (e.department || '').toLowerCase().includes(query)
   })
+
+  const handleApprove = async (emp) => {
+    setApproving(emp.email)
+    try {
+      const data = await api.get('approve_user', { email: emp.email })
+      if (data.ok) {
+        addToast(`${emp.name} approved! They can now log in.`, 'success')
+        await fetchTeam()
+      } else {
+        addToast('Failed to approve: ' + (data.error || ''), 'error')
+      }
+    } catch (err) {
+      addToast('Failed to approve: ' + err.message, 'error')
+    } finally {
+      setApproving(null)
+    }
+  }
+
+  const handleReject = async (emp) => {
+    setApproving(emp.email)
+    try {
+      const data = await api.post({ action: 'reject_user', email: emp.email })
+      if (data.ok) {
+        addToast(`${emp.name}'s request was rejected.`, 'success')
+        await fetchTeam()
+      } else {
+        addToast('Failed to reject: ' + (data.error || ''), 'error')
+      }
+    } catch (err) {
+      addToast('Failed to reject: ' + err.message, 'error')
+    } finally {
+      setApproving(null)
+    }
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -119,6 +159,64 @@ export default function TeamPage() {
                 />
               </div>
             </div>
+
+            {/* Pending Approvals (Admin only) */}
+            {profile?.systemRole === 'Admin' && pendingMembers.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="material-symbols-outlined text-[#F59E0B] text-[22px]">pending_actions</span>
+                  <h2 className="text-[15px] font-bold text-[#1E1B2E] m-0">Pending Approvals</h2>
+                  <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[11px] font-bold">{pendingMembers.length}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {pendingMembers.map((emp, idx) => {
+                    const colors = [
+                      { topBar: 'from-amber-400 to-orange-500', avatarBg: 'from-amber-100 to-orange-100', text: 'text-amber-600', tagBg: 'bg-amber-50', tagText: 'text-amber-700' },
+                      { topBar: 'from-amber-400 to-orange-500', avatarBg: 'from-amber-100 to-orange-100', text: 'text-amber-600', tagBg: 'bg-amber-50', tagText: 'text-amber-700' },
+                      { topBar: 'from-amber-400 to-orange-500', avatarBg: 'from-amber-100 to-orange-100', text: 'text-amber-600', tagBg: 'bg-amber-50', tagText: 'text-amber-700' },
+                      { topBar: 'from-amber-400 to-orange-500', avatarBg: 'from-amber-100 to-orange-100', text: 'text-amber-600', tagBg: 'bg-amber-50', tagText: 'text-amber-700' },
+                    ];
+                    const theme = colors[idx % colors.length];
+                    return (
+                      <div key={emp.id} className="member-card bg-white rounded-[20px] p-5 shadow-[0_8px_24px_rgba(91,33,182,0.08)] relative overflow-hidden transition-all duration-300 border border-amber-100">
+                        <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${theme.topBar}`}></div>
+                        <div className="flex items-center gap-3 mb-4">
+                          {renderAvatar(emp.avatar, emp.name, "w-14 h-14 rounded-full border-2 border-white shadow-sm", "text-[18px]", emp.email)}
+                          <div className="min-w-0">
+                            <h3 className="text-[15px] font-bold text-[#1E1B2E] m-0 truncate">{emp.name}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`px-2 py-0.5 rounded-full ${theme.tagBg} ${theme.tagText} text-[10px] font-bold uppercase tracking-wide`}>Pending</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="h-[1px] bg-[#F3F4F6] w-full mb-3"></div>
+                        <div className="space-y-1.5 mb-4 text-[12px] text-[#6B7280]">
+                          <div className="flex items-center gap-2"><span className="material-symbols-outlined text-[15px]">mail</span><span className="truncate">{emp.email}</span></div>
+                          <div className="flex items-center gap-2"><span className="material-symbols-outlined text-[15px]">badge</span><span>{emp.role}</span></div>
+                          <div className="flex items-center gap-2"><span className="material-symbols-outlined text-[15px]">apartment</span><span>{emp.department}</span></div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApprove(emp)}
+                            disabled={approving === emp.email}
+                            className="flex-1 h-[38px] border-none cursor-pointer rounded-full bg-gradient-to-r from-[#10B981] to-[#059669] text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">check</span>Approve
+                          </button>
+                          <button
+                            onClick={() => handleReject(emp)}
+                            disabled={approving === emp.email}
+                            className="flex-1 h-[38px] border border-red-200 cursor-pointer rounded-full bg-white text-red-600 text-[13px] font-semibold flex items-center justify-center gap-2 hover:bg-red-50 active:scale-95 transition-all disabled:opacity-60"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">close</span>Reject
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Directory Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
