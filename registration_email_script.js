@@ -1,6 +1,6 @@
 // ============================================================================
 // Dreamsdesk Registration Email & One-Click Approval Script
-// Deployed URL: https://script.google.com/macros/s/AKfycby30MNh6arID8LZ_oNUwMZm_6YPAYPRny0-2y4jBpJ3dz4JBmlyfD8II_GS-d2DVWBS/exec
+// Deployed URL: https://script.google.com/macros/s/AKfycbyqqLi4FCRg79Xj3Ph_J0m-iDFdEGtyjRbq_NmEafUNjB7oAjAqM2ILWGpd4_OAYioI/exec
 // ============================================================================
 
 var SUPABASE_URL = "https://balrgagdbbfagmgryrwv.supabase.co";
@@ -112,7 +112,7 @@ function doPost(e) {
     var requestedRole = data.requestedRole || data.systemRole || data.role || 'Employee';
 
     // Dynamic Web App approval link
-    var webAppUrl = "https://script.google.com/macros/s/AKfycby30MNh6arID8LZ_oNUwMZm_6YPAYPRny0-2y4jBpJ3dz4JBmlyfD8II_GS-d2DVWBS/exec";
+    var webAppUrl = "https://script.google.com/macros/s/AKfycbyqqLi4FCRg79Xj3Ph_J0m-iDFdEGtyjRbq_NmEafUNjB7oAjAqM2ILWGpd4_OAYioI/exec";
     var approvalLink = webAppUrl + "?action=approve_user&email=" + encodeURIComponent(emailAddress);
 
     var htmlBody = `
