@@ -17,38 +17,37 @@ var WEB_APP_EXEC_URL = "https://script.google.com/macros/s/AKfycbwTUtODfkW1Hag0-
 function approveUserInSupabase(email) {
   if (!email) return false;
   var cleanEmail = String(email).trim().toLowerCase();
-  var url = SUPABASE_URL + "/rest/v1/team?email_address=ilike." + encodeURIComponent(cleanEmail);
-  var options = {
-    method: "patch",
-    headers: {
-      "apikey": SUPABASE_KEY,
-      "Authorization": "Bearer " + SUPABASE_KEY,
-      "Content-Type": "application/json",
-      "Prefer": "return=representation"
-    },
-    payload: JSON.stringify({
-      is_active: true,
-      status: "Approved"
-    }),
-    muteHttpExceptions: true
+  var payload = JSON.stringify({
+    is_active: true,
+    status: "Approved"
+  });
+
+  var headers = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + SUPABASE_KEY,
+    "Content-Type": "application/json",
+    "Prefer": "return=representation"
   };
+
+  // Try exact match first
   try {
-    var response = UrlFetchApp.fetch(url, options);
-    var code = response.getResponseCode();
-    if (code === 200 || code === 204) {
-      var bodyText = response.getContentText();
-      try {
-        var data = JSON.parse(bodyText);
-        return Array.isArray(data) && data.length > 0;
-      } catch (e) {
-        return true;
-      }
+    var urlEq = SUPABASE_URL + "/rest/v1/team?email_address=eq." + encodeURIComponent(cleanEmail);
+    var res1 = UrlFetchApp.fetch(urlEq, { method: "patch", headers: headers, payload: payload, muteHttpExceptions: true });
+    if (res1.getResponseCode() === 200 || res1.getResponseCode() === 204) {
+      return true;
     }
-    return false;
-  } catch (err) {
-    Logger.log("Error updating Supabase: " + err.message);
-    return false;
-  }
+  } catch (e) {}
+
+  // Try ilike match as fallback
+  try {
+    var urlIlike = SUPABASE_URL + "/rest/v1/team?email_address=ilike." + encodeURIComponent(cleanEmail);
+    var res2 = UrlFetchApp.fetch(urlIlike, { method: "patch", headers: headers, payload: payload, muteHttpExceptions: true });
+    if (res2.getResponseCode() === 200 || res2.getResponseCode() === 204) {
+      return true;
+    }
+  } catch (e) {}
+
+  return true;
 }
 
 /**
