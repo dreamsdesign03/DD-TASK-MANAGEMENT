@@ -77,24 +77,45 @@ async function register(payload) {
 
 // Fire-and-forget: email the new registration's details to the admin inbox
 // via the deployed Google Apps Script (sends FROM your Gmail account).
-// Uses mode: 'no-cors' because Apps Script web apps don't return CORS headers.
+// Uses a hidden iframe form POST to bypass CORS (Apps Script /exec blocks CORS).
 function notifyRegistrationEmail(info) {
   try {
-    fetch('https://script.google.com/macros/s/AKfycbwsp6yQCUaE5-E_2-rx7tylVFlwRX0SW230xGZToTmjombUcsH6Ts1RuVUXE5UEOyH0/exec', {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        employeeId: info.employeeId || '',
-        fullName: info.name || '',
-        emailAddress: info.email || '',
-        phone: String(info.phone || ''),
-        department: String(info.department || ''),
-        requestedRole: String(info.systemRole || 'Employee'),
-        status: 'Pending approval',
-        submittedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-      }),
-    }).catch(err => console.warn('Registration email notification failed:', err))
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = 'https://script.google.com/macros/s/AKfycbwsp6yQCUaE5-E_2-rx7tylVFlwRX0SW230xGZToTmjombUcsH6Ts1RuVUXE5UEOyH0/exec'
+    form.target = 'email-notify-iframe'
+    form.style.display = 'none'
+
+    const fields = {
+      employeeId: info.employeeId || '',
+      fullName: info.name || '',
+      emailAddress: info.email || '',
+      phone: String(info.phone || ''),
+      department: String(info.department || ''),
+      requestedRole: String(info.systemRole || 'Employee'),
+      status: 'Pending approval',
+      submittedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+    }
+    for (const [key, value] of Object.entries(fields)) {
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = key
+      input.value = value
+      form.appendChild(input)
+    }
+
+    let iframe = document.getElementById('email-notify-iframe')
+    if (!iframe) {
+      iframe = document.createElement('iframe')
+      iframe.id = 'email-notify-iframe'
+      iframe.name = 'email-notify-iframe'
+      iframe.style.display = 'none'
+      document.body.appendChild(iframe)
+    }
+
+    document.body.appendChild(form)
+    form.submit()
+    document.body.removeChild(form)
   } catch (e) {
     console.warn('Registration email notification error:', e)
   }
