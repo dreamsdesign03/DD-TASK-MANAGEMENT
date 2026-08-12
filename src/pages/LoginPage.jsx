@@ -5,10 +5,9 @@ import { GoogleLogin } from '@react-oauth/google'
 import { jwtDecode } from 'jwt-decode'
 import SelectDropdown from '../components/SelectDropdown'
 import { isElectron } from '../utils/isElectron'
-import { API_BASE_URL } from '../config'
+import { api } from '../api'
 
 const LOGO_SRC = '/logo.png'
-const SCRIPT_URL = API_BASE_URL
 
 // Animated chevron arrow for the button
 const ChevronRight = () => (
@@ -82,15 +81,10 @@ export default function LoginPage() {
           const urlObj = new URL(url)
           if (urlObj.protocol === 'dreamsdesk:') {
             let linkEmail = urlObj.searchParams.get('email')
-            if (SCRIPT_URL && linkEmail) {
+            if (linkEmail) {
               linkEmail = linkEmail.replace(/\/$/, '')
               setLoading(true)
-              const res = await fetch(SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: 'google_login', email: linkEmail })
-              })
-              const data = await res.json()
+              const data = await api.post({ action: 'google_login', email: linkEmail })
               setLoading(false)
               if (data.ok && data.authenticated && data.user) {
                 setProfile({
@@ -132,14 +126,8 @@ export default function LoginPage() {
     let intervalId = null;
     if (pendingApprovalEmail) {
       intervalId = setInterval(async () => {
-        if (!SCRIPT_URL) return
         try {
-          const res = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'google_login', email: pendingApprovalEmail })
-          });
-          const data = await res.json();
+          const data = await api.post({ action: 'google_login', email: pendingApprovalEmail });
           if (data.ok && data.authenticated && data.user) {
             clearInterval(intervalId);
             setPendingApprovalEmail(null);
@@ -169,30 +157,20 @@ export default function LoginPage() {
   const handleManualAuth = async (e) => {
     e.preventDefault()
 
-    if (!SCRIPT_URL) {
-      setErrorMsg('Backend not configured. Please set VITE_API_BASE_URL.')
-      return
-    }
-
     setLoading(true)
     setErrorMsg('')
     setSuccessMsg('')
 
     try {
       if (isRegisterMode) {
-        const res = await fetch(SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'register',
-            email: email.trim(),
-            name: name.trim(),
-            phone: phone.trim(),
-            department: department.trim(),
-            systemRole: systemRole
-          })
+        const data = await api.post({
+          action: 'register',
+          email: email.trim(),
+          name: name.trim(),
+          phone: phone.trim(),
+          department: department.trim(),
+          systemRole: systemRole
         })
-        const data = await res.json()
         if (data.ok) {
           setSuccessMsg('Registration submitted! An email has been sent to the admin. You will be able to log in once approved.')
           setIsRegisterMode(false)
@@ -202,16 +180,11 @@ export default function LoginPage() {
           setErrorMsg(data.error || 'Registration failed.')
         }
       } else {
-        const res = await fetch(SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'login',
-            email: email.trim(),
-            password: password
-          })
+        const data = await api.post({
+          action: 'login',
+          email: email.trim(),
+          password: password
         })
-        const data = await res.json()
 
         if (data.ok && data.authenticated && data.user) {
           const userProfile = {
@@ -248,21 +221,11 @@ export default function LoginPage() {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      if (!SCRIPT_URL) {
-        setLoading(false)
-        setErrorMsg('Backend not configured. Please set VITE_API_BASE_URL.')
-        return
-      }
       const decoded = jwtDecode(credentialResponse.credential)
       const userEmail = decoded.email || ''
 
       setLoading(true)
-      const res = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'google_login', email: userEmail })
-      })
-      const data = await res.json()
+      const data = await api.post({ action: 'google_login', email: userEmail })
       setLoading(false)
 
       if (data.ok && data.authenticated && data.user) {

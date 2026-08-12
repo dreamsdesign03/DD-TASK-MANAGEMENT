@@ -11,7 +11,7 @@ import { computeRecurringDueDate } from '../utils/dateFormat'
 import TaskCalendar from './TaskCalendar'
 import VoiceBot from './VoiceBot'
 import SelectDropdown from './SelectDropdown'
-import { API_BASE_URL } from '../config'
+import { api } from '../api'
 
 const PRIORITY_STYLES = {
   Urgent: 'bg-[#E74C3C] text-white',
@@ -311,24 +311,18 @@ export default function TaskTable() {
 
       const currentClient = selectedClient
 
-      const url = API_BASE_URL
-      if (!url) return
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'upload_file',
-          filename: file.name,
-          mimeType: file.type,
-          base64: base64Data.split(',')[1],
-          projectName: currentClient,
-          department: uploadDept
-        })
+      const data = await api.post({
+        action: 'upload_file',
+        filename: file.name,
+        mimeType: file.type,
+        base64: base64Data.split(',')[1],
+        projectName: currentClient,
+        department: uploadDept,
+        userEmail: profile?.email || ''
       })
 
-      const data = await res.json()
       if (data.ok) {
-        addToast('File successfully uploaded to Google Drive!', 'success')
+        addToast('File successfully uploaded!', 'success')
       } else {
         throw new Error(data.error || 'Upload failed')
       }

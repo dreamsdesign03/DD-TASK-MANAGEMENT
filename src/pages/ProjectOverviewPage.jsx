@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext'
 import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 import SelectDropdown from '../components/SelectDropdown'
-import { API_BASE_URL } from '../config'
+import { api } from '../api'
 
 export default function ProjectOverviewPage() {
   const { projectName } = useParams()
@@ -45,20 +45,17 @@ export default function ProjectOverviewPage() {
     fetchMessages()
   }, [fetchMessages])
 
-  // Fetch documents directly from Google Drive for this project
+  // Fetch project files directly from Supabase Storage
   useEffect(() => {
     if (!projectName) return
-    if (!API_BASE_URL) return
     setIsLoadingDocs(true)
-    const url = `${API_BASE_URL}?action=get_project_files&projectName=${encodeURIComponent(projectName)}&t=${Date.now()}`
-    fetch(url)
-      .then(res => res.json())
+    api.get('get_project_files', { projectName })
       .then(data => {
         if (data.ok && data.files) {
           setDriveDocs(data.files)
         }
       })
-      .catch(err => console.error("Failed to fetch project files from drive:", err))
+      .catch(err => console.error("Failed to fetch project files:", err))
       .finally(() => setIsLoadingDocs(false))
   }, [projectName])
 
@@ -226,21 +223,17 @@ export default function ProjectOverviewPage() {
         reader.onerror = reject
         reader.readAsDataURL(file)
       })
-      const res = await fetch(API_BASE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'upload_file',
-          filename: file.name,
-          mimeType: file.type,
-          base64: base64Data.split(',')[1],
-          projectName,
-          department: uploadDept
-        })
+      const data = await api.post({
+        action: 'upload_file',
+        filename: file.name,
+        mimeType: file.type,
+        base64: base64Data.split(',')[1],
+        projectName,
+        department: uploadDept,
+        userEmail: profile?.email || ''
       })
-      const data = await res.json()
       if (data.ok) {
-        addToast('File uploaded to Drive successfully!', 'success')
+        addToast('File uploaded successfully!', 'success')
       } else {
         throw new Error(data.error || 'Upload failed')
       }

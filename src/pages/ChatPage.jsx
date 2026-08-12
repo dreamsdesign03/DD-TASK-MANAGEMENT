@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext'
 import { renderAvatar } from '../utils/avatar'
 import { useGoogleLogin } from '@react-oauth/google'
 import CHAT_BACKGROUNDS from '../data/chatBackgrounds'
-import { API_BASE_URL } from '../config'
+import { api } from '../api'
 export function renderMessageTextWithMentions(text, isSent = false, employeeNames = []) {
   if (!text) return null
 
@@ -679,20 +679,10 @@ export default function ChatPage() {
           })
         }
 
-        const SCRIPT_URL = API_BASE_URL
-
         let success = false
         try {
-          if (!SCRIPT_URL) return
-          const res = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            // CRITICAL: Must use text/plain to bypass Apps Script CORS preflight block
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-          })
-          if (res.ok) {
-            success = true
-          }
+          await api.post(payload)
+          success = true
         } catch (err) {
           console.warn(`Failed call to backend:`, err)
         }

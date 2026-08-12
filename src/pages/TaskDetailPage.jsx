@@ -9,7 +9,7 @@ import { processMessagesList, renderMessageText } from './ChatPage'
 import { renderAvatar } from '../utils/avatar'
 import { formatTime, formatDateTime, computeRecurringDueDate } from '../utils/dateFormat'
 import CHAT_BACKGROUNDS from '../data/chatBackgrounds'
-import { API_BASE_URL } from '../config'
+import { api } from '../api'
 /* â”€â”€â”€ Priority badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function PriorityBadge({ priority }) {
   const map = {
@@ -452,23 +452,17 @@ export default function TaskDetailPage() {
           reader.readAsDataURL(file)
         })
 
-        // Send to backend
-        const url = API_BASE_URL
-        if (!url) return
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'upload_file',
-            filename: file.name,
-            mimeType: file.type,
-            base64: base64Data.split(',')[1], // remove data:image/...;base64,
-            projectName: clientName,
-            department: task.department || 'COMMON'
-          })
+        // Send to storage
+        const data = await api.post({
+          action: 'upload_file',
+          filename: file.name,
+          mimeType: file.type,
+          base64: base64Data.split(',')[1], // remove data:image/...;base64,
+          projectName: clientName,
+          department: task.department || 'COMMON',
+          userEmail: profile?.email || ''
         })
 
-        const data = await res.json()
         if (data.ok) {
           newAttachments.push({
             name: file.name,
@@ -564,21 +558,15 @@ export default function TaskDetailPage() {
           reader.readAsDataURL(replyAttachment.file)
         })
 
-        const url = API_BASE_URL
-        if (!url) return
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'upload_file',
-            filename: replyAttachment.name,
-            mimeType: replyAttachment.type,
-            base64: base64Data.split(',')[1],
-            projectName: task.client || 'General',
-            department: task.department || 'COMMON'
-          })
+        const data = await api.post({
+          action: 'upload_file',
+          filename: replyAttachment.name,
+          mimeType: replyAttachment.type,
+          base64: base64Data.split(',')[1],
+          projectName: task.client || 'General',
+          department: task.department || 'COMMON',
+          userEmail: profile?.email || ''
         })
-        const data = await res.json()
         if (data.ok) {
           finalMessageText = `[Attachment:${replyAttachment.name}|${replyAttachment.type}|${data.downloadUrl || data.url}]${finalMessageText}`
         } else {
@@ -630,13 +618,7 @@ export default function TaskDetailPage() {
         }
       })
 
-      if (API_BASE_URL) {
-        fetch(API_BASE_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        }).catch(e => console.warn(e))
-      }
+      api.post(payload).catch(e => console.warn(e))
 
       // Webhook fallback already catches this
 

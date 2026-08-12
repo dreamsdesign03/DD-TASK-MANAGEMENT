@@ -3,7 +3,7 @@ import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 import { useApp, mqttClient } from '../context/AppContext'
 import { formatDateShort } from '../utils/dateFormat'
-import { API_BASE_URL } from '../config'
+import { api } from '../api'
 
 const safeDate = (val) => val ? formatDateShort(val) : '-'
 
@@ -110,12 +110,7 @@ export default function ClientsPage() {
         importantLinks: JSON.stringify(clientForm.importantLinks.filter(l => (l.title || '').trim() || (l.url || '').trim())),
         userEmail: profile?.email
       }
-      const res = await fetch(API_BASE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      })
-      const data = await res.json()
+      const data = await api.post(payload)
       if (data.ok) {
         await fetchClients()
         setEditingClient(null)
@@ -148,17 +143,12 @@ export default function ClientsPage() {
     setConfirmDeactivateClient(null)
     setIsUpdating(true)
     try {
-      const res = await fetch(API_BASE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'update_client',
-          clientId: client['Client ID'],
-          isActive: newStatus,
-          userEmail: profile?.email
-        })
+      const data = await api.post({
+        action: 'update_client',
+        clientId: client['Client ID'],
+        isActive: newStatus,
+        userEmail: profile?.email
       })
-      const data = await res.json()
       if (data.ok) {
         await fetchClients()
         // Update viewingClient state immediately
@@ -189,23 +179,18 @@ export default function ClientsPage() {
     }
     setIsAdding(true)
     try {
-      const res = await fetch(API_BASE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'add_client',
-          projectName: newClientForm.projectName.trim(),
-          clientName: newClientForm.clientName.trim(),
-          contactEmail: newClientForm.emails.filter(e => e.trim()).join(', '),
-          phone: newClientForm.phones.filter(p => p.trim()).join(', '),
-          projectStartDate: newClientForm.projectStartDate,
-          industry: newClientForm.industry.trim(),
-          services: newClientForm.services.join(', '),
-          importantLinks: JSON.stringify(newClientForm.importantLinks.filter(l => (l.title || '').trim() || (l.url || '').trim())),
-          userEmail: profile?.email
-        })
+      const data = await api.post({
+        action: 'add_client',
+        projectName: newClientForm.projectName.trim(),
+        clientName: newClientForm.clientName.trim(),
+        contactEmail: newClientForm.emails.filter(e => e.trim()).join(', '),
+        phone: newClientForm.phones.filter(p => p.trim()).join(', '),
+        projectStartDate: newClientForm.projectStartDate,
+        industry: newClientForm.industry.trim(),
+        services: newClientForm.services.join(', '),
+        importantLinks: JSON.stringify(newClientForm.importantLinks.filter(l => (l.title || '').trim() || (l.url || '').trim())),
+        userEmail: profile?.email
       })
-      const data = await res.json()
       if (data.ok) {
         addToast('Client added successfully!', 'success')
         setShowNewClientModal(false)

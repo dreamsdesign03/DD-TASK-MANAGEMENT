@@ -4,7 +4,8 @@ import { useToast } from './ToastContext'
 import { updateHeartbeat, logShutdown, getActiveUsers, getAllUsersMonthlyActivity, formatDuration, getAllLoggedUsers, getISTDate, getISTTime, getISTTimeAt } from '../utils/activityLog'
 import { formatDateShort, formatDateTime, computeRecurringDueDate } from '../utils/dateFormat'
 import { isElectron } from '../utils/isElectron'
-import { API_BASE_URL, DAILY_SHEET_WEB_APP_URL } from '../config'
+import { DAILY_SHEET_WEB_APP_URL } from '../config'
+import { api } from '../api'
 
 export const mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt')
 
@@ -452,8 +453,7 @@ export function AppProvider({ children }) {
     if (!profile?.email) return
     const fetchActivities = async () => {
       try {
-        const res = API_BASE_URL ? await fetch(API_BASE_URL + '?action=get_activities') : null
-        const data = res ? await res.json() : []
+        const data = await api.get('get_activities')
         setActivityLog(data)
         const todayPrefix = getISTDate()
         const mySessions = []
@@ -526,13 +526,9 @@ export function AppProvider({ children }) {
     })
     addToast('Punched In successfully', 'success')
 
-    if (API_BASE_URL) {
-      fetch(API_BASE_URL, {
-        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'punch_in', email: profile.email })
-      }).then(r => r.text()).then(t => console.log('Punch in response:', t)).catch(e => console.warn('Punch in failed:', e))
-    }
-
+    api.post({ action: 'punch_in', email: profile.email })
+      .then(t => console.log('Punch in response:', t))
+      .catch(e => console.warn('Punch in failed:', e))
     if (profile?.email && DAILY_SHEET_WEB_APP_URL) {
       const payload = JSON.stringify({
         action: 'log_punch_in',
@@ -564,13 +560,9 @@ export function AppProvider({ children }) {
     })
     addToast('Punched Out successfully', 'success')
 
-    if (API_BASE_URL) {
-      fetch(API_BASE_URL, {
-        method: 'POST', mode: 'no-cors', keepalive: true,
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'punch_out', email: prevEmail })
-      }).then(r => r.text()).then(t => console.log('Punch out response:', t)).catch(e => console.warn('Punch out failed:', e))
-    }
+    api.post({ action: 'punch_out', email: prevEmail })
+      .then(t => console.log('Punch out response:', t))
+      .catch(e => console.warn('Punch out failed:', e))
 
     // Log daily tasks & punch out to daily sheet
     if (prevEmail && DAILY_SHEET_WEB_APP_URL) {
@@ -702,13 +694,9 @@ export function AppProvider({ children }) {
     const autoOutTime = rawEnds.length > 0 ? rawEnds.sort().slice(-1)[0] : '23:59'
 
     // 1. Close the open session on the main backend
-    if (API_BASE_URL) {
-      fetch(API_BASE_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'punch_out', email: profile?.email })
-      }).then(r => r.text()).then(t => console.log('Auto punch out response:', t)).catch(e => console.warn('Auto punch out failed:', e))
-    }
+    api.post({ action: 'punch_out', email: profile?.email })
+      .then(t => console.log('Auto punch out response:', t))
+      .catch(e => console.warn('Auto punch out failed:', e))
 
     // 2. Log that day's tasks to the daily task sheet
     if (profile?.email && DAILY_SHEET_WEB_APP_URL) {
@@ -1156,8 +1144,8 @@ export function AppProvider({ children }) {
         mqttClient.publish('dd_chat_engine_v1/' + chatId, JSON.stringify(payload))
       }
 
-      // ALSO SEND TO SHEET so it persists
-      if (API_BASE_URL) {
+      // ALSO PERSIST TO SUPABASE
+      {
         const sheetPayload = {
           id: String(Date.now()),
           action: 'send',
@@ -1168,11 +1156,7 @@ export function AppProvider({ children }) {
           timestamp: new Date().toISOString(),
           type: 'personal'
         }
-        fetch(API_BASE_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(sheetPayload)
-        }).catch(err => console.warn('Failed to send read receipt to sheet:', err))
+        api.post(sheetPayload).catch(err => console.warn('Failed to send read receipt to db:', err))
       }
     }
   }, [profile?.email])
@@ -1265,32 +1249,11 @@ export function AppProvider({ children }) {
     return null
   }
 
-  // Fetch messages from n8n CHAT_ENGINE Webhook
+  // Fetch messages from Supabase (chat_messages table)
   const fetchMessages = useCallback(async () => {
-    if (!API_BASE_URL) return
     try {
-      const url = API_BASE_URL
-
-      let res = null;
-      try {
-        res = await fetch(url)
-      } catch (err) {
-        console.warn(`Failed fetch from backend:`, err)
-      }
-
-      if (res && res.ok) {
-        const textStr = await res.text()
-        let msgs = []
-        if (textStr && textStr.trim() !== '') {
-          try {
-            const data = JSON.parse(textStr)
-            if (Array.isArray(data)) {
-              msgs = data
-            }
-          } catch (e) {
-            console.warn('Failed to parse JSON:', e)
-          }
-        }
+      if (true) {
+        const msgs = await api.get()
 
         const grouped = {}
         const fetchedGroups = []
@@ -1983,13 +1946,8 @@ export function AppProvider({ children }) {
     }
 
     try {
-      if (!API_BASE_URL) return
-      const url = API_BASE_URL
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'update_task',
+      const data = await api.post({
+        action: 'update_task',
           taskId: mergedTask.id,
           client: mergedTask.client,
           month: mergedTask.project || '',
@@ -2017,11 +1975,9 @@ export function AppProvider({ children }) {
           recurringDay: mergedTask.recurringDay || '',
           recurringMonths: mergedTask.recurringMonths || ''
         })
-      })
-      const data = await res.json()
       if (!data.ok) {
-        console.error('Apps Script Error (update_task):', data.error)
-        addToast('Failed to sync to Google Sheets: ' + data.error, 'error')
+        console.error('DB Error (update_task):', data.error)
+        addToast('Failed to sync task: ' + data.error, 'error')
       }
       if (mqttClient && mqttClient.connected) {
         setTimeout(() => {
@@ -2029,7 +1985,7 @@ export function AppProvider({ children }) {
         }, 1000)
       }
     } catch (err) {
-      console.warn('Failed to sync task update to Google Sheets:', err)
+      console.warn('Failed to sync task update to DB:', err)
     }
 
     // Sync status change to daily sheet row
@@ -2217,14 +2173,9 @@ export function AppProvider({ children }) {
     // Prevent this new task from being wiped out by an immediate sync
     recentTaskUpdates.current[newTask.id] = { timestamp: Date.now(), fields: newTask, isNew: true }
     try {
-      if (!API_BASE_URL) return
-      const url = API_BASE_URL
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'add_task',
-          taskId: newTask.id,
+      const res = await api.post({
+        action: 'add_task',
+        taskId: newTask.id,
           client: newTask.client,
           month: newTask.project || '',
           taskTitle: newTask.title,
@@ -2251,8 +2202,7 @@ export function AppProvider({ children }) {
           recurringDay: newTask.recurringDay || '',
           recurringMonths: newTask.recurringMonths || ''
         })
-      })
-      if (res.ok) {
+      if (res && res.ok) {
         addToast('Task added successfully!', 'success')
       }
       if (mqttClient && mqttClient.connected) {
@@ -2261,25 +2211,19 @@ export function AppProvider({ children }) {
         }, 1000)
       }
     } catch (err) {
-      addToast('Task added locally, but failed to sync to Google Sheets.', 'error')
-      console.warn('Failed to sync new task to Google Sheets:', err)
+      addToast('Task added locally, but failed to sync to DB.', 'error')
+      console.warn('Failed to sync new task to DB:', err)
     }
   }
 
   const deleteTask = async (id) => {
-    if (!API_BASE_URL) return
     try {
-      const url = API_BASE_URL
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'delete_task',
-          taskId: id,
-          userEmail: profile?.email
-        })
+      const data = await api.post({
+        action: 'delete_task',
+        taskId: id,
+        userEmail: profile?.email
       })
-      if (response.ok) {
+      if (data && data.ok) {
         setTasks((prev) => prev.filter((t) => t.id !== id))
         if (mqttClient && mqttClient.connected) {
           mqttClient.publish('dd_task_engine_v1/sync', JSON.stringify({ action: 'sync' }))
@@ -2490,39 +2434,25 @@ export function AppProvider({ children }) {
       }
     }
 
-    if (!API_BASE_URL) {
-      tasksLoadedRef.current = true
-      return
-    }
-
     try {
-      const url = `${API_BASE_URL}?action=get_tasks&t=${Date.now()}`
-      const res = await fetch(url)
+      const parsed = await api.get('get_tasks')
+      const items = Array.isArray(parsed) ? parsed : [parsed]
+      const newTasks = []
 
-      if (res.ok) {
-        const text = await res.text()
-        try {
-          const parsed = JSON.parse(text)
-          const items = Array.isArray(parsed) ? parsed : [parsed]
-          const newTasks = []
-
-          items.forEach(item => {
-            // Filter out empty rows that Google Sheets might return
-            if (item.taskId || item.id || item["Task ID"]) {
-              const mapped = mapWebhookTaskToApp(item)
-              if (mapped) {
-                newTasks.push(mapped)
-              }
-            }
-          })
-
-          handleSetTasksWithNotification(newTasks)
-        } catch (e) {
-          console.warn('Failed to parse Google Sheets tasks:', e)
+      items.forEach(item => {
+        // Filter out empty rows that Google Sheets might return
+        if (item.taskId || item.id || item["Task ID"]) {
+          const mapped = mapWebhookTaskToApp(item)
+          if (mapped) {
+            newTasks.push(mapped)
+          }
         }
-      }
+      })
+
+      handleSetTasksWithNotification(newTasks)
     } catch (err) {
-      console.warn('Direct Google Sheet task fetch failed:', err)
+      console.warn('Direct DB task fetch failed:', err)
+      tasksLoadedRef.current = true
     }
     tasksLoadedRef.current = true
   }
@@ -2589,47 +2519,41 @@ export function AppProvider({ children }) {
   }, [profile, employees, deletedPersonalChatIds, updateTeamAndChats])
 
   const fetchTeam = async () => {
-    if (!API_BASE_URL) return
     let fetchedTeam = []
     let success = false
 
     try {
-      const url = `${API_BASE_URL}?action=get_team&t=${Date.now()}`
-      const res = await fetch(url)
+      const data = await api.get('get_team')
+      const items = Array.isArray(data) ? data : [data]
 
-      if (res.ok) {
-        const data = await res.json()
-        const items = Array.isArray(data) ? data : [data]
+      if (items.length > 0 && items[0]) {
+        const nameCounts = {}
+        items.forEach(item => {
+          const name = (item["Full Name"] || item.Name || item.name || '').trim()
+          nameCounts[name] = (nameCounts[name] || 0) + 1
+        })
 
-        if (items.length > 0 && items[0]) {
-          const nameCounts = {}
-          items.forEach(item => {
-            const name = (item["Full Name"] || item.Name || item.name || '').trim()
-            nameCounts[name] = (nameCounts[name] || 0) + 1
-          })
+        fetchedTeam = items.map((item, idx) => {
+          let name = (item["Full Name"] || item.Name || item.name || '').trim()
+          const department = item.Department || item.department || 'Development'
+          if (nameCounts[name] > 1) {
+            name = `${name} (${department})`
+          }
 
-          fetchedTeam = items.map((item, idx) => {
-            let name = (item["Full Name"] || item.Name || item.name || '').trim()
-            const department = item.Department || item.department || 'Development'
-            if (nameCounts[name] > 1) {
-              name = `${name} (${department})`
-            }
+          const email = item["Email Address"] || item.Email || item.email || ''
+          const role = item.Role || item.role || item.Designation || 'Team Member'
+          const avatar = item.Avatar || item.avatar || item["Profile Image"] || ""
+          const id = item["Employee ID"] || item.employeeId || item.id || `emp-${idx}`
+          const isActive = item["Is Active"] || 'Yes'
+          const status = isActive === 'No' ? 'Offline' : (item.Status || item.status || 'Online')
+          const location = item.Location || item.location || 'Remote'
 
-            const email = item["Email Address"] || item.Email || item.email || ''
-            const role = item.Role || item.role || item.Designation || 'Team Member'
-            const avatar = item.Avatar || item.avatar || item["Profile Image"] || ""
-            const id = item["Employee ID"] || item.employeeId || item.id || `emp-${idx}`
-            const isActive = item["Is Active"] || 'Yes'
-            const status = isActive === 'No' ? 'Offline' : (item.Status || item.status || 'Online')
-            const location = item.Location || item.location || 'Remote'
-
-            return { id, name, email, role, avatar, status, department, location, isActive }
-          })
-          success = true
-        }
+          return { id, name, email, role, avatar, status, department, location, isActive }
+        })
+        success = true
       }
     } catch (err) {
-      console.warn(`Failed to fetch team from GAS:`, err)
+      console.warn(`Failed to fetch team from DB:`, err)
     }
 
     if (success) {
@@ -2638,71 +2562,38 @@ export function AppProvider({ children }) {
   }
 
   const fetchClients = async () => {
-    if (!API_BASE_URL) return
     try {
-      const url = `${API_BASE_URL}?action=get_clients&t=${Date.now()}`
-      const res = await fetch(url)
+      const data = await api.get('get_clients')
+      const items = Array.isArray(data) ? data : (data.clients || [])
 
-      if (res.ok) {
-        const text = await res.text()
-        try {
-          const data = JSON.parse(text)
-          const items = Array.isArray(data) ? data : (data.clients || [])
-
-          setClients(prev => {
-            if (JSON.stringify(prev) === JSON.stringify(items)) return prev;
-            return items;
-          })
-        } catch (e) {
-          console.warn('Failed to parse Google Sheets clients:', e)
-        }
-      }
+      setClients(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(items)) return prev;
+        return items;
+      })
     } catch (err) {
-      console.warn('Direct Google Sheet clients fetch failed:', err)
+      console.warn('Direct DB clients fetch failed:', err)
     }
   }
 
   const fetchPayments = async () => {
-    if (!API_BASE_URL) return
     try {
-      const url = `${API_BASE_URL}?action=get_payments&t=${Date.now()}`
-      const res = await fetch(url)
-      if (res.ok) {
-        const text = await res.text()
-        try {
-          const data = JSON.parse(text)
-          const items = data.payments || []
-          setPayments(prev => {
-            if (JSON.stringify(prev) === JSON.stringify(items)) return prev;
-            return items;
-          })
-        } catch (e) {
-          console.warn('Failed to parse payments:', e)
-        }
-      }
+      const data = await api.get('get_payments')
+      const items = data.payments || []
+      setPayments(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(items)) return prev;
+        return items;
+      })
     } catch (err) {
-      console.warn('Payments fetch failed:', err)
+      console.warn('Failed to fetch payments from DB:', err)
     }
   }
 
   const updatePayment = async (paymentData) => {
-    if (!API_BASE_URL) return false
     try {
-      const url = API_BASE_URL
-      const res = await fetch(url, {
-        method: 'POST',
-        body: JSON.stringify({ ...paymentData, userEmail: profile?.email }),
-        headers: { 'Content-Type': 'text/plain' }
-      })
-      if (res.ok) {
-        const text = await res.text()
-        try {
-          const data = JSON.parse(text)
-          if (data.ok) {
-            fetchPayments()
-            return true
-          }
-        } catch (e) {}
+      const data = await api.post({ ...paymentData, userEmail: profile?.email })
+      if (data && data.ok) {
+        fetchPayments()
+        return true
       }
     } catch (err) {
       console.warn('Payment update failed:', err)
@@ -2711,23 +2602,12 @@ export function AppProvider({ children }) {
   }
 
   const fetchActivities = async () => {
-    if (!API_BASE_URL) return []
     try {
-      const url = `${API_BASE_URL}?action=get_activities&t=${Date.now()}`
-      const res = await fetch(url)
-      if (res.ok) {
-        const text = await res.text()
-        try {
-          const data = JSON.parse(text)
-          setActivityLog(data)
-          return data
-        } catch (e) {
-          console.warn('Failed to parse Google Sheets activities:', e)
-          return []
-        }
-      }
+      const data = await api.get('get_activities')
+      setActivityLog(data)
+      return data
     } catch (err) {
-      console.warn('Direct Google Sheet activities fetch failed:', err)
+      console.warn('Direct DB activities fetch failed:', err)
     }
     return []
   }

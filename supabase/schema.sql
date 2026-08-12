@@ -45,7 +45,8 @@ create table if not exists tasks (
   recurring_schedule      text,
   recurring_day           text,
   recurring_months        text,
-  last_auto_generated_date text
+  last_auto_generated_date text,
+  created_at              timestamptz default now()
 );
 
 -- ============ CLIENTS (old "Clients" sheet) ============
