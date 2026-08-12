@@ -130,7 +130,7 @@ async function googleLogin(payload) {
     .eq('email_address', email)
     .maybeSingle()
   if (error) return { ok: false, error: error.message }
-  if (!row) return { ok: false, error: 'No account linked with this Google email.' }
+  if (!row) return { ok: false, error: 'not_registered' }
   if (!row.is_active) return { ok: false, error: 'Your account is pending admin approval.' }
 
   const user = await completeLogin(row)
