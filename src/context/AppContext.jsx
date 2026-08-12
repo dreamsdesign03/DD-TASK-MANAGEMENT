@@ -450,7 +450,11 @@ export function AppProvider({ children }) {
   const tasksLoadedRef = useRef(false)
 
   useEffect(() => {
-    if (!profile?.email) return
+    const pEmail = (profile?.email || profile?.['Email Address'] || '').trim().toLowerCase()
+    if (!pEmail) return
+    const pName = (profile?.name || profile?.['Full Name'] || '').trim().toLowerCase()
+    const pEmpId = String(profile?.employeeId || profile?.['Employee ID'] || '').trim()
+
     const fetchActivities = async () => {
       try {
         const data = await api.get('get_activities')
@@ -460,10 +464,16 @@ export function AppProvider({ children }) {
         let activeTime = null
         let staleSession = null
         data.forEach(row => {
-          if ((row["Full Name"] === profile.name || row["Employee ID"] === profile.employeeId) && row["Login Date and Time"]) {
-            // e.g. "2026-07-10 13:02:55"
-            // The sheet might return a string or a Date object, ensure it's a string
-            let loginStr = row["Login Date and Time"]
+          const rowName = (row["Full Name"] || row.full_name || '').trim().toLowerCase()
+          const rowEmpId = String(row["Employee ID"] || row.employee_id || '').trim()
+          const rowEmail = String(row["Email Address"] || row.email_address || '').trim().toLowerCase()
+
+          const isMyRow = (pEmpId && rowEmpId && pEmpId === rowEmpId) ||
+                          (pEmail && rowEmail && pEmail === rowEmail) ||
+                          (pName && rowName && pName === rowName)
+
+          if (isMyRow && (row["Login Date and Time"] || row.login_date_and_time)) {
+            let loginStr = row["Login Date and Time"] || row.login_date_and_time
             if (loginStr && typeof loginStr === 'string' && loginStr.includes('T')) loginStr = loginStr.replace('T', ' ').substring(0, 19)
             if (loginStr instanceof Date) {
               const d = new Date(loginStr.getTime() - loginStr.getTimezoneOffset() * 60000)
@@ -471,7 +481,7 @@ export function AppProvider({ children }) {
             }
             if (String(loginStr).startsWith(todayPrefix)) {
               const inTime = String(loginStr).split(' ')[1] || ""
-              let outStr = row["Logout Date and Time"] || ""
+              let outStr = row["Logout Date and Time"] || row.logout_date_and_time || ""
               if (outStr instanceof Date) {
                 const d2 = new Date(outStr.getTime() - outStr.getTimezoneOffset() * 60000)
                 outStr = d2.toISOString().replace('T', ' ').substring(0, 19)
@@ -481,7 +491,7 @@ export function AppProvider({ children }) {
               const outTime = outStr ? String(outStr).split(' ')[1] : null
               mySessions.push({ in: inTime, out: outTime })
               if (!outTime) activeTime = inTime
-            } else if (!row["Logout Date and Time"]) {
+            } else if (!row["Logout Date and Time"] && !row.logout_date_and_time) {
               const staleDate = String(loginStr).substring(0, 10)
               if (/^\d{4}-\d{2}-\d{2}$/.test(staleDate) && staleDate < todayPrefix) {
                 if (!staleSession || staleDate > staleSession.date) {
@@ -495,19 +505,15 @@ export function AppProvider({ children }) {
         if (mySessions.length > 0) {
           setFirstPunchInToday(mySessions[0].in)
         }
-        if (activeTime) {
-          setIsPunchedIn(true)
-          setPunchInTime(activeTime)
-        } else {
-          setIsPunchedIn(false)
-          setPunchInTime(null)
-          if (mySessions.length === 0) setFirstPunchInToday(null)
-        }
+        setIsPunchedIn(true)
+        setPunchInTime(activeTime || (mySessions.length > 0 ? mySessions[0].in : getISTTime()))
         sessionRestoredRef.current = true
         setIsSessionRestored(true)
         if (staleSession) setPendingAutoPunchOut(staleSession)
       } catch (err) {
         console.error("Failed to fetch activities from sheet:", err)
+        setIsPunchedIn(true)
+        setPunchInTime(getISTTime())
         sessionRestoredRef.current = true
         setIsSessionRestored(true)
       }
