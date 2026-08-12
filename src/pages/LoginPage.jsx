@@ -208,7 +208,13 @@ export default function LoginPage() {
           }
           navigate('/tasks')
         } else {
-          setErrorMsg(data.error || 'Invalid credentials or Not authorized.')
+          if (data.error && /no account found/i.test(data.error)) {
+            setErrorMsg('No account found with this email. Please create an account.')
+            setIsRegisterMode(true)
+            setPassword('')
+          } else {
+            setErrorMsg(data.error || 'Invalid credentials or Not authorized.')
+          }
         }
       }
     } catch (err) {
@@ -550,8 +556,10 @@ export default function LoginPage() {
               )}
 
               <div className="mt-6 text-center text-[13px] text-gray-500">
-                {isRegisterMode && (
+                {isRegisterMode ? (
                   <button type="button" onClick={() => { setIsRegisterMode(false); setErrorMsg(''); setSuccessMsg('') }} className="text-[#702c91] font-semibold hover:underline">Cancel & Return to Login</button>
+                ) : (
+                  <button type="button" onClick={() => { setIsRegisterMode(true); setErrorMsg(''); setSuccessMsg('') }} className="text-[#702c91] font-semibold hover:underline">New here? Create an account</button>
                 )}
               </div>
 

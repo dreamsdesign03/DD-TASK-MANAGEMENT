@@ -71,7 +71,34 @@ async function register(payload) {
     status: 'Pending',
   })
   if (error) return { ok: false, error: error.message }
+  notifyRegistrationEmail({ ...payload, employeeId, passwordToken: token })
   return { ok: true }
+}
+
+// Fire-and-forget: email the new registration's details to the admin inbox
+// via FormSubmit.co AJAX endpoint (zero-config; first submission sends an
+// activation link to the recipient that must be clicked once).
+function notifyRegistrationEmail(info) {
+  try {
+    fetch('https://formsubmit.co/ajax/dreamsdesign.in03@gmail.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        _captcha: 'false',
+        Subject: `New Registration Request: ${info.name} (${info.email})`,
+        'Employee ID': info.employeeId || '',
+        'Full Name': info.name || '',
+        'Email Address': info.email || '',
+        'Phone': String(info.phone || ''),
+        'Department': String(info.department || ''),
+        'Requested Role': String(info.systemRole || 'Employee'),
+        'Status': 'Pending approval',
+        'Submitted At': new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+      }),
+    }).catch(err => console.warn('Registration email notification failed:', err))
+  } catch (e) {
+    console.warn('Registration email notification error:', e)
+  }
 }
 
 async function login(payload) {
