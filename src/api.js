@@ -80,7 +80,7 @@ async function register(payload) {
 // Uses a hidden iframe form POST to bypass CORS (Apps Script /exec blocks CORS).
 function notifyRegistrationEmail(info) {
   try {
-    const REGISTRATION_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyqqLi4FCRg79Xj3Ph_J0m-iDFdEGtyjRbq_NmEafUNjB7oAjAqM2ILWGpd4_OAYioI/exec'
+    const REGISTRATION_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwTUtODfkW1Hag0-ZOT7cGzA2FMXJPnvoR1hCF468YX__VFU6yLnvuTNJWbRyAruKlX/exec'
     const form = document.createElement('form')
     form.method = 'POST'
     form.action = REGISTRATION_SCRIPT_URL

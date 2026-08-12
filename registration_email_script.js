@@ -1,6 +1,6 @@
 // ============================================================================
 // Dreamsdesk Registration Email & One-Click Approval Script
-// Deployed Web App URL: https://script.google.com/macros/s/AKfycbyqqLi4FCRg79Xj3Ph_J0m-iDFdEGtyjRbq_NmEafUNjB7oAjAqM2ILWGpd4_OAYioI/exec
+// Deployed Web App URL: https://script.google.com/macros/s/AKfycbwTUtODfkW1Hag0-ZOT7cGzA2FMXJPnvoR1hCF468YX__VFU6yLnvuTNJWbRyAruKlX/exec
 // Live Production URL: https://dd-task-management.vercel.app
 // ============================================================================
 
@@ -8,7 +8,7 @@ var SUPABASE_URL = "https://balrgagdbbfagmgryrwv.supabase.co";
 var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhbHJnYWdkYmJmYWdtZ3J5cnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDYxNTQsImV4cCI6MjEwMjAyMjE1NH0.5R4abl_tx3jVX5Z98Pm5Mp0eePYsTFXThjYZA-_bapg";
 var VERCEL_APP_URL = "https://dd-task-management.vercel.app/login";
 var ADMIN_EMAIL = "dreamsdesign.in03@gmail.com";
-var WEB_APP_EXEC_URL = "https://script.google.com/macros/s/AKfycbyqqLi4FCRg79Xj3Ph_J0m-iDFdEGtyjRbq_NmEafUNjB7oAjAqM2ILWGpd4_OAYioI/exec";
+var WEB_APP_EXEC_URL = "https://script.google.com/macros/s/AKfycbwTUtODfkW1Hag0-ZOT7cGzA2FMXJPnvoR1hCF468YX__VFU6yLnvuTNJWbRyAruKlX/exec";
 
 /**
  * Updates user in Supabase: sets is_active = true and status = 'Approved'
