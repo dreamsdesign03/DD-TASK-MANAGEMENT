@@ -77,10 +77,12 @@ async function register(payload) {
 
 // Fire-and-forget: email the new registration's details to the admin inbox
 // via the deployed Google Apps Script (sends FROM your Gmail account).
+// Uses mode: 'no-cors' because Apps Script web apps don't return CORS headers.
 function notifyRegistrationEmail(info) {
   try {
     fetch('https://script.google.com/macros/s/AKfycbwsp6yQCUaE5-E_2-rx7tylVFlwRX0SW230xGZToTmjombUcsH6Ts1RuVUXE5UEOyH0/exec', {
       method: 'POST',
+      mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         employeeId: info.employeeId || '',
