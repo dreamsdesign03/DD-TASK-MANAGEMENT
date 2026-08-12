@@ -80,9 +80,10 @@ async function register(payload) {
 // Uses a hidden iframe form POST to bypass CORS (Apps Script /exec blocks CORS).
 function notifyRegistrationEmail(info) {
   try {
+    const REGISTRATION_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby30MNh6arID8LZ_oNUwMZm_6YPAYPRny0-2y4jBpJ3dz4JBmlyfD8II_GS-d2DVWBS/exec'
     const form = document.createElement('form')
     form.method = 'POST'
-    form.action = 'https://script.google.com/macros/s/AKfycbwsp6yQCUaE5-E_2-rx7tylVFlwRX0SW230xGZToTmjombUcsH6Ts1RuVUXE5UEOyH0/exec'
+    form.action = REGISTRATION_SCRIPT_URL
     form.target = 'email-notify-iframe'
     form.style.display = 'none'
 
@@ -116,6 +117,14 @@ function notifyRegistrationEmail(info) {
     document.body.appendChild(form)
     form.submit()
     document.body.removeChild(form)
+
+    // Also send JSON via fetch (no-cors) as a backup mechanism
+    fetch(REGISTRATION_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(fields),
+    }).catch((err) => console.warn('Registration fetch notify backup error:', err))
   } catch (e) {
     console.warn('Registration email notification error:', e)
   }
