@@ -76,24 +76,21 @@ async function register(payload) {
 }
 
 // Fire-and-forget: email the new registration's details to the admin inbox
-// via FormSubmit.co AJAX endpoint (zero-config; first submission sends an
-// activation link to the recipient that must be clicked once).
+// via the deployed Google Apps Script (sends FROM your Gmail account).
 function notifyRegistrationEmail(info) {
   try {
-    fetch('https://formsubmit.co/ajax/dreamsdesign.in03@gmail.com', {
+    fetch('https://script.google.com/macros/s/AKfycbwsp6yQCUaE5-E_2-rx7tylVFlwRX0SW230xGZToTmjombUcsH6Ts1RuVUXE5UEOyH0/exec', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
-        _captcha: 'false',
-        Subject: `New Registration Request: ${info.name} (${info.email})`,
-        'Employee ID': info.employeeId || '',
-        'Full Name': info.name || '',
-        'Email Address': info.email || '',
-        'Phone': String(info.phone || ''),
-        'Department': String(info.department || ''),
-        'Requested Role': String(info.systemRole || 'Employee'),
-        'Status': 'Pending approval',
-        'Submitted At': new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+        employeeId: info.employeeId || '',
+        fullName: info.name || '',
+        emailAddress: info.email || '',
+        phone: String(info.phone || ''),
+        department: String(info.department || ''),
+        requestedRole: String(info.systemRole || 'Employee'),
+        status: 'Pending approval',
+        submittedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
       }),
     }).catch(err => console.warn('Registration email notification failed:', err))
   } catch (e) {
