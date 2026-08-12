@@ -505,15 +505,20 @@ export function AppProvider({ children }) {
         if (mySessions.length > 0) {
           setFirstPunchInToday(mySessions[0].in)
         }
-        setIsPunchedIn(true)
-        setPunchInTime(activeTime || (mySessions.length > 0 ? mySessions[0].in : getISTTime()))
+        if (activeTime) {
+          setIsPunchedIn(true)
+          setPunchInTime(activeTime)
+        } else {
+          setIsPunchedIn(false)
+          setPunchInTime(null)
+        }
         sessionRestoredRef.current = true
         setIsSessionRestored(true)
         if (staleSession) setPendingAutoPunchOut(staleSession)
       } catch (err) {
         console.error("Failed to fetch activities from sheet:", err)
-        setIsPunchedIn(true)
-        setPunchInTime(getISTTime())
+        setIsPunchedIn(false)
+        setPunchInTime(null)
         sessionRestoredRef.current = true
         setIsSessionRestored(true)
       }

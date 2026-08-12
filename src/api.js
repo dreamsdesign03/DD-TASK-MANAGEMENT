@@ -38,7 +38,6 @@ async function recordActivity(employeeId, fullName, role, department, loginTime)
 
 async function completeLogin(row) {
   if (!row) return null
-  await recordActivity(row.employee_id, row.full_name, row.role, row.department, istNow())
   return teamRowToUser(row)
 }
 
