@@ -12,10 +12,12 @@ var WEB_APP_EXEC_URL = "https://script.google.com/macros/s/AKfycbyqqLi4FCRg79Xj3
 
 /**
  * Updates user in Supabase: sets is_active = true and status = 'Approved'
+ * Uses ilike for case-insensitive email matching and verifies row modification.
  */
 function approveUserInSupabase(email) {
   if (!email) return false;
-  var url = SUPABASE_URL + "/rest/v1/team?email_address=eq." + encodeURIComponent(email);
+  var cleanEmail = String(email).trim().toLowerCase();
+  var url = SUPABASE_URL + "/rest/v1/team?email_address=ilike." + encodeURIComponent(cleanEmail);
   var options = {
     method: "patch",
     headers: {
@@ -33,7 +35,16 @@ function approveUserInSupabase(email) {
   try {
     var response = UrlFetchApp.fetch(url, options);
     var code = response.getResponseCode();
-    return code === 200 || code === 204;
+    if (code === 200 || code === 204) {
+      var bodyText = response.getContentText();
+      try {
+        var data = JSON.parse(bodyText);
+        return Array.isArray(data) && data.length > 0;
+      } catch (e) {
+        return true;
+      }
+    }
+    return false;
   } catch (err) {
     Logger.log("Error updating Supabase: " + err.message);
     return false;
@@ -51,7 +62,7 @@ function doGet(e) {
   if (action === "approve_user" || action === "approve" || email) {
     var success = approveUserInSupabase(email);
     
-    var htmlOutput = `
+    var htmlOutput = success ? `
       <!DOCTYPE html>
       <html>
       <head>
@@ -81,6 +92,44 @@ function doGet(e) {
           <p>The account for <span class="email-highlight">${email}</span> has been activated in Dreamsdesk.</p>
           <div>
             <span class="badge">Status: Approved</span>
+          </div>
+          <div>
+            <a href="${VERCEL_APP_URL}" class="btn-login" target="_blank">Open Dreamsdesk Web App</a>
+          </div>
+          <div class="footer">
+            Dreamsdesk Automated Administration System
+          </div>
+        </div>
+      </body>
+      </html>
+    ` : `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Approval Error - Dreamsdesk</title>
+        <style>
+          body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #F3F4F6; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+          .card { background: #ffffff; padding: 44px 36px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); text-align: center; max-width: 450px; width: 100%; border: 1px solid #E5E7EB; }
+          .icon-container { width: 68px; height: 68px; background: #FEF2F2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+          .icon { color: #EF4444; font-size: 36px; font-weight: bold; }
+          h1 { color: #111827; font-size: 24px; font-weight: 700; margin: 0 0 10px 0; }
+          p { color: #4B5563; font-size: 15px; line-height: 1.5; margin: 0 0 24px 0; }
+          .badge { display: inline-block; background: #FEE2E2; color: #991B1B; font-weight: 700; padding: 8px 20px; border-radius: 9999px; font-size: 14px; margin-bottom: 28px; }
+          .btn-login { display: inline-block; background-color: #4C1D95; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+          .footer { margin-top: 32px; font-size: 12px; color: #9CA3AF; border-top: 1px solid #F3F4F6; padding-top: 16px; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="icon-container">
+            <span class="icon">✕</span>
+          </div>
+          <h1>User Not Found</h1>
+          <p>Could not find account for <strong>${email}</strong> in Supabase database.</p>
+          <div>
+            <span class="badge">Status: Update Failed</span>
           </div>
           <div>
             <a href="${VERCEL_APP_URL}" class="btn-login" target="_blank">Open Dreamsdesk Web App</a>
