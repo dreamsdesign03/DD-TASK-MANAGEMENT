@@ -1,6 +1,6 @@
 // ============================================================================
 // Dreamsdesk Registration Email & One-Click Approval Script
-// Deployed Web App URL: https://script.google.com/macros/s/AKfycbxf5IQrxEfd-dwENBLbSI3kHLxfeIgXhskCW2ZKcRmxsSNeZSTuOx22bxuPO1uqHi6y/exec
+// Deployed Web App URL: https://script.google.com/macros/s/AKfycbzXm6dwiPwHwfEPG_KoCeeClPpCP2_kq0xI0HqzwQQJBcexdegOLQM-1xrpHKEauCY-/exec
 // Live Production URL: https://dd-task-management.vercel.app
 // ============================================================================
 
@@ -291,8 +291,11 @@ function doPost(e) {
 
 /**
  * Fetches the email addresses of all approved/active team members.
+ * Returns { emails: [...], debug: { code, body, error, count } } so failures
+ * are never silent.
  */
 function getActiveTeamEmails() {
+  var result = { emails: [], debug: {} };
   var headers = {
     "apikey": SUPABASE_KEY,
     "Authorization": "Bearer " + SUPABASE_KEY,
@@ -300,16 +303,22 @@ function getActiveTeamEmails() {
   };
   try {
     var res = UrlFetchApp.fetch(SUPABASE_URL + "/rest/v1/team?select=email_address,full_name,is_active,status", { headers: headers, muteHttpExceptions: true });
-    if (res.getResponseCode() !== 200) return [];
+    result.debug.code = res.getResponseCode();
+    if (res.getResponseCode() !== 200) {
+      result.debug.body = String(res.getContentText()).slice(0, 400);
+      return result;
+    }
     var rows = JSON.parse(res.getContentText());
-    return rows.filter(function (r) {
+    result.debug.count = rows.length;
+    result.emails = rows.filter(function (r) {
       var active = r.is_active === true || r.is_active === "true" || r.is_active === "Yes" || r.is_active === "yes";
       var status = String(r.status || "").toLowerCase();
       return active || status === "approved" || status === "active";
     }).map(function (r) { return { email: r.email_address, name: r.full_name }; });
   } catch (e) {
-    return [];
+    result.debug.error = e.message;
   }
+  return result;
 }
 
 /**
@@ -332,10 +341,17 @@ function handleNewClientNotification(data) {
     saveClientDriveLink(clientId, driveUrl);
   }
 
-  var team = getActiveTeamEmails();
-  var allEmails = team.map(function (r) { return r.email; }).filter(Boolean);
+  var teamResult = getActiveTeamEmails();
+  var allEmails = teamResult.emails.map(function (r) { return r.email; }).filter(Boolean);
+  var bccEmails = allEmails.filter(function (em) { return String(em).toLowerCase() !== String(ADMIN_EMAIL).toLowerCase(); }).join(",");
   if (allEmails.length === 0) {
-    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "No active team members to notify" }))
+    MailApp.sendEmail({
+      to: ADMIN_EMAIL,
+      subject: "New Client/Project Added: " + projectName + " - Dreamsdesk",
+      htmlBody: htmlBody,
+      name: "Dreamsdesk - Dreams Design"
+    });
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, recipients: 1, warning: "No active team members found - emailed admin only", debug: teamResult.debug }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
@@ -396,12 +412,12 @@ function handleNewClientNotification(data) {
 
   MailApp.sendEmail({
     to: ADMIN_EMAIL,
-    bcc: allEmails.filter(function (em) { return String(em).toLowerCase() !== String(ADMIN_EMAIL).toLowerCase(); }).join(","),
+    bcc: bccEmails,
     subject: "New Client/Project Added: " + projectName + " - Dreamsdesk",
     htmlBody: htmlBody,
     name: "Dreamsdesk - Dreams Design"
   });
 
-  return ContentService.createTextOutput(JSON.stringify({ ok: true, recipients: allEmails.length }))
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, recipients: allEmails.length + 1 }))
     .setMimeType(ContentService.MimeType.JSON);
 }
