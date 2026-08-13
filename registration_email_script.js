@@ -107,6 +107,9 @@ function diagnoseDrive() {
   } catch (e1) {
     lines.push("Parent folder NOT ACCESSIBLE: " + e1.message);
   }
+  for (var i = 0; i < lines.length; i++) {
+    Logger.log(lines[i]);
+  }
   return lines.join("\n");
 }
 
