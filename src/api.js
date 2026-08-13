@@ -239,7 +239,21 @@ async function punchIn(payload) {
     .eq('email_address', email)
     .maybeSingle()
   if (!row) return { ok: false, error: 'User not found.' }
-  await recordActivity(row.employee_id, row.full_name, row.role, row.department, istNow())
+
+  // Idempotent punch-in: reuse an already-open session for today instead of
+  // creating duplicate rows every time the user logs back in and punches in.
+  const today = istDate()
+  const { data: existing } = await supabase
+    .from('activity')
+    .select('id')
+    .eq('employee_id', row.employee_id)
+    .is('logout_date_and_time', null)
+    .gte('login_date_and_time', `${today} 00:00:00`)
+    .lt('login_date_and_time', `${today} 23:59:59`)
+    .maybeSingle()
+  if (!existing) {
+    await recordActivity(row.employee_id, row.full_name, row.role, row.department, istNow())
+  }
   await supabase.from('team').update({ status: 'Online' }).eq('employee_id', row.employee_id)
   return { ok: true }
 }

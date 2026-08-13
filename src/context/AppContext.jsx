@@ -461,7 +461,6 @@ export function AppProvider({ children }) {
         setActivityLog(data)
         const todayPrefix = getISTDate()
         const mySessions = []
-        let activeTime = null
         let staleSession = null
         data.forEach(row => {
           const rowName = (row["Full Name"] || row.full_name || '').trim().toLowerCase()
@@ -490,7 +489,6 @@ export function AppProvider({ children }) {
               }
               const outTime = outStr ? String(outStr).split(' ')[1] : null
               mySessions.push({ in: inTime, out: outTime })
-              if (!outTime) activeTime = inTime
             } else if (!row["Logout Date and Time"] && !row.logout_date_and_time) {
               const staleDate = String(loginStr).substring(0, 10)
               if (/^\d{4}-\d{2}-\d{2}$/.test(staleDate) && staleDate < todayPrefix) {
@@ -505,13 +503,11 @@ export function AppProvider({ children }) {
         if (mySessions.length > 0) {
           setFirstPunchInToday(mySessions[0].in)
         }
-        if (activeTime) {
-          setIsPunchedIn(true)
-          setPunchInTime(activeTime)
-        } else {
-          setIsPunchedIn(false)
-          setPunchInTime(null)
-        }
+        // Always start punched-out after login — the user must explicitly
+        // Punch In before the tasks dashboard unlocks. We never auto-restore
+        // an active session from a previous day/login.
+        setIsPunchedIn(false)
+        setPunchInTime(null)
         sessionRestoredRef.current = true
         setIsSessionRestored(true)
         if (staleSession) setPendingAutoPunchOut(staleSession)
