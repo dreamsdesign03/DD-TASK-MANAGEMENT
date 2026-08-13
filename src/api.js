@@ -77,7 +77,7 @@ async function register(payload) {
 // Fire-and-forget: email the team via the deployed Google Apps Script
 // (sends FROM your Gmail account). Uses a hidden iframe form POST to bypass
 // CORS (Apps Script /exec blocks CORS).
-const EMAIL_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXMGpJzfOi3i3RNYEGRCVL-XZFJiSyXhDKQrbOdeueCF___gUZ0wQHDKGWGlkUqHm9/exec'
+const EMAIL_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxf5IQrxEfd-dwENBLbSI3kHLxfeIgXhskCW2ZKcRmxsSNeZSTuOx22bxuPO1uqHi6y/exec'
 
 function postToEmailScript(fields) {
   try {
