@@ -87,6 +87,30 @@ function escapeHtml(str) {
 }
 
 /**
+ * Run this from the editor (no deployment needed) to check why Drive folder
+ * creation fails. Reports the running account and whether it can write to the
+ * CLIENTS_DRIVE_PARENT_ID folder.
+ */
+function diagnoseDrive() {
+  var lines = [];
+  lines.push("Script runs as: " + Session.getEffectiveUser().getEmail());
+  try {
+    var parent = DriveApp.getFolderById(CLIENTS_DRIVE_PARENT_ID);
+    lines.push("Parent folder found: " + parent.getName());
+    lines.push("Parent editable by this account: " + parent.isEditable());
+    try {
+      var test = parent.createFolder("ZZ_DIAG_DELETE_ME");
+      lines.push("Create test folder: OK -> " + test.getUrl());
+    } catch (e2) {
+      lines.push("Create test folder FAILED: " + e2.message);
+    }
+  } catch (e1) {
+    lines.push("Parent folder NOT ACCESSIBLE: " + e1.message);
+  }
+  return lines.join("\n");
+}
+
+/**
  * Updates user in Supabase: sets is_active = true and status = 'Approved'
  * Uses ilike for case-insensitive email matching and verifies row modification.
  */
