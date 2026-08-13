@@ -74,33 +74,24 @@ async function register(payload) {
   return { ok: true }
 }
 
-// Fire-and-forget: email the new registration's details to the admin inbox
-// via the deployed Google Apps Script (sends FROM your Gmail account).
-// Uses a hidden iframe form POST to bypass CORS (Apps Script /exec blocks CORS).
-function notifyRegistrationEmail(info) {
+// Fire-and-forget: email the team via the deployed Google Apps Script
+// (sends FROM your Gmail account). Uses a hidden iframe form POST to bypass
+// CORS (Apps Script /exec blocks CORS).
+const EMAIL_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXMGpJzfOi3i3RNYEGRCVL-XZFJiSyXhDKQrbOdeueCF___gUZ0wQHDKGWGlkUqHm9/exec'
+
+function postToEmailScript(fields) {
   try {
-    const REGISTRATION_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXMGpJzfOi3i3RNYEGRCVL-XZFJiSyXhDKQrbOdeueCF___gUZ0wQHDKGWGlkUqHm9/exec'
     const form = document.createElement('form')
     form.method = 'POST'
-    form.action = REGISTRATION_SCRIPT_URL
+    form.action = EMAIL_SCRIPT_URL
     form.target = 'email-notify-iframe'
     form.style.display = 'none'
 
-    const fields = {
-      employeeId: info.employeeId || '',
-      fullName: info.name || '',
-      emailAddress: info.email || '',
-      phone: String(info.phone || ''),
-      department: String(info.department || ''),
-      requestedRole: String(info.systemRole || 'Employee'),
-      status: 'Pending approval',
-      submittedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-    }
     for (const [key, value] of Object.entries(fields)) {
       const input = document.createElement('input')
       input.type = 'hidden'
       input.name = key
-      input.value = value
+      input.value = String(value ?? '')
       form.appendChild(input)
     }
 
@@ -118,15 +109,44 @@ function notifyRegistrationEmail(info) {
     document.body.removeChild(form)
 
     // Also send JSON via fetch (no-cors) as a backup mechanism
-    fetch(REGISTRATION_SCRIPT_URL, {
+    fetch(EMAIL_SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(fields),
-    }).catch((err) => console.warn('Registration fetch notify backup error:', err))
+    }).catch((err) => console.warn('Email notify fetch backup error:', err))
   } catch (e) {
-    console.warn('Registration email notification error:', e)
+    console.warn('Email notification error:', e)
   }
+}
+
+function notifyRegistrationEmail(info) {
+  postToEmailScript({
+    action: 'registration',
+    employeeId: info.employeeId || '',
+    fullName: info.name || '',
+    emailAddress: info.email || '',
+    phone: String(info.phone || ''),
+    department: String(info.department || ''),
+    requestedRole: String(info.systemRole || 'Employee'),
+    status: 'Pending approval',
+    submittedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+  })
+}
+
+function notifyNewClient(info) {
+  postToEmailScript({
+    action: 'notify_new_client',
+    projectName: info.projectName || '',
+    clientName: info.clientName || '',
+    contactEmail: String(info.contactEmail || ''),
+    phone: String(info.phone || ''),
+    industry: String(info.industry || ''),
+    services: String(info.services || ''),
+    projectStartDate: String(info.projectStartDate || ''),
+    addedBy: info.addedBy || '',
+    submittedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+  })
 }
 
 function isUserActive(row) {
@@ -347,6 +367,17 @@ async function addClient(payload) {
   payRow.data_entry_date_and_time = istNow()
   const { error: payErr } = await supabase.from('payments').insert(payRow)
   if (payErr) console.warn('Failed to create payment row:', payErr.message)
+
+  notifyNewClient({
+    projectName: row.project_name,
+    clientName: row.client_name,
+    contactEmail: row.contact_email,
+    phone: row.phone,
+    industry: row.industry,
+    services: row.services,
+    projectStartDate: row.project_start_date,
+    addedBy: payload.userEmail || '',
+  })
 
   return { ok: true, id: row.client_id }
 }

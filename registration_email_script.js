@@ -168,6 +168,12 @@ function doPost(e) {
       }
     }
 
+    var action = String(data.action || '').trim();
+
+    if (action === "notify_new_client") {
+      return handleNewClientNotification(data);
+    }
+
     var fullName = data.fullName || data.name || data["Full Name"] || 'New User';
     var emailAddress = data.emailAddress || data.email || data["Email Address"] || '';
     var phone = data.phone || data["Phone"] || 'N/A';
@@ -234,4 +240,110 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+/**
+ * Fetches the email addresses of all approved/active team members.
+ */
+function getActiveTeamEmails() {
+  var headers = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + SUPABASE_KEY,
+    "Content-Type": "application/json"
+  };
+  try {
+    var res = UrlFetchApp.fetch(SUPABASE_URL + "/rest/v1/team?select=email_address,full_name,is_active,status", { headers: headers, muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) return [];
+    var rows = JSON.parse(res.getContentText());
+    return rows.filter(function (r) {
+      var active = r.is_active === true || r.is_active === "true" || r.is_active === "Yes" || r.is_active === "yes";
+      var status = String(r.status || "").toLowerCase();
+      return active || status === "approved" || status === "active";
+    }).map(function (r) { return { email: r.email_address, name: r.full_name }; });
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Sends a "new client / project added" notification to all active team members.
+ */
+function handleNewClientNotification(data) {
+  var projectName = data.projectName || data.project_name || data["Project Name"] || "New Project";
+  var clientName = data.clientName || data.client_name || data["Client Name"] || "N/A";
+  var contactEmail = data.contactEmail || data.contact_email || data["Contact Email"] || "N/A";
+  var phone = data.phone || data["Phone"] || "N/A";
+  var industry = data.industry || data["Industry"] || "N/A";
+  var services = data.services || data["Services"] || "N/A";
+  var startDate = data.projectStartDate || data.project_start_date || data["Project Start Date"] || "N/A";
+  var addedBy = data.addedBy || "Dreamsdesk Team";
+
+  var team = getActiveTeamEmails();
+  var allEmails = team.map(function (r) { return r.email; }).filter(Boolean);
+  if (allEmails.length === 0) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "No active team members to notify" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var htmlBody = `
+    <div style="background-color: #F3F4F6; padding: 40px 10px; font-family: Arial, sans-serif;">
+      <div style="max-width: 550px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; padding: 40px; border: 1px solid #E5E7EB; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <h2 style="color: #4C1D95; font-size: 24px; font-weight: 700; margin: 0 0 6px 0; text-align: center;">New Client / Project Added</h2>
+        <p style="color: #6B7280; font-size: 14px; margin: 0 0 28px 0; text-align: center;">A new client/project has been added to Dreamsdesk.</p>
+        <div style="background-color: #F9FAFB; border-radius: 12px; padding: 16px 20px; margin-bottom: 28px; border: 1px solid #F3F4F6;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr>
+              <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6; width: 35%;">Project Name</td>
+              <td style="padding: 10px 0; color: #111827; font-weight: 700; border-bottom: 1px solid #F3F4F6; text-align: right;">${projectName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6;">Client Name</td>
+              <td style="padding: 10px 0; color: #111827; font-weight: 700; border-bottom: 1px solid #F3F4F6; text-align: right;">${clientName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6;">Contact Email</td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right;"><a href="mailto:${contactEmail}" style="color: #2563EB; text-decoration: none; font-weight: 600;">${contactEmail}</a></td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6;">Phone</td>
+              <td style="padding: 10px 0; color: #111827; font-weight: 700; border-bottom: 1px solid #F3F4F6; text-align: right;">${phone}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6;">Industry</td>
+              <td style="padding: 10px 0; color: #111827; font-weight: 700; border-bottom: 1px solid #F3F4F6; text-align: right;">${industry}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6;">Services</td>
+              <td style="padding: 10px 0; color: #111827; font-weight: 700; border-bottom: 1px solid #F3F4F6; text-align: right;">${services}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6;">Start Date</td>
+              <td style="padding: 10px 0; color: #111827; font-weight: 700; border-bottom: 1px solid #F3F4F6; text-align: right;">${startDate}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: #6B7280; font-weight: 500;">Added By</td>
+              <td style="padding: 10px 0; color: #111827; font-weight: 700; text-align: right;">${addedBy}</td>
+            </tr>
+          </table>
+        </div>
+        <div style="text-align: center; margin-bottom: 28px;">
+          <a href="https://dd-task-management.vercel.app/clients" target="_blank" style="display: inline-block; background-color: #4C1D95; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 15px; box-shadow: 0 4px 12px rgba(76, 29, 149, 0.25);">View Clients</a>
+        </div>
+        <div style="border-top: 1px solid #F3F4F6; padding-top: 20px; text-align: center;">
+          <p style="color: #9CA3AF; font-size: 12px; margin: 0; line-height: 1.5;">Dreamsdesk Automated System<br>You received this because you are a member of the Dreamsdesk team.</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  MailApp.sendEmail({
+    to: ADMIN_EMAIL,
+    bcc: allEmails.filter(function (em) { return String(em).toLowerCase() !== String(ADMIN_EMAIL).toLowerCase(); }).join(","),
+    subject: "New Client/Project Added: " + projectName + " - Dreamsdesk",
+    htmlBody: htmlBody,
+    name: "Dreamsdesk - Dreams Design"
+  });
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, recipients: allEmails.length }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
