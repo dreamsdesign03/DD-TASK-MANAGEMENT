@@ -50,13 +50,14 @@ const buildEmpMaps = (employees) => {
 }
 
 // "EMP-001, EMP-002" -> "Mansi Shah, Fernandas C". Non-ID values pass through
-// unchanged (legacy rows that still contain names).
+// unchanged (legacy rows that still contain names). The literal token
+// 'Unassigned' is treated as empty so old rows never render it again.
 const resolveAssigneeValue = (val, idToName) =>
   String(val || '')
     .split(',')
     .map((p) => {
       const t = String(p).trim()
-      if (!t) return ''
+      if (!t || t.toLowerCase() === 'unassigned') return ''
       return idToName[t] || t
     })
     .filter(Boolean)
