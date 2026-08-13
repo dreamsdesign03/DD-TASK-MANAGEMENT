@@ -100,7 +100,8 @@ function uploadDriveFile(data) {
     }
 
     var bytes = Utilities.base64Decode(base64);
-    var file = deptFolder.createFile(bytes, filename, mimeType);
+    var blob = Utilities.newBlob(bytes, mimeType, filename);
+    var file = deptFolder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     return { ok: true, url: file.getUrl(), name: file.getName(), dept: department };
   } catch (e) {
