@@ -310,7 +310,14 @@ export default function TaskDetailPage() {
   }
 
   const handleAddSubtask = () => {
-    if (!newSubtaskTitle.trim()) return
+    if (!newSubtaskTitle.trim()) {
+      addToast('Please enter a subtask name', 'error')
+      return
+    }
+    if (!newSubtaskAssignee || newSubtaskAssignee.length === 0) {
+      addToast('Please add at least one assignee', 'error')
+      return
+    }
     let maxSubIdNum = 0;
     const existingSubtasks = tasks.filter(t => String(t.mainTaskId) === String(task.id) && (t.taskType === 'Sub Task' || t.taskType === 'Subtask'));
     existingSubtasks.forEach(st => {
@@ -332,7 +339,7 @@ export default function TaskDetailPage() {
       }
     }
 
-    const subtaskNames = (newSubtaskAssignee && newSubtaskAssignee.length > 0) ? newSubtaskAssignee : [profile?.name || 'User']
+    const subtaskNames = newSubtaskAssignee
     const assignedEmps = employees?.filter(e => subtaskNames.map(s => String(s).trim()).includes(e.name)) || [];
     const subtaskIds = assignedEmps.map(e => e.id).filter(Boolean).join(', ')
     const subtaskEmails = assignedEmps.map(e => e.email).filter(Boolean).join(', ')
@@ -386,7 +393,11 @@ export default function TaskDetailPage() {
       addToast('Subtask title cannot be empty', 'error')
       return
     }
-    const subtaskNames = (editSubtaskAssignee && editSubtaskAssignee.length > 0) ? editSubtaskAssignee : [profile?.name || 'User']
+    if (!editSubtaskAssignee || editSubtaskAssignee.length === 0) {
+      addToast('Please add at least one assignee', 'error')
+      return
+    }
+    const subtaskNames = editSubtaskAssignee
     const assignedEmps = employees?.filter(e => subtaskNames.map(s => String(s).trim()).includes(e.name)) || []
     let calculatedOverdue = 'No'
     if (editSubtaskDueDate) {

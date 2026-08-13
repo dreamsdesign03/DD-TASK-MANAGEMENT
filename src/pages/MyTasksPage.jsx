@@ -90,6 +90,10 @@ export default function MyTasksPage() {
       addToast('Please fill out all required fields', 'error')
       return
     }
+    if (!assignedTo.filter(Boolean).length) {
+      addToast('Please add at least one assignee', 'error')
+      return
+    }
 
     let formattedDate = ''
     if (dueDate) {
