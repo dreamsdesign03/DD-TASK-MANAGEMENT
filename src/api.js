@@ -565,6 +565,7 @@ const POST_HANDLERS = {
   send: sendMessage,
   read_receipt: receipt,
   delivery_receipt: receipt,
+  upload_task_file: uploadTaskFile,
 }
 
 export const api = {
