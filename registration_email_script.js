@@ -60,6 +60,18 @@ function saveClientDriveLink(clientId, driveUrl) {
 }
 
 /**
+ * Run this ONCE from the Apps Script editor to authorize all required scopes
+ * (Gmail, Google Drive, external requests). Without these, the web app can only
+ * send the admin email but cannot create Drive folders or read the team table.
+ */
+function __authorize__() {
+  MailApp.getRemainingDailyQuota();
+  DriveApp.getRootFolder();
+  UrlFetchApp.fetch("https://www.google.com", { muteHttpExceptions: true });
+  return "Authorized";
+}
+
+/**
  * Updates user in Supabase: sets is_active = true and status = 'Approved'
  * Uses ilike for case-insensitive email matching and verifies row modification.
  */
