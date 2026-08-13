@@ -340,6 +340,7 @@ function handleNewClientNotification(data) {
   if (driveUrl) {
     saveClientDriveLink(clientId, driveUrl);
   }
+  var folderInfo = { created: !!driveUrl, error: folderResult.error || null, url: driveUrl || null };
 
   var teamResult = getActiveTeamEmails();
   var allEmails = teamResult.emails.map(function (r) { return r.email; }).filter(Boolean);
@@ -351,7 +352,7 @@ function handleNewClientNotification(data) {
       htmlBody: htmlBody,
       name: "Dreamsdesk - Dreams Design"
     });
-    return ContentService.createTextOutput(JSON.stringify({ ok: true, recipients: 1, warning: "No active team members found - emailed admin only", debug: teamResult.debug }))
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, recipients: 1, warning: "No active team members found - emailed admin only", debug: teamResult.debug, folder: folderInfo }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
@@ -418,6 +419,6 @@ function handleNewClientNotification(data) {
     name: "Dreamsdesk - Dreams Design"
   });
 
-  return ContentService.createTextOutput(JSON.stringify({ ok: true, recipients: allEmails.length + 1 }))
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, recipients: allEmails.length + 1, folder: folderInfo }))
     .setMimeType(ContentService.MimeType.JSON);
 }
