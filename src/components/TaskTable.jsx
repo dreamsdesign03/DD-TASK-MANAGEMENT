@@ -549,6 +549,8 @@ export default function TaskTable() {
 
     const assignedEmps = employees?.filter(e => quickAddAssignee.includes(e.name)) || []
     const finalAssignees = quickAddAssignee.length > 0 ? quickAddAssignee : [profile?.name || 'Unassigned']
+    const quickAddAssigneeIds = assignedEmps.length > 0 ? assignedEmps.map(e => e.id).join(', ') : (profile?.employeeId || profile?.id || '')
+    const quickAddAssigneeEmails = assignedEmps.length > 0 ? assignedEmps.map(e => e.email).join(', ') : (profile?.email || '')
 
     const newTask = {
       id: nextIdStr,
@@ -563,9 +565,13 @@ export default function TaskTable() {
       statusUpdatedOn: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }),
       department: newDept,
       assignedTo: finalAssignees.join(', '),
+      assignedToIds: quickAddAssigneeIds,
       assignedBy: profile?.name || '',
-      employeeId: assignedEmps.length > 0 ? assignedEmps.map(e => e.id).join(', ') : (profile?.id || ''),
-      assignedEmail: assignedEmps.length > 0 ? assignedEmps.map(e => e.email).join(', ') : (profile?.email || ''),
+      assignedById: profile?.employeeId || profile?.id || '',
+      employeeIds: quickAddAssigneeIds,
+      employeeId: quickAddAssigneeIds,
+      assignedEmails: quickAddAssigneeEmails,
+      assignedEmail: quickAddAssigneeEmails,
       description: { intro: 'No description provided.', bullets: [], outro: '' },
       comments: [],
       attachments: [],

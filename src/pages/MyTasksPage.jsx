@@ -116,6 +116,8 @@ export default function MyTasksPage() {
     const nextIdStr = `T-${String(nextIdNum).padStart(4, '0')}${Date.now().toString().slice(-6)}`
 
     const assignedEmps = employees?.filter(e => assignedTo.includes(e.name)) || []
+    const assigneeIds = assignedEmps.map(e => e.id).filter(Boolean).join(', ')
+    const assigneeEmails = assignedEmps.map(e => e.email).filter(Boolean).join(', ')
 
     const newTask = {
       id: nextIdStr,
@@ -132,9 +134,13 @@ export default function MyTasksPage() {
       done: false,
       department,
       assignedTo: assignedTo.join(', '),
+      assignedToIds: assigneeIds || (profile?.employeeId || profile?.id || ''),
       assignedBy,
-      employeeId: assignedEmps.map(e => e.id).filter(Boolean).join(', '),
-      assignedEmail: assignedEmps.map(e => e.email).filter(Boolean).join(', '),
+      assignedById: profile?.employeeId || profile?.id || '',
+      employeeIds: assigneeIds || (profile?.employeeId || profile?.id || ''),
+      employeeId: assigneeIds || (profile?.employeeId || profile?.id || ''),
+      assignedEmails: assigneeEmails || (profile?.email || ''),
+      assignedEmail: assigneeEmails || (profile?.email || ''),
       description: {
         intro: description.trim() || 'No description provided.',
         bullets: [],

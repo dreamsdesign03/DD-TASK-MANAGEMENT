@@ -252,11 +252,13 @@ export default function TaskDetailPage() {
   const handleSaveAssignees = () => {
     const names = []
     const emails = []
+    const ids = []
     selectedAssignees.filter(Boolean).forEach(v => {
       const emp = employees?.find(e => e.email === v)
       if (emp) {
         names.push(emp.name)
         emails.push(emp.email)
+        ids.push(emp.id)
       } else {
         names.push(v)
         // Only treat as email if it contains @, otherwise it's a fallback name
@@ -277,7 +279,9 @@ export default function TaskDetailPage() {
     }
     updateTask(task.id, {
       assignedTo: names.join(', '),
-      assignedEmail: emails.join(', ')
+      assignedToIds: ids.filter(Boolean).join(', '),
+      assignedEmails: emails.join(', '),
+      employeeIds: ids.filter(Boolean).join(', ')
     })
     setIsAssigneeModalOpen(false)
   }
@@ -329,6 +333,8 @@ export default function TaskDetailPage() {
     }
 
     const assignedEmps = employees?.filter(e => (newSubtaskAssignee || []).map(s => String(s).trim()).includes(e.name)) || [];
+    const subtaskIds = assignedEmps.map(e => e.id).filter(Boolean).join(', ')
+    const subtaskEmails = assignedEmps.map(e => e.email).filter(Boolean).join(', ')
 
     const newSt = {
       id: newStId,
@@ -340,9 +346,13 @@ export default function TaskDetailPage() {
       department: task.department,
       status: 'Pending',
       assignedTo: (newSubtaskAssignee || []).join(', '),
+      assignedToIds: subtaskIds,
       assignedBy: profile?.name || 'User',
-      employeeId: assignedEmps.map(e => e.id).filter(Boolean).join(', '),
-      assignedEmail: assignedEmps.map(e => e.email).filter(Boolean).join(', '),
+      assignedById: profile?.employeeId || profile?.id || '',
+      employeeIds: subtaskIds,
+      employeeId: subtaskIds,
+      assignedEmails: subtaskEmails,
+      assignedEmail: subtaskEmails,
       priority: newSubtaskPriority,
       dueDate: newSubtaskDueDate,
       daysOverdue: calculatedOverdue,
@@ -384,8 +394,9 @@ export default function TaskDetailPage() {
     updateTask(editingSubtask.id, {
       title,
       assignedTo: (editSubtaskAssignee || []).join(', '),
-      assignedEmail: assignedEmps.map(e => e.email).filter(Boolean).join(', '),
-      employeeId: assignedEmps.map(e => e.id).filter(Boolean).join(', '),
+      assignedToIds: assignedEmps.map(e => e.id).filter(Boolean).join(', '),
+      assignedEmails: assignedEmps.map(e => e.email).filter(Boolean).join(', '),
+      employeeIds: assignedEmps.map(e => e.id).filter(Boolean).join(', '),
       priority: editSubtaskPriority,
       dueDate: editSubtaskDueDate,
       daysOverdue: calculatedOverdue
