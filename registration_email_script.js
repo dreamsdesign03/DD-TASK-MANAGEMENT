@@ -63,12 +63,27 @@ function saveClientDriveLink(clientId, driveUrl) {
  * Run this ONCE from the Apps Script editor to authorize all required scopes
  * (Gmail, Google Drive, external requests). Without these, the web app can only
  * send the admin email but cannot create Drive folders or read the team table.
+ *
+ * Note: Named without trailing underscore so it appears in the Apps Script toolbar dropdown menu.
  */
-function __authorize__() {
+function authorizePermissions() {
   MailApp.getRemainingDailyQuota();
   DriveApp.getRootFolder();
   UrlFetchApp.fetch("https://www.google.com", { muteHttpExceptions: true });
   return "Authorized";
+}
+
+function __authorize__() {
+  return authorizePermissions();
+}
+
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /**
@@ -381,7 +396,7 @@ function handleNewClientNotification(data) {
             </tr>
             <tr>
               <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6;">Drive Folder</td>
-              <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right;">${driveUrl ? '<a href="' + driveUrl + '" target="_blank" style="color: #2563EB; text-decoration: none; font-weight: 600;">Open in Drive</a>' : '<span style="color: #DC2626; font-weight: 600;">Could not create</span>'}</td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right;">${driveUrl ? '<a href="' + driveUrl + '" target="_blank" style="color: #2563EB; text-decoration: none; font-weight: 600;">Open in Drive</a>' : '<span style="color: #DC2626; font-weight: 600;">Could not create: ' + escapeHtml(folderResult.error || "unknown error") + '</span>'}</td>
             </tr>
             <tr>
               <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6;">Client Name</td>
