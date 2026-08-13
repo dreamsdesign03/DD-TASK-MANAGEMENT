@@ -551,11 +551,31 @@ export function AppProvider({ children }) {
         if (mySessions.length > 0) {
           setFirstPunchInToday(mySessions[0].in)
         }
-        // Always start punched-out after login — the user must explicitly
-        // Punch In before the tasks dashboard unlocks. We never auto-restore
-        // an active session from a previous day/login.
-        setIsPunchedIn(false)
-        setPunchInTime(null)
+        // Restore an active same-day punch-in across reloads/deploys so users
+        // don't have to punch in again every time the app reloads. Sessions
+        // from a previous day are never auto-restored.
+        let restored = false
+        try {
+          const savedRaw = localStorage.getItem('dd_punchin_state')
+          if (savedRaw) {
+            const saved = JSON.parse(savedRaw)
+            if (saved && saved.email === pEmail && saved.date === todayPrefix && saved.inTime) {
+              restored = true
+              setIsPunchedIn(true)
+              setPunchInTime(saved.inTime)
+              if (mySessions.length === 0 && Array.isArray(saved.sessions) && saved.sessions.length > 0) {
+                setTodaysSessions(saved.sessions)
+                setFirstPunchInToday(saved.sessions[0].in || saved.inTime)
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Punch-in restore failed:', err)
+        }
+        if (!restored) {
+          setIsPunchedIn(false)
+          setPunchInTime(null)
+        }
         sessionRestoredRef.current = true
         setIsSessionRestored(true)
         if (staleSession) setPendingAutoPunchOut(staleSession)
@@ -580,6 +600,17 @@ export function AppProvider({ children }) {
       return updated
     })
     addToast('Punched In successfully', 'success')
+
+    try {
+      localStorage.setItem('dd_punchin_state', JSON.stringify({
+        email: profile?.email,
+        date: getISTDate(),
+        inTime,
+        sessions: [...todaysSessionsRef.current, { in: inTime, out: null }]
+      }))
+    } catch (err) {
+      console.warn('Punch-in persist failed:', err)
+    }
 
     api.post({ action: 'punch_in', email: profile.email })
       .then(t => console.log('Punch in response:', t))
@@ -607,6 +638,7 @@ export function AppProvider({ children }) {
     const prevEmail = profile?.email
     setIsPunchedIn(false)
     setPunchInTime(null)
+    try { localStorage.removeItem('dd_punchin_state') } catch (err) { }
     const outTime = getISTTime()
     setTodaysSessions(prev => {
       const updated = [...prev]
@@ -841,7 +873,10 @@ export function AppProvider({ children }) {
         }
       }
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null }
-      if (!profile?.email && isPunchedIn) { setIsPunchedIn(false) }
+      if (!profile?.email && isPunchedIn) {
+        setIsPunchedIn(false)
+        try { localStorage.removeItem('dd_punchin_state') } catch (err) { }
+      }
     }
   }, [isPunchedIn, profile?.email])
 
