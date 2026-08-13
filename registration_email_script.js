@@ -373,7 +373,8 @@ function getActiveTeamEmails() {
 }
 
 /**
- * Sends a "new client / project added" notification to all active team members.
+ * Sends a "new client / project added" notification (to the admin only) and
+ * creates a Drive folder for the project.
  */
 function handleNewClientNotification(data) {
   var projectName = data.projectName || data.project_name || data["Project Name"] || "New Project";
@@ -392,20 +393,6 @@ function handleNewClientNotification(data) {
     saveClientDriveLink(clientId, driveUrl);
   }
   var folderInfo = { created: !!driveUrl, error: folderResult.error || null, url: driveUrl || null };
-
-  var teamResult = getActiveTeamEmails();
-  var allEmails = teamResult.emails.map(function (r) { return r.email; }).filter(Boolean);
-  var bccEmails = allEmails.filter(function (em) { return String(em).toLowerCase() !== String(ADMIN_EMAIL).toLowerCase(); }).join(",");
-  if (allEmails.length === 0) {
-    MailApp.sendEmail({
-      to: ADMIN_EMAIL,
-      subject: "New Client/Project Added: " + projectName + " - Dreamsdesk",
-      htmlBody: htmlBody,
-      name: "Dreamsdesk - Dreams Design"
-    });
-    return ContentService.createTextOutput(JSON.stringify({ ok: true, recipients: 1, warning: "No active team members found - emailed admin only", debug: teamResult.debug, folder: folderInfo }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
 
   var htmlBody = `
     <div style="background-color: #F3F4F6; padding: 40px 10px; font-family: Arial, sans-serif;">
@@ -464,12 +451,11 @@ function handleNewClientNotification(data) {
 
   MailApp.sendEmail({
     to: ADMIN_EMAIL,
-    bcc: bccEmails,
     subject: "New Client/Project Added: " + projectName + " - Dreamsdesk",
     htmlBody: htmlBody,
     name: "Dreamsdesk - Dreams Design"
   });
 
-  return ContentService.createTextOutput(JSON.stringify({ ok: true, recipients: allEmails.length + 1, folder: folderInfo }))
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, recipients: 1, folder: folderInfo }))
     .setMimeType(ContentService.MimeType.JSON);
 }
