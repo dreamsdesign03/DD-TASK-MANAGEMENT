@@ -78,7 +78,7 @@ function VoiceBotInner({ onTaskAdd }) {
           const assigneeQuery = params.assignee.trim().toLowerCase();
           let matchEmp = null;
           if (assigneeQuery === 'me' || assigneeQuery === 'myself' || assigneeQuery === 'my') {
-              matchEmp = { name: profile?.name || 'Mansi Shah' };
+              matchEmp = { name: profile?.name || 'User' };
           } else {
               matchEmp = employees?.find(e => e.name.toLowerCase() === assigneeQuery);
               if (!matchEmp) {
@@ -206,7 +206,7 @@ function VoiceBotInner({ onTaskAdd }) {
       const query = nameStr.trim().toLowerCase();
       const { employees, profile } = latestData.current;
       if (query === 'me' || query === 'myself' || query === 'my') {
-          return { name: profile?.name || 'Mansi Shah' };
+          return { name: profile?.name || 'User' };
       }
       let match = employees?.find(e => e.name.toLowerCase() === query);
       if (match) return match;
@@ -642,7 +642,7 @@ function VoiceBotInner({ onTaskAdd }) {
           for (const name of namesToMatch) {
              let match;
              if (name === 'me' || name === 'myself' || name === 'my') {
-                 match = { name: profile?.name || 'Mansi Shah' };
+                 match = { name: profile?.name || 'User' };
              } else {
                  match = employees?.find(e => e.name.toLowerCase() === name);
                  if (!match) {
@@ -652,7 +652,7 @@ function VoiceBotInner({ onTaskAdd }) {
                     employees?.forEach(e => {
                         const lowerE = e.name.toLowerCase();
                         const dist = levenshtein(name, lowerE);
-                        // Check against just the first name for better matching ("Tomansisha" -> "Mansi Shah" won't match well, but "Mansisha" -> "Mansi" will)
+                        // Check against just the first name for better matching
                         const firstName = lowerE.split(' ')[0];
                         const distFirst = levenshtein(name, firstName);
                         const finalDist = Math.min(dist, distFirst);

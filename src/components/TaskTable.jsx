@@ -1016,7 +1016,7 @@ export default function TaskTable() {
                                             <div>
                                               <p className="text-gray-400 font-bold uppercase text-[9px] mb-1">By</p>
                                               {(() => {
-                                                const cleanName = String(task.assignedBy || 'Mansi Shah').replace(/[^\w\s-]/g, '').trim()
+                                                const cleanName = String(task.assignedBy || 'User').replace(/[^\w\s-]/g, '').trim()
                                                 return (
                                                   <div className="w-6 h-6 rounded-full text-white flex items-center justify-center text-[8px] font-bold border border-white" style={{ backgroundColor: getUserColor(cleanName) }} title={cleanName}>
                                                     {getInitials(cleanName)}
@@ -1082,7 +1082,7 @@ export default function TaskTable() {
                                         const msgs = messagesByChatId?.[task.id]
                                         if (!msgs || msgs.length === 0) return null
                                         const lastSeen = lastSeenTimestamps?.[task.id]
-                                        const myName = String(profile?.name || 'Mansi Shah').trim().toLowerCase()
+                                        const myName = String(profile?.name || 'User').trim().toLowerCase()
 
                                         const unreadCount = msgs.filter(m => {
                                           const isMe = String(m.senderName || m.sender || '').trim().toLowerCase() === myName
@@ -1232,7 +1232,7 @@ export default function TaskTable() {
                                     <span className="md:hidden text-[10px] font-bold text-outline uppercase tracking-wider">Assigned By</span>
                                     <div className="flex items-center gap-2 text-right">
                                       {(() => {
-                                        const rawName = task.assignedBy || 'Mansi Shah'
+                                        const rawName = task.assignedBy || 'User'
                                         const cleanName = String(rawName).replace(/[^\w\s-]/g, '').trim()
                                         return (
                                           <div className="w-8 h-8 rounded-full text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0 border-2 border-white shadow-[0_2px_4px_rgba(0,0,0,0.05)]" style={{ backgroundColor: getUserColor(cleanName) }} title={cleanName}>

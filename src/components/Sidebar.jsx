@@ -33,7 +33,7 @@ export default function Sidebar() {
     (personalChats?.reduce((acc, c) => acc + (c.unread || 0), 0) || 0) +
     (groupChats?.reduce((acc, g) => acc + (g.unread || 0), 0) || 0)
 
-  const myName = String(profile?.name || 'Mansi Shah').trim().toLowerCase()
+  const myName = String(profile?.name || 'User').trim().toLowerCase()
   let totalUnreadTasks = 0
   if (tasks && messagesByChatId) {
     tasks.forEach(task => {

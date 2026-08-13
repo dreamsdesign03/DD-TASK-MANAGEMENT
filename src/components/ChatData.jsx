@@ -18,7 +18,7 @@ export function CreateGroupModal({ onClose }) {
   const [groupName, setGroupName] = useState('')
   const [search, setSearch]       = useState('')
   // Pre-select Riya + Karan to match the new team
-  const [selected, setSelected]   = useState(['EMP-002', 'EMP-003'])
+  const [selected, setSelected]   = useState([])
 
   const toggle = (id) =>
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])

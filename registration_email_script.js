@@ -7,7 +7,7 @@
 var SUPABASE_URL = "https://balrgagdbbfagmgryrwv.supabase.co";
 var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhbHJnYWdkYmJmYWdtZ3J5cnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDYxNTQsImV4cCI6MjEwMjAyMjE1NH0.5R4abl_tx3jVX5Z98Pm5Mp0eePYsTFXThjYZA-_bapg";
 var VERCEL_APP_URL = "https://dd-task-management.vercel.app/login";
-var ADMIN_EMAIL = "dreamsdesign.in03@gmail.com";
+var ADMIN_EMAIL = PropertiesService.getScriptProperties().getProperty("ADMIN_EMAIL") || "dreamsdesign.in03@gmail.com";
 var WEB_APP_EXEC_URL = "https://script.google.com/macros/s/AKfycbwTUtODfkW1Hag0-ZOT7cGzA2FMXJPnvoR1hCF468YX__VFU6yLnvuTNJWbRyAruKlX/exec";
 
 /**
@@ -15,7 +15,7 @@ var WEB_APP_EXEC_URL = "https://script.google.com/macros/s/AKfycbwTUtODfkW1Hag0-
  * Uses ilike for case-insensitive email matching and verifies row modification.
  */
 function approveUserInSupabase(email) {
-  if (!email) return false;
+  if (!email) return { ok: false, error: "No email provided" };
   var cleanEmail = String(email).trim().toLowerCase();
   var payload = JSON.stringify({
     is_active: true,
@@ -33,8 +33,9 @@ function approveUserInSupabase(email) {
   try {
     var urlEq = SUPABASE_URL + "/rest/v1/team?email_address=eq." + encodeURIComponent(cleanEmail);
     var res1 = UrlFetchApp.fetch(urlEq, { method: "patch", headers: headers, payload: payload, muteHttpExceptions: true });
-    if (res1.getResponseCode() === 200 || res1.getResponseCode() === 204) {
-      return true;
+    var code1 = res1.getResponseCode();
+    if (code1 === 200 || code1 === 204) {
+      return { ok: true, code: code1 };
     }
   } catch (e) {}
 
@@ -42,12 +43,13 @@ function approveUserInSupabase(email) {
   try {
     var urlIlike = SUPABASE_URL + "/rest/v1/team?email_address=ilike." + encodeURIComponent(cleanEmail);
     var res2 = UrlFetchApp.fetch(urlIlike, { method: "patch", headers: headers, payload: payload, muteHttpExceptions: true });
-    if (res2.getResponseCode() === 200 || res2.getResponseCode() === 204) {
-      return true;
+    var code2 = res2.getResponseCode();
+    if (code2 === 200 || code2 === 204) {
+      return { ok: true, code: code2 };
     }
   } catch (e) {}
 
-  return true;
+  return { ok: false, error: "Supabase update failed - both exact and ilike attempts returned non-2xx" };
 }
 
 /**
@@ -59,8 +61,9 @@ function doGet(e) {
   var action = params.action || "";
 
   if (action === "approve_user" || action === "approve" || email) {
-    var success = approveUserInSupabase(email);
-    
+    var result = approveUserInSupabase(email);
+    var success = result.ok;
+
     var htmlOutput = success ? `
       <!DOCTYPE html>
       <html>
@@ -127,6 +130,7 @@ function doGet(e) {
           </div>
           <h1>User Not Found</h1>
           <p>Could not find account for <strong>${email}</strong> in Supabase database.</p>
+          <p style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;color:#B91C1C;font-size:13px;text-align:left;">${result.error || 'Unknown error'}</p>
           <div>
             <span class="badge">Status: Update Failed</span>
           </div>

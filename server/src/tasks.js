@@ -6,9 +6,19 @@ import {
   nextTaskId,
 } from './db.js'
 
-function isAdmin(email) {
+async function isAdmin(email) {
   const clean = String(email || '').trim().toLowerCase()
-  return clean === 'admin@dreamsdesk.com' || clean.endsWith('@dreamsdesk.com')
+  if (!clean) return false
+  const { data: rows } = await supabase
+    .from('team')
+    .select('role, is_active, status')
+    .ilike('email_address', clean)
+  const row = (rows || []).find(r =>
+    r.is_active === true || r.is_active === 'true' || r.is_active === 'Yes' ||
+    r.is_active === 'yes' || String(r.status || '').trim().toLowerCase() === 'approved' ||
+    String(r.status || '').trim().toLowerCase() === 'active'
+  )
+  return !!row && String(row.role || '').trim().toLowerCase() === 'admin'
 }
 
 export async function handleGetTasks() {
@@ -65,7 +75,7 @@ export async function handleDeleteTask(payload) {
   const taskId = String(payload.taskId || payload.task_id || '')
   if (!taskId) return { ok: false, error: 'Task ID missing.' }
 
-  if (!isAdmin(payload.userEmail)) {
+  if (!(await isAdmin(payload.userEmail))) {
     return { ok: false, error: 'Unauthorized' }
   }
 

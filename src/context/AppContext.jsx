@@ -143,7 +143,7 @@ const mapWebhookTaskToApp = (item) => {
     done: isDone,
     department: mappedDept,
     assignedTo: data["Assigned To"] || data.assignedTo || 'Unassigned',
-    assignedBy: data["Assigned By"] || data.assignedBy || 'Mansi Shah',
+    assignedBy: data["Assigned By"] || data.assignedBy || 'User',
     timeTaken: data["Time Taken"] || data.timeTaken || '0h 0m',
     statusUpdatedOn: data["Status Updated On"] || data.statusUpdatedOn || null,
     daysOverdue: daysOverdueStr,
@@ -1158,7 +1158,7 @@ export function AppProvider({ children }) {
           action: 'send',
           roomId: chatId,
           senderId: senderEmail,
-          senderName: profileRef.current?.name || 'Mansi Shah',
+          senderName: profileRef.current?.name || 'User',
           message: `[ReadReceipt:${senderEmail}|${lastMsgTime}]`,
           timestamp: new Date().toISOString(),
           type: 'personal'
@@ -1193,7 +1193,7 @@ export function AppProvider({ children }) {
 
     const isSystem = senderName === 'System' || senderId === 'system' || (typeof msgText === 'string' && msgText.startsWith('[System:'))
     const isMe =
-      String(senderName).trim().toLowerCase() === String(profileRef.current?.name || 'Mansi Shah').trim().toLowerCase() ||
+      String(senderName).trim().toLowerCase() === String(profileRef.current?.name || 'User').trim().toLowerCase() ||
       String(senderId).trim().toLowerCase() === String(profileRef.current?.email || 'mansi@dreamsdesign.in').trim().toLowerCase()
     let timeStr = ''
     try {
@@ -1758,7 +1758,7 @@ export function AppProvider({ children }) {
 
         // If it's a message from someone else, instantly broadcast a delivery receipt
         const pSender = String(payload.senderName || payload.sendername || '').trim().toLowerCase()
-        const myName = String(profileRef.current?.name || 'Mansi Shah').trim().toLowerCase()
+        const myName = String(profileRef.current?.name || 'User').trim().toLowerCase()
         const pEmail = String(payload.senderId || payload.senderid || '').trim().toLowerCase()
         const myEmail = String(profileRef.current?.email || 'mansi@dreamsdesign.in').trim().toLowerCase()
 
@@ -1921,7 +1921,7 @@ export function AppProvider({ children }) {
     } else if (fields.comments && (!currentTask.comments || fields.comments.length > currentTask.comments.length)) {
       // New comment added locally — if the author is the current user, don't self-notify
       const latestComment = fields.comments[fields.comments.length - 1]
-      const myName = String(profile?.name || 'Mansi Shah').trim().toLowerCase()
+      const myName = String(profile?.name || 'User').trim().toLowerCase()
       const cAuthor = String(latestComment?.author || '').trim().toLowerCase()
       if (cAuthor === myName) shouldNotify = false
       updateTitle = `New comment on Task ${id}`
@@ -1938,7 +1938,7 @@ export function AppProvider({ children }) {
       updateTitle = `Task ${id} description updated`
     }
 
-    const myNameStr = String(profile?.name || 'Mansi Shah').trim().toLowerCase()
+    const myNameStr = String(profile?.name || 'User').trim().toLowerCase()
     const assigneesArr = (mergedTask.assignedTo || '').split(',').map(s => s.trim().toLowerCase())
     const assignedByStr = String(mergedTask.assignedBy || '').trim().toLowerCase()
     const isRelated = assigneesArr.includes(myNameStr) || assignedByStr === myNameStr
@@ -2031,7 +2031,7 @@ export function AppProvider({ children }) {
       const endIST = getISTTimeAt(endMs);
       const elapsed = Math.floor(getActiveTimerMs(activeTimer, endMs) / 1000);
       const timeData = parseMultiUserTimeStr(taskToToggle.timeTaken);
-      const myName = profileName || 'Mansi Shah';
+      const myName = profileName || 'User';
 
       if (timeData[myName]) {
         timeData[myName] += elapsed;
@@ -2116,7 +2116,7 @@ export function AppProvider({ children }) {
       const lastActiveMs = Date.now() - idleSecs * 1000
       const task = tasksRef.current.find(x => x.id === t.taskId)
       if (task) {
-        toggleTimer(task, profile?.name || 'Mansi Shah', { endMs: lastActiveMs, auto: true })
+        toggleTimer(task, profile?.name || 'User', { endMs: lastActiveMs, auto: true })
         setPendingRestart({ taskId: task.id, taskTitle: task.title })
         addToast('Timer auto-stopped: no activity for 5 minutes', 'info')
       }
@@ -2126,7 +2126,7 @@ export function AppProvider({ children }) {
       setPendingRestart(null)
       if (task && task.status !== 'Done') {
         const lastActiveMs = Date.now() - idleSecs * 1000
-        toggleTimer(task, profile?.name || 'Mansi Shah', { startMs: lastActiveMs, auto: true })
+        toggleTimer(task, profile?.name || 'User', { startMs: lastActiveMs, auto: true })
         addToast('Timer restarted: activity detected', 'success')
       }
     }
@@ -2155,7 +2155,7 @@ export function AppProvider({ children }) {
         if (activeTimer) {
           const foundTask = tasksRef.current.find(t => t.id === activeTimer.taskId)
           if (foundTask) {
-            const name = profile?.name || 'Mansi Shah'
+            const name = profile?.name || 'User'
             toggleTimer(foundTask, name)
           }
         }
@@ -2279,7 +2279,7 @@ export function AppProvider({ children }) {
               initialTaskStatuses.current[nt.id] = nt.status
               initialTaskData.current[nt.id] = { ...nt }
 
-              const myName = String(profile?.name || 'Mansi Shah').trim().toLowerCase()
+              const myName = String(profile?.name || 'User').trim().toLowerCase()
               const assigneesArr = (nt.assignedTo || '').split(',').map(s => s.trim().toLowerCase())
               const assignedByStr = String(nt.assignedBy || '').trim().toLowerCase()
               const isRelated = assigneesArr.includes(myName) || assignedByStr === myName
@@ -2316,7 +2316,7 @@ export function AppProvider({ children }) {
               const oldData = initialTaskData.current[nt.id] || {}
               let updatedFields = []
 
-              const myName = String(profile?.name || 'Mansi Shah').trim().toLowerCase()
+              const myName = String(profile?.name || 'User').trim().toLowerCase()
               const assigneesArr = (nt.assignedTo || '').split(',').map(s => s.trim().toLowerCase())
               const oldAssigneesArr = (oldData.assignedTo || '').split(',').map(s => s.trim().toLowerCase())
               const assignedByStr = String(nt.assignedBy || '').trim().toLowerCase()

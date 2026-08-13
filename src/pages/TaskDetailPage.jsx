@@ -340,7 +340,7 @@ export default function TaskDetailPage() {
       department: task.department,
       status: 'Pending',
       assignedTo: (newSubtaskAssignee || []).join(', '),
-      assignedBy: profile?.name || 'Mansi Shah',
+      assignedBy: profile?.name || 'User',
       employeeId: assignedEmps.map(e => e.id).filter(Boolean).join(', '),
       assignedEmail: assignedEmps.map(e => e.email).filter(Boolean).join(', '),
       priority: newSubtaskPriority,
@@ -596,7 +596,7 @@ export default function TaskDetailPage() {
         action: 'send',
         roomId: String(task.id),
         senderId: profile?.email || 'mansi@dreamsdesign.in',
-        senderName: profile?.name || 'Mansi Shah',
+        senderName: profile?.name || 'User',
         message: finalMessageText,
         timestamp: new Date().toLocaleString('en-US', {
           timeZone: 'Asia/Kolkata',
@@ -777,7 +777,7 @@ export default function TaskDetailPage() {
     ...(employees || []).map(e => e.name).filter(Boolean)
   ].filter(Boolean)))
 
-  const myNameStr = String(profile?.name || 'Mansi Shah').trim().toLowerCase()
+  const myNameStr = String(profile?.name || 'User').trim().toLowerCase()
   const myEmailStr = String(profile?.email || '').trim().toLowerCase()
   const isAssignee = String(task?.assignedTo || '').toLowerCase().includes(myNameStr) || String(task?.assignedEmail || '').toLowerCase().includes(myEmailStr)
   const isAssigner = String(task?.assignedBy || '').toLowerCase() === myNameStr
@@ -1011,7 +1011,7 @@ export default function TaskDetailPage() {
                   const timeData = parseMultiUserTimeStr(task.timeTaken);
                   const entries = Object.entries(timeData);
                   if (entries.length > 0 && !(entries.length === 1 && entries[0][0] === 'legacy')) {
-                    const myName = profile?.name || 'Mansi Shah';
+                    const myName = profile?.name || 'User';
                     return (
                       <div className="flex flex-wrap gap-2">
                         {entries.map(([name, secs]) => (
@@ -1036,7 +1036,7 @@ export default function TaskDetailPage() {
                       <h3 className={`text-[18px] font-black m-0 ${isTracking ? 'text-[#25d366]' : 'text-[#1E1B2E]'}`}>
                         {(() => {
                           const timeData = parseMultiUserTimeStr(task.timeTaken);
-                          const myName = profile?.name || 'Mansi Shah';
+                          const myName = profile?.name || 'User';
                           const mySecs = timeData[myName] || 0;
                           return isTracking ? formatTimeStr(mySecs + sessionSecs) : formatTimeStr(mySecs);
                         })()}
@@ -1217,7 +1217,7 @@ export default function TaskDetailPage() {
                             <span className="text-[10px] font-bold text-gray-400 min-w-[40px] text-center">
                               {(() => {
                                 const td = parseMultiUserTimeStr(st.timeTaken);
-                                const myName = profile?.name || 'Mansi Shah';
+                                const myName = profile?.name || 'User';
                                 const secs = td[myName] || 0;
                                 const isSubTracking = activeTimer?.taskId === st.id;
                                 const totalSecs = isSubTracking ? secs + (activeTimer ? Math.floor(getActiveTimerMs(activeTimer) / 1000) : 0) : secs;
@@ -1635,7 +1635,7 @@ export default function TaskDetailPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-[13px] text-gray-500 w-1/3">Assigned By</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[13px] font-bold text-[#1E1B2E]">{task.assignedBy || 'Mansi Shah'}</span>
+                      <span className="text-[13px] font-bold text-[#1E1B2E]">{task.assignedBy || 'User'}</span>
                       {task.assignedBy === profile.name && profile.avatar ? (
                         <img
                           className="w-6 h-6 rounded-full object-cover"
@@ -1644,7 +1644,7 @@ export default function TaskDetailPage() {
                           referrerPolicy="no-referrer"
                         />
                       ) : (
-                        renderAvatar(null, task.assignedBy || 'Mansi Shah', "w-6 h-6 rounded-full text-[10px]")
+                        renderAvatar(null, task.assignedBy || 'User', "w-6 h-6 rounded-full text-[10px]")
                       )}
                     </div>
                   </div>

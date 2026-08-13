@@ -14,7 +14,7 @@ export function renderMessageTextWithMentions(text, isSent = false, employeeName
   // Build dynamic regex using exact employee names if available, falling back to a general word pattern
   let namePattern = '[A-Z][a-zA-Z]+(?:\\s[A-Z][a-zA-Z]+)?';
   if (employeeNames && employeeNames.length > 0) {
-    // Sort by length descending to match longest names first (e.g. "Mansi Shah" before "Mansi")
+    // Sort by length descending to match longest names first
     const sortedNames = [...employeeNames].sort((a, b) => b.length - a.length);
     namePattern = sortedNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   }
@@ -262,7 +262,7 @@ export function processMessagesList(messages, currentProfile) {
           emoji,
           count: users.length,
           users,
-          hasReacted: users.includes(currentProfile?.name || 'Mansi Shah')
+          hasReacted: users.includes(currentProfile?.name || 'User')
         }
       })
       finalMsg.reactions = Object.values(mergedReactions).filter(r => r.count > 0)
@@ -732,7 +732,7 @@ export default function ChatPage() {
       danger: true,
       onConfirm: async () => {
         const deletePayloadText = `[Delete:${messageId}]`
-        const sender = profile?.name || 'Mansi Shah'
+        const sender = profile?.name || 'User'
 
         setMessagesByChatId((prev) => {
           const list = prev[selectedChatId] || []
@@ -755,7 +755,7 @@ export default function ChatPage() {
           action: 'send',
           roomId: String(selectedChatId),
           senderId: profile?.email || 'mansi@dreamsdesign.in',
-          senderName: profile?.name || 'Mansi Shah',
+          senderName: profile?.name || 'User',
           message: deletePayloadText,
           groupName: activeTab === 'groups' ? (activeChat?.name || 'Unnamed Group') : '',
           timestamp: new Date().toLocaleString('en-US', {
@@ -778,7 +778,7 @@ export default function ChatPage() {
   }
 
   const handleToggleReaction = async (messageId, emoji) => {
-    const sender = profile?.name || 'Mansi Shah'
+    const sender = profile?.name || 'User'
 
     // 1. Directly update the target message's reactions for instant UI
     // 2. Also inject a [React:...] protocol message so fetchMessages merge doesn't lose it
@@ -836,7 +836,7 @@ export default function ChatPage() {
       action: 'send',
       roomId: String(selectedChatId),
       senderId: profile?.email || 'mansi@dreamsdesign.in',
-      senderName: profile?.name || 'Mansi Shah',
+      senderName: profile?.name || 'User',
       message: reactPayloadText,
       timestamp: now,
       groupName: activeTab === 'groups' ? (activeChat?.name || 'Unnamed Group') : '',
@@ -932,7 +932,7 @@ export default function ChatPage() {
       action: 'send',
       roomId: String(selectedChatId),
       senderId: profile?.email || 'mansi@dreamsdesign.in',
-      senderName: profile?.name || 'Mansi Shah',
+      senderName: profile?.name || 'User',
       message: finalMessageText,
       groupName: activeTab === 'groups' ? (activeChat?.name || 'Unnamed Group') : '',
       timestamp: isoTimestamp,
@@ -1020,7 +1020,7 @@ export default function ChatPage() {
       action: 'send',
       roomId: String(selectedChatId),
       senderId: profile?.email || 'mansi@dreamsdesign.in',
-      senderName: profile?.name || 'Mansi Shah',
+      senderName: profile?.name || 'User',
       message: finalMessageText,
       groupName: activeTab === 'groups' ? (activeChat?.name || 'Unnamed Group') : '',
       timestamp: new Date().toISOString(),
@@ -1052,7 +1052,7 @@ export default function ChatPage() {
       action: 'send',
       roomId: String(selectedChatId),
       senderId: profile?.email || 'mansi@dreamsdesign.in',
-      senderName: profile?.name || 'Mansi Shah',
+      senderName: profile?.name || 'User',
       message: msg.text,
       groupName: activeTab === 'groups' ? (activeChat?.name || 'Unnamed Group') : '',
       timestamp: newTimestamp,
@@ -1171,7 +1171,7 @@ export default function ChatPage() {
 
     // Ensure the creator is also in finalMembers
     const creatorMember = {
-      name: profile?.name || 'Mansi Shah',
+      name: profile?.name || 'User',
       email: profile?.email || '',
       role: profile?.role || 'Designer',
       avatar: profile?.avatar || ''
@@ -1190,7 +1190,7 @@ export default function ChatPage() {
       icon: 'groups',
       bg: 'bg-primary-container',
       active: false,
-      creator: profile?.name || 'Mansi Shah',
+      creator: profile?.name || 'User',
       creatorEmail: creatorMember.email
     }
     setGroupChats((prev) => [...prev, newGroup])
@@ -1212,13 +1212,13 @@ export default function ChatPage() {
       action: 'send',
       roomId: 'groups_metadata',
       senderId: profile?.email || 'mansi@dreamsdesign.in',
-      senderName: profile?.name || 'Mansi Shah',
+      senderName: profile?.name || 'User',
       message: JSON.stringify({
         id: String(newId),
         name: groupName || 'Unnamed Group',
         members: finalMembers.map(m => m.name),
         memberEmails: finalMembers.map(m => m.email),
-        creator: profile?.name || 'Mansi Shah',
+        creator: profile?.name || 'User',
         creatorEmail: profile?.email || ''
       }),
       timestamp: new Date().toISOString(),
@@ -1246,7 +1246,7 @@ export default function ChatPage() {
     // 2. System message
     const systemMsgId = 'temp_' + String(Date.now())
     const nowIso = new Date().toISOString()
-    const myName = profile?.name || 'Mansi Shah'
+    const myName = profile?.name || 'User'
     const systemMessage = {
       id: systemMsgId,
       type: 'system',
@@ -1269,7 +1269,7 @@ export default function ChatPage() {
       action: 'send',
       roomId: String(selectedChatId),
       senderId: profile?.email || 'mansi@dreamsdesign.in',
-      senderName: profile?.name || 'Mansi Shah',
+      senderName: profile?.name || 'User',
       message: `[System:${myName} added ${member.name}]`,
       timestamp: nowIso,
       type: 'group',
@@ -1282,13 +1282,13 @@ export default function ChatPage() {
       action: 'send',
       roomId: 'groups_metadata',
       senderId: profile?.email || 'mansi@dreamsdesign.in',
-      senderName: profile?.name || 'Mansi Shah',
+      senderName: profile?.name || 'User',
       message: JSON.stringify({
         id: String(selectedChatId),
         name: currentGroup?.name || 'Unnamed Group',
         members: updatedMembersList.map(m => m.name),
         memberEmails: updatedMembersList.map(m => m.email),
-        creator: currentGroup?.creator || profile?.name || 'Mansi Shah',
+        creator: currentGroup?.creator || profile?.name || 'User',
         creatorEmail: currentGroup?.creatorEmail || profile?.email || ''
       }),
       timestamp: nowIso,
@@ -1316,7 +1316,7 @@ export default function ChatPage() {
         // 2. System message
         const systemMsgId = 'temp_' + String(Date.now())
         const nowIso = new Date().toISOString()
-        const myName = profile?.name || 'Mansi Shah'
+        const myName = profile?.name || 'User'
         const systemMessage = {
           id: systemMsgId,
           type: 'system',
@@ -1339,7 +1339,7 @@ export default function ChatPage() {
           action: 'send',
           roomId: String(selectedChatId),
           senderId: profile?.email || 'mansi@dreamsdesign.in',
-          senderName: profile?.name || 'Mansi Shah',
+          senderName: profile?.name || 'User',
           message: `[System:${myName} removed ${memberName}]`,
           timestamp: nowIso,
           type: 'group',
@@ -1352,13 +1352,13 @@ export default function ChatPage() {
           action: 'send',
           roomId: 'groups_metadata',
           senderId: profile?.email || 'mansi@dreamsdesign.in',
-          senderName: profile?.name || 'Mansi Shah',
+          senderName: profile?.name || 'User',
           message: JSON.stringify({
             id: String(selectedChatId),
             name: currentGroup?.name || 'Unnamed Group',
             members: updatedMembersList.map(m => m.name),
             memberEmails: updatedMembersList.map(m => m.email),
-            creator: currentGroup?.creator || profile?.name || 'Mansi Shah',
+            creator: currentGroup?.creator || profile?.name || 'User',
             creatorEmail: currentGroup?.creatorEmail || profile?.email || ''
           }),
           timestamp: nowIso,
