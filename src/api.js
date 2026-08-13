@@ -137,6 +137,7 @@ function notifyRegistrationEmail(info) {
 function notifyNewClient(info) {
   postToEmailScript({
     action: 'notify_new_client',
+    clientId: String(info.clientId || ''),
     projectName: info.projectName || '',
     clientName: info.clientName || '',
     contactEmail: String(info.contactEmail || ''),
@@ -369,6 +370,7 @@ async function addClient(payload) {
   if (payErr) console.warn('Failed to create payment row:', payErr.message)
 
   notifyNewClient({
+    clientId: row.client_id,
     projectName: row.project_name,
     clientName: row.client_name,
     contactEmail: row.contact_email,

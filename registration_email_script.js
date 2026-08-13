@@ -11,6 +11,53 @@ var ADMIN_EMAIL = PropertiesService.getScriptProperties().getProperty("ADMIN_EMA
 // Approval is handled by the web app itself (direct Supabase update) so it never
 // depends on this Apps Script deployment being up to date.
 var WEB_APP_APPROVE_URL = "https://dd-task-management.vercel.app/approve?email=";
+// Parent Google Drive folder where a sub-folder is auto-created for each client project.
+var CLIENTS_DRIVE_PARENT_ID = "1vVUKi3ha4up966BlvAQs4mRIve043-QE";
+
+/**
+ * Creates (or reuses) a Drive folder named after the project inside the parent
+ * CLIENTS_DRIVE_PARENT_ID folder. Returns { ok, url, folderId, error }.
+ */
+function createClientDriveFolder(projectName) {
+  try {
+    var folderName = String(projectName || "New Project").replace(/[\\/:*?"<>|]/g, "-").trim();
+    var parent = DriveApp.getFolderById(CLIENTS_DRIVE_PARENT_ID);
+
+    var existing = parent.getFoldersByName(folderName);
+    var folder;
+    if (existing.hasNext()) {
+      folder = existing.next();
+    } else {
+      folder = parent.createFolder(folderName);
+    }
+    return { ok: true, url: folder.getUrl(), folderId: folder.getId() };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/**
+ * Stores the Drive folder link back on the client row in Supabase.
+ */
+function saveClientDriveLink(clientId, driveUrl) {
+  if (!clientId || !driveUrl) return;
+  try {
+    var headers = {
+      "apikey": SUPABASE_KEY,
+      "Authorization": "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json",
+      "Prefer": "return=minimal"
+    };
+    UrlFetchApp.fetch(SUPABASE_URL + "/rest/v1/clients?client_id=eq." + encodeURIComponent(clientId), {
+      method: "patch",
+      headers: headers,
+      payload: JSON.stringify({ drive_folder_link: driveUrl }),
+      muteHttpExceptions: true
+    });
+  } catch (e) {
+    Logger.log("saveClientDriveLink error: " + e.message);
+  }
+}
 
 /**
  * Updates user in Supabase: sets is_active = true and status = 'Approved'
@@ -277,6 +324,13 @@ function handleNewClientNotification(data) {
   var services = data.services || data["Services"] || "N/A";
   var startDate = data.projectStartDate || data.project_start_date || data["Project Start Date"] || "N/A";
   var addedBy = data.addedBy || "Dreamsdesk Team";
+  var clientId = data.clientId || data.client_id || "";
+
+  var folderResult = createClientDriveFolder(projectName);
+  var driveUrl = folderResult.ok ? folderResult.url : "";
+  if (driveUrl) {
+    saveClientDriveLink(clientId, driveUrl);
+  }
 
   var team = getActiveTeamEmails();
   var allEmails = team.map(function (r) { return r.email; }).filter(Boolean);
@@ -295,6 +349,10 @@ function handleNewClientNotification(data) {
             <tr>
               <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6; width: 35%;">Project Name</td>
               <td style="padding: 10px 0; color: #111827; font-weight: 700; border-bottom: 1px solid #F3F4F6; text-align: right;">${projectName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6;">Drive Folder</td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right;">${driveUrl ? '<a href="' + driveUrl + '" target="_blank" style="color: #2563EB; text-decoration: none; font-weight: 600;">Open in Drive</a>' : '<span style="color: #DC2626; font-weight: 600;">Could not create</span>'}</td>
             </tr>
             <tr>
               <td style="padding: 10px 0; color: #6B7280; font-weight: 500; border-bottom: 1px solid #F3F4F6;">Client Name</td>
