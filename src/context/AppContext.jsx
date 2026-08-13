@@ -504,6 +504,37 @@ export function AppProvider({ children }) {
     const pEmpId = String(profile?.employeeId || profile?.['Employee ID'] || '').trim()
 
     const fetchActivities = async () => {
+      // Read + validate an active same-day punch-in first so it survives
+      // reloads/deploys. Sessions from a previous day are never auto-restored.
+      let restored = false
+      let savedPunchIn = null
+      try {
+        const savedRaw = localStorage.getItem('dd_punchin_state')
+        if (savedRaw) {
+          const saved = JSON.parse(savedRaw)
+          if (saved && String(saved.email || '').trim().toLowerCase() === pEmail && saved.date === getISTDate() && saved.inTime) {
+            restored = true
+            savedPunchIn = saved
+          }
+        }
+      } catch (err) {
+        console.warn('Punch-in restore failed:', err)
+      }
+
+      const applyRestore = (fromDbSessions) => {
+        if (restored && savedPunchIn) {
+          setIsPunchedIn(true)
+          setPunchInTime(savedPunchIn.inTime)
+          if ((!fromDbSessions || fromDbSessions.length === 0) && Array.isArray(savedPunchIn.sessions) && savedPunchIn.sessions.length > 0) {
+            setTodaysSessions(savedPunchIn.sessions)
+            setFirstPunchInToday(savedPunchIn.sessions[0].in || savedPunchIn.inTime)
+          }
+        } else {
+          setIsPunchedIn(false)
+          setPunchInTime(null)
+        }
+      }
+
       try {
         const data = await api.get('get_activities')
         setActivityLog(data)
@@ -551,38 +582,13 @@ export function AppProvider({ children }) {
         if (mySessions.length > 0) {
           setFirstPunchInToday(mySessions[0].in)
         }
-        // Restore an active same-day punch-in across reloads/deploys so users
-        // don't have to punch in again every time the app reloads. Sessions
-        // from a previous day are never auto-restored.
-        let restored = false
-        try {
-          const savedRaw = localStorage.getItem('dd_punchin_state')
-          if (savedRaw) {
-            const saved = JSON.parse(savedRaw)
-            if (saved && saved.email === pEmail && saved.date === todayPrefix && saved.inTime) {
-              restored = true
-              setIsPunchedIn(true)
-              setPunchInTime(saved.inTime)
-              if (mySessions.length === 0 && Array.isArray(saved.sessions) && saved.sessions.length > 0) {
-                setTodaysSessions(saved.sessions)
-                setFirstPunchInToday(saved.sessions[0].in || saved.inTime)
-              }
-            }
-          }
-        } catch (err) {
-          console.warn('Punch-in restore failed:', err)
-        }
-        if (!restored) {
-          setIsPunchedIn(false)
-          setPunchInTime(null)
-        }
+        applyRestore(mySessions)
         sessionRestoredRef.current = true
         setIsSessionRestored(true)
         if (staleSession) setPendingAutoPunchOut(staleSession)
       } catch (err) {
         console.error("Failed to fetch activities from sheet:", err)
-        setIsPunchedIn(false)
-        setPunchInTime(null)
+        applyRestore(null)
         sessionRestoredRef.current = true
         setIsSessionRestored(true)
       }
@@ -603,7 +609,7 @@ export function AppProvider({ children }) {
 
     try {
       localStorage.setItem('dd_punchin_state', JSON.stringify({
-        email: profile?.email,
+        email: String(profile?.email || '').trim().toLowerCase(),
         date: getISTDate(),
         inTime,
         sessions: [...todaysSessionsRef.current, { in: inTime, out: null }]
