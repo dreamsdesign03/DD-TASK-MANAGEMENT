@@ -334,10 +334,19 @@ function VoiceBotInner({ onTaskAdd }) {
               if (myEmail && empEmail && myEmail === empEmail) {
                   return `Here is the data from Dreamsdesk: ${checkPermission(profile, match, 'remove_self').reason}`;
               }
-              let currentAssignees = match.assignedTo ? match.assignedTo.split(',').map(s => s.trim()) : [];
+              let currentAssignees = match.assignedTo ? match.assignedTo.split(',').map(s => s.trim()).filter(Boolean) : [];
               if (currentAssignees.includes(empMatch.name)) {
                   currentAssignees = currentAssignees.filter(name => name !== empMatch.name);
-                  updates.assignedTo = currentAssignees.join(', ') || 'Unassigned';
+                  if (currentAssignees.length > 0) {
+                      updates.assignedTo = currentAssignees.join(', ');
+                      updates.assignedToIds = currentAssignees.map(n => employees?.find(e => e.name === n)?.id).filter(Boolean).join(', ');
+                  } else {
+                      const me = employees?.find(e =>
+                          String(e.id || '').trim().toLowerCase() === String(profile?.employeeId || profile?.id || '').trim().toLowerCase()
+                      );
+                      updates.assignedTo = me?.name || profile?.name || 'User';
+                      updates.assignedToIds = me?.id || profile?.employeeId || profile?.id || '';
+                  }
                   successMessages.push(`Removed ${empMatch.name} from task`);
               } else {
                   successMessages.push(`${empMatch.name} is not assigned to this task`);
@@ -430,6 +439,13 @@ function VoiceBotInner({ onTaskAdd }) {
               assigneeName = emp.name;
               assigneeEmps = [emp];
           }
+      }
+      if (!assigneeName) {
+          const me = employees?.find(e =>
+              String(e.id || '').trim().toLowerCase() === String(profile?.employeeId || profile?.id || '').trim().toLowerCase()
+          );
+          assigneeName = me?.name || profile?.name || 'User';
+          if (me) assigneeEmps = [me];
       }
 
       // Parse due date
@@ -685,7 +701,11 @@ function VoiceBotInner({ onTaskAdd }) {
              }
           }
         } else {
-          validAssigneeNames.push(profile?.name || 'Unassigned');
+          const me = employees?.find(e =>
+            String(e.id || '').trim().toLowerCase() === String(profile?.employeeId || profile?.id || '').trim().toLowerCase()
+          )
+          validAssigneeNames.push(me?.name || profile?.name || 'User')
+          if (me) assignedEmps.push(me)
         }
 
         const assigneeString = validAssigneeNames.join(', ');

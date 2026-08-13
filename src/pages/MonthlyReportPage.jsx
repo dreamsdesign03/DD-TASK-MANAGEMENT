@@ -582,8 +582,7 @@ export default function MonthlyReportPage() {
                         filteredTasks.forEach(t => {
                           const company = t.client || 'General'
                           if (filterType === 'Company' && company !== selectedValue) return
-                          let assignedUsers = (t.assignedTo || 'Unassigned').split(',').map(s => s.trim()).filter(Boolean)
-                          if (assignedUsers.length === 0) assignedUsers.push('Unassigned')
+                          let assignedUsers = (t.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean)
                           if (filterType === 'User') assignedUsers = assignedUsers.filter(u => u === selectedValue)
                           
                           if (!isAdmin) {
@@ -713,7 +712,7 @@ export default function MonthlyReportPage() {
                             {row.client}
                           </td>
                           <td className="py-4 px-5 text-[12px] text-[#6B7280]">
-                            {row.assignedTo || 'Unassigned'}
+                            {row.assignedTo || '-'}
                           </td>
                           <td className="py-4 px-5">
                             {(() => {

@@ -332,7 +332,8 @@ export default function TaskDetailPage() {
       }
     }
 
-    const assignedEmps = employees?.filter(e => (newSubtaskAssignee || []).map(s => String(s).trim()).includes(e.name)) || [];
+    const subtaskNames = (newSubtaskAssignee && newSubtaskAssignee.length > 0) ? newSubtaskAssignee : [profile?.name || 'User']
+    const assignedEmps = employees?.filter(e => subtaskNames.map(s => String(s).trim()).includes(e.name)) || [];
     const subtaskIds = assignedEmps.map(e => e.id).filter(Boolean).join(', ')
     const subtaskEmails = assignedEmps.map(e => e.email).filter(Boolean).join(', ')
 
@@ -345,7 +346,7 @@ export default function TaskDetailPage() {
       project: task.project,
       department: task.department,
       status: 'Pending',
-      assignedTo: (newSubtaskAssignee || []).join(', '),
+      assignedTo: subtaskNames.join(', '),
       assignedToIds: subtaskIds,
       assignedBy: profile?.name || 'User',
       assignedById: profile?.employeeId || profile?.id || '',
@@ -385,7 +386,8 @@ export default function TaskDetailPage() {
       addToast('Subtask title cannot be empty', 'error')
       return
     }
-    const assignedEmps = employees?.filter(e => editSubtaskAssignee.map(s => String(s).trim()).includes(e.name)) || []
+    const subtaskNames = (editSubtaskAssignee && editSubtaskAssignee.length > 0) ? editSubtaskAssignee : [profile?.name || 'User']
+    const assignedEmps = employees?.filter(e => subtaskNames.map(s => String(s).trim()).includes(e.name)) || []
     let calculatedOverdue = 'No'
     if (editSubtaskDueDate) {
       const dueTime = new Date(editSubtaskDueDate).setHours(23, 59, 59, 999)
@@ -393,7 +395,7 @@ export default function TaskDetailPage() {
     }
     updateTask(editingSubtask.id, {
       title,
-      assignedTo: (editSubtaskAssignee || []).join(', '),
+      assignedTo: subtaskNames.join(', '),
       assignedToIds: assignedEmps.map(e => e.id).filter(Boolean).join(', '),
       assignedEmails: assignedEmps.map(e => e.email).filter(Boolean).join(', '),
       employeeIds: assignedEmps.map(e => e.id).filter(Boolean).join(', '),
@@ -991,7 +993,7 @@ export default function TaskDetailPage() {
                     className={`bg-gray-100 text-gray-600 border border-gray-200 text-[12px] font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${canManageTask && !isTaskDone ? 'cursor-pointer hover:bg-purple-50 hover:border-purple-200 hover:text-[#702c91] transition-colors' : ''}`}
                   >
                     <span className="material-symbols-outlined text-[14px]">person</span>
-                    Assigned to: {task.assignedTo || 'Unassigned'}
+                    Assigned to: {task.assignedTo || ''}
                   </span>
                 </div>
 
@@ -1601,7 +1603,7 @@ export default function TaskDetailPage() {
                   <div className="flex justify-between items-start gap-4">
                     <span className="text-[13px] text-gray-500 w-1/3 pt-1">Assigned To</span>
                     <div className="flex-1 flex flex-col items-end gap-2 text-right">
-                      {(task.assignedTo || 'Unassigned').split(',').map((assignee, idx) => {
+                      {(task.assignedTo || '').split(',').map((assignee, idx) => {
                         const trimmedAssignee = assignee.trim()
                         if (!trimmedAssignee) return null
                         return (

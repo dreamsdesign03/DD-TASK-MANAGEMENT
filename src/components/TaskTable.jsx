@@ -548,7 +548,7 @@ export default function TaskTable() {
     const initialStatus = boardGrouping === 'Process Stage' ? department : (isComplete ? 'Done' : 'Pending')
 
     const assignedEmps = employees?.filter(e => quickAddAssignee.includes(e.name)) || []
-    const finalAssignees = quickAddAssignee.length > 0 ? quickAddAssignee : [profile?.name || 'Unassigned']
+    const finalAssignees = quickAddAssignee.length > 0 ? quickAddAssignee : (profile?.name ? [profile?.name] : [])
     const quickAddAssigneeIds = assignedEmps.length > 0 ? assignedEmps.map(e => e.id).join(', ') : (profile?.employeeId || profile?.id || '')
     const quickAddAssigneeEmails = assignedEmps.length > 0 ? assignedEmps.map(e => e.email).join(', ') : (profile?.email || '')
 
@@ -1007,14 +1007,14 @@ export default function TaskTable() {
                                             <div>
                                               <p className="text-gray-400 font-bold uppercase text-[9px] mb-1">Assigned To</p>
                                               <div className="flex -space-x-2">
-                                                {(task.assignedTo || 'Unassigned').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3).map((a, idx) => (
+                                                {(task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3).map((a, idx) => (
                                                   <div key={idx} className="w-6 h-6 rounded-full text-white flex items-center justify-center text-[8px] font-bold border border-white relative" style={{ backgroundColor: getUserColor(a) }} title={a}>
                                                     {getInitials(a)}
                                                   </div>
                                                 ))}
-                                                {(task.assignedTo || 'Unassigned').split(',').filter(Boolean).length > 3 && (
+                                                {(task.assignedTo || '').split(',').filter(Boolean).length > 3 && (
                                                   <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-[8px] font-bold border border-white">
-                                                    +{(task.assignedTo || 'Unassigned').split(',').filter(Boolean).length - 3}
+                                                    +{(task.assignedTo || '').split(',').filter(Boolean).length - 3}
                                                   </div>
                                                 )}
                                               </div>
@@ -1204,7 +1204,7 @@ export default function TaskTable() {
                                     <span className="md:hidden text-[10px] font-bold text-outline uppercase tracking-wider">Assigned To</span>
                                     <div className="flex items-center gap-2 text-right">
                                       {(() => {
-                                        const assignees = (task.assignedTo || 'Unassigned').split(',').map(s => s.trim()).filter(Boolean)
+                                        const assignees = (task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean)
                                         return (
                                           <div className="flex items-center">
                                             {assignees.map((a, idx) => {
@@ -1526,7 +1526,7 @@ export default function TaskTable() {
                                                                   
                                                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 0 }}>
                                                                     <div style={{ display: 'flex' }}>
-                                                                      {(task.assignedTo || 'Unassigned').split(',').map(s => s.trim()).filter(Boolean).map((a, i) => {
+                                                                      {(task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).map((a, i) => {
                                         const userSubtasks = tasks.filter(t =>
                                           String(t.mainTaskId) === String(task.id) &&
                                           (t.taskType === 'Sub Task' || t.taskType === 'Subtask') &&

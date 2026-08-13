@@ -185,7 +185,7 @@ const mapWebhookTaskToApp = (item, employees = []) => {
     overdue: !isDone && isOverdue,
     done: isDone,
     department: mappedDept,
-    assignedTo: displayAssignedTo || 'Unassigned',
+    assignedTo: displayAssignedTo,
     assignedBy: displayAssignedBy,
     assignedToIds: rawAssignedTo,
     assignedById: rawAssignedBy,
