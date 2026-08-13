@@ -329,6 +329,13 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Only a genuine "registration" action may email the admin. Anything else
+    // returns an error instead of being treated as a new-user registration.
+    if (action !== "registration") {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Unknown action: " + action }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     var fullName = data.fullName || data.name || data["Full Name"] || 'New User';
     var emailAddress = data.emailAddress || data.email || data["Email Address"] || '';
     var phone = data.phone || data["Phone"] || 'N/A';
