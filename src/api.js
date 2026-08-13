@@ -107,14 +107,6 @@ function postToEmailScript(fields) {
     document.body.appendChild(form)
     form.submit()
     document.body.removeChild(form)
-
-    // Also send JSON via fetch (no-cors) as a backup mechanism
-    fetch(EMAIL_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(fields),
-    }).catch((err) => console.warn('Email notify fetch backup error:', err))
   } catch (e) {
     console.warn('Email notification error:', e)
   }

@@ -377,6 +377,20 @@ function getActiveTeamEmails() {
  * creates a Drive folder for the project.
  */
 function handleNewClientNotification(data) {
+  var clientId = data.clientId || data.client_id || "";
+
+  // Idempotency: skip if this client was already processed within the last 10 minutes
+  // (prevents duplicate emails/folders from concurrent requests).
+  if (clientId) {
+    var cache = CacheService.getScriptCache();
+    var dupKey = "nc_" + clientId;
+    if (cache.get(dupKey)) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, skipped: "duplicate" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    cache.put(dupKey, "1", 600);
+  }
+
   var projectName = data.projectName || data.project_name || data["Project Name"] || "New Project";
   var clientName = data.clientName || data.client_name || data["Client Name"] || "N/A";
   var contactEmail = data.contactEmail || data.contact_email || data["Contact Email"] || "N/A";
