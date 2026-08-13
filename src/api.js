@@ -6,7 +6,6 @@
 // ─────────────────────────────────────────────────────────────
 import {
   supabase,
-  STORAGE_BUCKET,
   istNow,
   istDate,
   rowToSheet,
@@ -96,62 +95,31 @@ async function postToDriveScript(payload) {
 }
 
 // Uploads a file into the client's Google Drive folder (inside a department
-// sub-folder) and records the shareable link in the `files` table. Falls back
-// to Supabase Storage for oversized files or when the Apps Script is unreachable.
+// sub-folder) and records only the shareable link in the `files` table. The
+// file content itself is stored ONLY on Google Drive, never in Supabase.
 async function uploadTaskFile(payload) {
   const filename = String(payload.filename || 'file').trim()
   const mimeType = String(payload.mimeType || 'application/octet-stream')
-  const base64 = String(payload.base64 || '')
   const projectName = String(payload.projectName || payload.clientName || '').trim()
   const department = String(payload.department || 'General').trim()
 
-  // Base64 inflates ~33%; Apps Script caps request bodies near 50 MB, so keep
-  // large files on Supabase Storage.
-  const useDrive = !payload.sizeBytes || payload.sizeBytes <= 30 * 1024 * 1024
-  let url = ''
-  let source = 'supabase'
-
-  if (useDrive) {
-    try {
-      const drive = await postToDriveScript({ action: 'upload_drive_file', ...payload })
-      if (drive.ok && drive.url) {
-        url = drive.url
-        source = 'drive'
-      } else {
-        console.warn('Drive upload failed, falling back to Supabase:', drive.error)
-      }
-    } catch (err) {
-      console.warn('Drive upload error, falling back to Supabase:', err)
-    }
-  }
-
-  if (!url) {
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(`${projectName}/${department}/${Date.now()}-${filename.replace(/\s+/g, '_')}`, base64 ? toBytes(base64) : payload.file, { contentType: mimeType, upsert: true })
-    if (error) return { ok: false, error: error.message }
-    url = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(data.path).data.publicUrl
+  const drive = await postToDriveScript({ action: 'upload_drive_file', ...payload })
+  if (!drive.ok || !drive.url) {
+    throw new Error(drive.error || 'Google Drive upload failed. Please try again.')
   }
 
   const { error: rowErr } = await supabase.from('files').insert({
-    filename,
+    filename: drive.name || filename,
     mime_type: mimeType,
     size_bytes: payload.sizeBytes || 0,
-    storage_path: url,
+    storage_path: drive.url,
     project_name: projectName,
     department,
     uploaded_by: String(payload.userEmail || ''),
     uploaded_at: istNow(),
   })
-  if (rowErr) console.warn('File stored but row insert failed:', rowErr.message)
-  return { ok: true, url, name: filename, type: mimeType, source }
-}
-
-function toBytes(base64) {
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return bytes
+  if (rowErr) console.warn('Link saved but files-table insert failed:', rowErr.message)
+  return { ok: true, url: drive.url, name: drive.name || filename, type: mimeType, source: 'drive' }
 }
 
 function postToEmailScript(fields) {
@@ -555,7 +523,6 @@ async function receipt(payload) {
   return sendMessage({ ...payload, type: payload.action })
 }
 
-/* ─── Files ──────────────────────────────────────────────────────────────── */
 async function getProjectFiles(projectName) {
   if (!projectName) return { ok: false, error: 'No project name provided' }
   const { data, error } = await supabase
@@ -564,13 +531,9 @@ async function getProjectFiles(projectName) {
     .eq('project_name', projectName)
     .order('uploaded_at', { ascending: false })
   if (error) throw error
-  const publicUrl = (path) => {
-    const { data: pd } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path)
-    return pd?.publicUrl || ''
-  }
   const files = (data || []).map((f) => {
     const path = f.storage_path || ''
-    const url = /^https?:\/\//.test(path) ? path : publicUrl(path)
+    const url = /^https?:\/\//.test(path) ? path : supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data?.publicUrl || ''
     return {
       name: f.filename,
       url,
@@ -580,38 +543,6 @@ async function getProjectFiles(projectName) {
     }
   })
   return { ok: true, files }
-}
-
-async function uploadFile(payload) {
-  const filename = String(payload.filename || 'file').trim()
-  const mimeType = String(payload.mimeType || 'application/octet-stream')
-  const base64 = String(payload.base64 || '')
-  const projectName = String(payload.projectName || '').trim()
-  const department = String(payload.department || 'General').trim()
-  if (!base64) return { ok: false, error: 'No file data provided.' }
-
-  const path = `${projectName}/${department}/${Date.now()}-${filename.replace(/\s+/g, '_')}`
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-
-  const { error: uploadErr } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(path, bytes, { contentType: mimeType, upsert: true })
-  if (uploadErr) throw new Error(uploadErr.message)
-
-  const { error: rowErr } = await supabase.from('files').insert({
-    filename,
-    mime_type: mimeType,
-    size_bytes: bytes.length,
-    storage_path: path,
-    project_name: projectName,
-    department,
-    uploaded_by: String(payload.userEmail || ''),
-    uploaded_at: istNow(),
-  })
-  if (rowErr) console.warn('File stored but row insert failed:', rowErr.message)
-  return { ok: true }
 }
 
 /* ─── Dispatch ───────────────────────────────────────────────────────────── */
@@ -634,8 +565,6 @@ const POST_HANDLERS = {
   send: sendMessage,
   read_receipt: receipt,
   delivery_receipt: receipt,
-  upload_file: uploadFile,
-  upload_task_file: uploadTaskFile,
 }
 
 export const api = {
