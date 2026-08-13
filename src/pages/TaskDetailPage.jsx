@@ -476,12 +476,13 @@ export default function TaskDetailPage() {
           reader.readAsDataURL(file)
         })
 
-        // Send to storage
+        // Send to storage (Google Drive dept folder with Supabase fallback)
         const data = await api.post({
-          action: 'upload_file',
+          action: 'upload_task_file',
           filename: file.name,
           mimeType: file.type,
           base64: base64Data.split(',')[1], // remove data:image/...;base64,
+          sizeBytes: file.size,
           projectName: clientName,
           department: task.department || 'COMMON',
           userEmail: profile?.email || ''
@@ -491,7 +492,7 @@ export default function TaskDetailPage() {
           newAttachments.push({
             name: file.name,
             url: data.url || data.downloadUrl,
-            downloadUrl: data.downloadUrl || '',
+            downloadUrl: data.downloadUrl || data.url || '',
             size: `${(file.size / 1024).toFixed(1)} KB`,
             type: file.type
           })

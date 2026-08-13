@@ -312,17 +312,18 @@ export default function TaskTable() {
       const currentClient = selectedClient
 
       const data = await api.post({
-        action: 'upload_file',
+        action: 'upload_task_file',
         filename: file.name,
         mimeType: file.type,
         base64: base64Data.split(',')[1],
+        sizeBytes: file.size,
         projectName: currentClient,
         department: uploadDept,
         userEmail: profile?.email || ''
       })
 
       if (data.ok) {
-        addToast('File successfully uploaded!', 'success')
+        addToast('File uploaded to the ' + uploadDept + ' folder in Drive!', 'success')
       } else {
         throw new Error(data.error || 'Upload failed')
       }

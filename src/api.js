@@ -79,6 +79,81 @@ async function register(payload) {
 // CORS (Apps Script /exec blocks CORS).
 const EMAIL_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwW7-yUSyAU3_CrguPWfdJ8EcKG06GdBbbqKTq-mTxl13tlfnadfUU8NqZntIr6aLpy/exec'
 
+// Apps Script /exec supports cross-origin fetch with a text/plain body (no
+// preflight). Returns the JSON response so callers can read the Drive link.
+async function postToDriveScript(payload) {
+  const res = await fetch(EMAIL_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  })
+  const text = await res.text()
+  try {
+    return JSON.parse(text)
+  } catch (e) {
+    return { ok: false, error: text || 'Unexpected response from upload service.' }
+  }
+}
+
+// Uploads a file into the client's Google Drive folder (inside a department
+// sub-folder) and records the shareable link in the `files` table. Falls back
+// to Supabase Storage for oversized files or when the Apps Script is unreachable.
+async function uploadTaskFile(payload) {
+  const filename = String(payload.filename || 'file').trim()
+  const mimeType = String(payload.mimeType || 'application/octet-stream')
+  const base64 = String(payload.base64 || '')
+  const projectName = String(payload.projectName || payload.clientName || '').trim()
+  const department = String(payload.department || 'General').trim()
+
+  // Base64 inflates ~33%; Apps Script caps request bodies near 50 MB, so keep
+  // large files on Supabase Storage.
+  const useDrive = !payload.sizeBytes || payload.sizeBytes <= 30 * 1024 * 1024
+  let url = ''
+  let source = 'supabase'
+
+  if (useDrive) {
+    try {
+      const drive = await postToDriveScript({ action: 'upload_drive_file', ...payload })
+      if (drive.ok && drive.url) {
+        url = drive.url
+        source = 'drive'
+      } else {
+        console.warn('Drive upload failed, falling back to Supabase:', drive.error)
+      }
+    } catch (err) {
+      console.warn('Drive upload error, falling back to Supabase:', err)
+    }
+  }
+
+  if (!url) {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(`${projectName}/${department}/${Date.now()}-${filename.replace(/\s+/g, '_')}`, base64 ? toBytes(base64) : payload.file, { contentType: mimeType, upsert: true })
+    if (error) return { ok: false, error: error.message }
+    url = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(data.path).data.publicUrl
+  }
+
+  const { error: rowErr } = await supabase.from('files').insert({
+    filename,
+    mime_type: mimeType,
+    size_bytes: payload.sizeBytes || 0,
+    storage_path: url,
+    project_name: projectName,
+    department,
+    uploaded_by: String(payload.userEmail || ''),
+    uploaded_at: istNow(),
+  })
+  if (rowErr) console.warn('File stored but row insert failed:', rowErr.message)
+  return { ok: true, url, name: filename, type: mimeType, source }
+}
+
+function toBytes(base64) {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
 function postToEmailScript(fields) {
   try {
     const form = document.createElement('form')
@@ -493,13 +568,17 @@ async function getProjectFiles(projectName) {
     const { data: pd } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path)
     return pd?.publicUrl || ''
   }
-  const files = (data || []).map((f) => ({
-    name: f.filename,
-    url: publicUrl(f.storage_path),
-    type: f.mime_type,
-    department: f.department || 'General',
-    date: f.uploaded_at,
-  }))
+  const files = (data || []).map((f) => {
+    const path = f.storage_path || ''
+    const url = /^https?:\/\//.test(path) ? path : publicUrl(path)
+    return {
+      name: f.filename,
+      url,
+      type: f.mime_type,
+      department: f.department || 'General',
+      date: f.uploaded_at,
+    }
+  })
   return { ok: true, files }
 }
 
@@ -556,6 +635,7 @@ const POST_HANDLERS = {
   read_receipt: receipt,
   delivery_receipt: receipt,
   upload_file: uploadFile,
+  upload_task_file: uploadTaskFile,
 }
 
 export const api = {

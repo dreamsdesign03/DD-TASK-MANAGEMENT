@@ -60,6 +60,55 @@ function saveClientDriveLink(clientId, driveUrl) {
 }
 
 /**
+ * Gets (or creates) a department sub-folder inside the client's Drive folder.
+ */
+function getOrCreateDeptFolder(parentFolderId, deptName) {
+  try {
+    var parent = DriveApp.getFolderById(parentFolderId);
+    var cleanName = String(deptName || "General").replace(/[\\/:*?"<>|]/g, "-").trim();
+    var iter = parent.getFoldersByName(cleanName);
+    if (iter.hasNext()) return iter.next();
+    return parent.createFolder(cleanName);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Uploads a base64 file into the client's Drive folder inside a department
+ * sub-folder (created if missing) and makes it viewable by anyone with the
+ * link. Returns { ok, url, name, dept, error }.
+ */
+function uploadDriveFile(data) {
+  try {
+    var filename = String(data.filename || "file").trim() || "file";
+    var mimeType = String(data.mimeType || "application/octet-stream");
+    var base64 = String(data.base64 || "");
+    var projectName = String(data.projectName || data.clientName || data.client || "").trim();
+    var department = String(data.department || "General").trim();
+    if (!base64) return { ok: false, error: "No file data provided." };
+    if (!projectName) return { ok: false, error: "No project name provided." };
+
+    var folderResult = createClientDriveFolder(projectName);
+    if (!folderResult.ok) {
+      return { ok: false, error: folderResult.error || "Could not access the client's Drive folder." };
+    }
+
+    var deptFolder = getOrCreateDeptFolder(folderResult.folderId, department);
+    if (!deptFolder) {
+      return { ok: false, error: "Could not create the '" + department + "' department folder in Drive." };
+    }
+
+    var bytes = Utilities.base64Decode(base64);
+    var file = deptFolder.createFile(bytes, filename, mimeType);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return { ok: true, url: file.getUrl(), name: file.getName(), dept: department };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/**
  * Run this ONCE from the Apps Script editor to authorize all required scopes
  * (Gmail, Google Drive, external requests). Without these, the web app can only
  * send the admin email but cannot create Drive folders or read the team table.
@@ -272,6 +321,11 @@ function doPost(e) {
 
     if (action === "notify_new_client") {
       return handleNewClientNotification(data);
+    }
+
+    if (action === "upload_drive_file") {
+      return ContentService.createTextOutput(JSON.stringify(uploadDriveFile(data)))
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
     var fullName = data.fullName || data.name || data["Full Name"] || 'New User';
