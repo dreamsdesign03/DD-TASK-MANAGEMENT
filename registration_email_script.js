@@ -343,9 +343,9 @@ function doPost(e) {
 }
 
 /**
- * Fetches the email addresses of all approved/active team members.
- * Returns { emails: [...], debug: { code, body, error, count } } so failures
- * are never silent.
+ * Fetches the email addresses of all team members (everyone with an email in
+ * the team table). Returns { emails: [...], debug: { code, body, error, count } }
+ * so failures are never silent.
  */
 function getActiveTeamEmails() {
   var result = { emails: [], debug: {} };
@@ -355,7 +355,7 @@ function getActiveTeamEmails() {
     "Content-Type": "application/json"
   };
   try {
-    var res = UrlFetchApp.fetch(SUPABASE_URL + "/rest/v1/team?select=email_address,full_name,is_active,status", { headers: headers, muteHttpExceptions: true });
+    var res = UrlFetchApp.fetch(SUPABASE_URL + "/rest/v1/team?select=email_address,full_name", { headers: headers, muteHttpExceptions: true });
     result.debug.code = res.getResponseCode();
     if (res.getResponseCode() !== 200) {
       result.debug.body = String(res.getContentText()).slice(0, 400);
@@ -363,11 +363,9 @@ function getActiveTeamEmails() {
     }
     var rows = JSON.parse(res.getContentText());
     result.debug.count = rows.length;
-    result.emails = rows.filter(function (r) {
-      var active = r.is_active === true || r.is_active === "true" || r.is_active === "Yes" || r.is_active === "yes";
-      var status = String(r.status || "").toLowerCase();
-      return active || status === "approved" || status === "active";
-    }).map(function (r) { return { email: r.email_address, name: r.full_name }; });
+    result.emails = rows
+      .filter(function (r) { return r.email_address && String(r.email_address).trim(); })
+      .map(function (r) { return { email: String(r.email_address).trim(), name: r.full_name }; });
   } catch (e) {
     result.debug.error = e.message;
   }
