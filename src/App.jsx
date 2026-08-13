@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { useEffect } from 'react'
 import { useApp } from './context/AppContext'
 import LoginPage from './pages/LoginPage'
+import ApprovePage from './pages/ApprovePage'
 import MyTasksPage from './pages/MyTasksPage'
 import TaskDetailPage from './pages/TaskDetailPage'
 import NotificationsPage from './pages/NotificationsPage'
@@ -136,6 +137,7 @@ export default function App() {
         {/* Default */}
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/approve" element={<ApprovePage />} />
         <Route path="/download" element={<LandingPage />} />
 
         {/* App routes */}

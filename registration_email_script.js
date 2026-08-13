@@ -8,7 +8,9 @@ var SUPABASE_URL = "https://balrgagdbbfagmgryrwv.supabase.co";
 var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhbHJnYWdkYmJmYWdtZ3J5cnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDYxNTQsImV4cCI6MjEwMjAyMjE1NH0.5R4abl_tx3jVX5Z98Pm5Mp0eePYsTFXThjYZA-_bapg";
 var VERCEL_APP_URL = "https://dd-task-management.vercel.app/login";
 var ADMIN_EMAIL = PropertiesService.getScriptProperties().getProperty("ADMIN_EMAIL") || "dreamsdesign.in03@gmail.com";
-var WEB_APP_EXEC_URL = "https://script.google.com/macros/s/AKfycbwTUtODfkW1Hag0-ZOT7cGzA2FMXJPnvoR1hCF468YX__VFU6yLnvuTNJWbRyAruKlX/exec";
+// Approval is handled by the web app itself (direct Supabase update) so it never
+// depends on this Apps Script deployment being up to date.
+var WEB_APP_APPROVE_URL = "https://dd-task-management.vercel.app/approve?email=";
 
 /**
  * Updates user in Supabase: sets is_active = true and status = 'Approved'
@@ -172,8 +174,8 @@ function doPost(e) {
     var department = data.department || data["Department"] || 'N/A';
     var requestedRole = data.requestedRole || data.systemRole || data.role || 'Employee';
 
-    // Dynamic Web App approval link
-    var approvalLink = WEB_APP_EXEC_URL + "?action=approve_user&email=" + encodeURIComponent(emailAddress);
+    // Dynamic Web App approval link (handled by the Vercel app -> Supabase directly)
+    var approvalLink = WEB_APP_APPROVE_URL + encodeURIComponent(emailAddress);
 
     var htmlBody = `
       <div style="background-color: #F3F4F6; padding: 40px 10px; font-family: Arial, sans-serif;">
