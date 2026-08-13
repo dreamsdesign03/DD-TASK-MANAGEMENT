@@ -1,6 +1,6 @@
 // ============================================================================
 // Dreamsdesk Registration Email & One-Click Approval Script
-// Deployed Web App URL: https://script.google.com/macros/s/AKfycbzXm6dwiPwHwfEPG_KoCeeClPpCP2_kq0xI0HqzwQQJBcexdegOLQM-1xrpHKEauCY-/exec
+// Deployed Web App URL: https://script.google.com/macros/s/AKfycbwW7-yUSyAU3_CrguPWfdJ8EcKG06GdBbbqKTq-mTxl13tlfnadfUU8NqZntIr6aLpy/exec
 // Live Production URL: https://dd-task-management.vercel.app
 // ============================================================================
 
