@@ -97,7 +97,6 @@ function diagnoseDrive() {
   try {
     var parent = DriveApp.getFolderById(CLIENTS_DRIVE_PARENT_ID);
     lines.push("Parent folder found: " + parent.getName());
-    lines.push("Parent editable by this account: " + parent.isEditable());
     try {
       var test = parent.createFolder("ZZ_DIAG_DELETE_ME");
       lines.push("Create test folder: OK -> " + test.getUrl());
