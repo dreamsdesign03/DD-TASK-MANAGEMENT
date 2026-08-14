@@ -2576,6 +2576,7 @@ export function AppProvider({ children }) {
 
       for (const tpl of dueTemplates) {
         const baseStr = tpl.last_auto_generated_date ||
+          (tpl.due_date || '') ||
           (tpl.created_at ? String(tpl.created_at).slice(0, 10) : '') ||
           tpl.assigned_date ||
           today

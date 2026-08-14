@@ -93,6 +93,7 @@ create table if not exists payments (
 
 -- ============ ACTIVITY (old "Activity" sheet) ============
 create table if not exists activity (
+  id                   uuid primary key default gen_random_uuid(),
   employee_id          text,
   full_name            text,
   role                 text,

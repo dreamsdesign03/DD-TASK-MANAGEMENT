@@ -286,13 +286,13 @@ async function punchIn(payload) {
   const today = istDate()
   const { data: existing } = await supabase
     .from('activity')
-    .select('id')
+    .select('login_date_and_time')
     .eq('employee_id', row.employee_id)
     .is('logout_date_and_time', null)
     .gte('login_date_and_time', `${today} 00:00:00`)
     .lt('login_date_and_time', `${today} 23:59:59`)
-    .maybeSingle()
-  if (!existing) {
+    .limit(1)
+  if (!existing || existing.length === 0) {
     await recordActivity(row.employee_id, row.full_name, row.role, row.department, istNow())
   }
   await supabase.from('team').update({ status: 'Online' }).eq('employee_id', row.employee_id)
@@ -310,7 +310,7 @@ async function punchOut(payload) {
   if (!row) return { ok: false, error: 'User not found.' }
   const { data: sessions } = await supabase
     .from('activity')
-    .select('id, login_date_and_time')
+    .select('login_date_and_time')
     .eq('employee_id', row.employee_id)
     .is('logout_date_and_time', null)
     .order('login_date_and_time', { ascending: false })
@@ -319,7 +319,8 @@ async function punchOut(payload) {
     await supabase
       .from('activity')
       .update({ logout_date_and_time: istNow() })
-      .eq('id', sessions[0].id)
+      .eq('employee_id', row.employee_id)
+      .is('logout_date_and_time', null)
   }
   await supabase.from('team').update({ status: 'Offline' }).eq('employee_id', row.employee_id)
   return { ok: true }

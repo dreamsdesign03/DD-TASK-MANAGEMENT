@@ -93,6 +93,7 @@ begin
       r.recurring_day,
       r.recurring_months,
       coalesce(safe_date(r.last_auto_generated_date),
+               safe_date(r.due_date),
                safe_date(r.assigned_date),
                r.created_at::date)
     );
