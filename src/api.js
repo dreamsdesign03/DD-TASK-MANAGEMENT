@@ -103,7 +103,7 @@ async function uploadTaskFile(payload) {
   const projectName = String(payload.projectName || payload.clientName || '').trim()
   const department = String(payload.department || 'General').trim()
 
-  const drive = await postToDriveScript({ action: 'upload_drive_file', ...payload })
+  const drive = await postToDriveScript({ ...payload, action: 'upload_drive_file' })
   if (!drive.ok || !drive.url) {
     throw new Error(drive.error || 'Google Drive upload failed. Please try again.')
   }
