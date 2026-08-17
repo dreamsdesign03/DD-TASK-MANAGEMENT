@@ -11,7 +11,11 @@ import { useApp } from '../context/AppContext'
 export default function MyTasksPage() {
   const location = useLocation()
   const { showNewTaskModal, setShowNewTaskModal, addTask, profile, employees, tasks, clients, addToast, isPunchedIn, newTaskPrefillDept, setNewTaskPrefillDept } = useApp()
-  const teamNames = employees ? employees.map(emp => emp.name) : []
+  const activeEmployees = employees ? employees.filter(emp => {
+    const isInactive = String(emp.status || '').toLowerCase() === 'inactive' || (String(emp.isActive || '').toLowerCase() === 'no' && !String(emp.status || '').toLowerCase().includes('pending'))
+    return !isInactive
+  }) : []
+  const teamNames = activeEmployees.map(emp => emp.name)
 
   // Lock body scroll when new task modal is open
   useEffect(() => {
@@ -57,7 +61,10 @@ export default function MyTasksPage() {
   }, [showNewTaskModal])
 
   const [assignedTo, setAssignedTo] = useState([profile?.name || ''])
-  const uniqueTeamMembers = [...new Set([...teamNames, ...assignedTo].filter(Boolean))]
+  const uniqueTeamMembers = [...new Set([...teamNames, ...assignedTo.filter(name => {
+    const isInactive = employees?.find(e => (e.name || '').toLowerCase() === name.toLowerCase())?.status === 'Inactive' || employees?.find(e => (e.name || '').toLowerCase() === name.toLowerCase())?.isActive === 'No'
+    return !isInactive
+  })].filter(Boolean))]
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false)
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('')
   const assigneeRef = useRef(null)

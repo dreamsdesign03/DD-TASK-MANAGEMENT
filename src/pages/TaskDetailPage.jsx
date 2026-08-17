@@ -429,19 +429,33 @@ export default function TaskDetailPage() {
     return assigneeNames.includes(myName) || (myEmail && assigneeEmails.includes(myEmail))
   }
 
-  const teamMembers = employees ? employees.map(e => ({ name: e.name, email: e.email })) : []
+  const activeEmployees = employees ? employees.filter(e => {
+    const isInactive = String(e.status || '').toLowerCase() === 'inactive' || (String(e.isActive || '').toLowerCase() === 'no' && !String(e.status || '').toLowerCase().includes('pending'))
+    return !isInactive
+  }) : []
+  const teamMembers = activeEmployees.map(e => ({ name: e.name, email: e.email }))
   const uniqueTeamMembers = [...new Map(
     [...teamMembers, ...selectedAssignees.filter(Boolean).map(email => {
       const emp = employees?.find(e => e.email === email)
       return emp ? { name: emp.name, email: emp.email } : { name: email, email }
-    })].map(m => [String(m.email).toLowerCase(), m])
+    })].filter(m => {
+      const emp = employees?.find(e => e.email === m.email || e.name === m.name)
+      if (!emp) return true
+      const isInactive = String(emp.status || '').toLowerCase() === 'inactive' || (String(emp.isActive || '').toLowerCase() === 'no' && !String(emp.status || '').toLowerCase().includes('pending'))
+      return !isInactive
+    }).map(m => [String(m.email).toLowerCase(), m])
   ).values()]
 
-  // Only users assigned to the MAIN task can be picked as subtask assignees
+  // Only active users assigned to the MAIN task can be picked as subtask assignees
   const mainTaskAssignees = [...new Map(
     (task.assignedTo || '').split(',').map(n => n.trim()).filter(Boolean).map(name => {
       const emp = employees?.find(e => e.name === name)
       return emp ? { name: emp.name, email: emp.email } : { name, email: '' }
+    }).filter(m => {
+      const emp = employees?.find(e => (m.email && e.email === m.email) || e.name === m.name)
+      if (!emp) return true
+      const isInactive = String(emp.status || '').toLowerCase() === 'inactive' || (String(emp.isActive || '').toLowerCase() === 'no' && !String(emp.status || '').toLowerCase().includes('pending'))
+      return !isInactive
     }).map(m => [String((m.email || m.name)).toLowerCase(), m])
   ).values()]
   const [isUploading, setIsUploading] = useState(false)
