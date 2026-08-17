@@ -467,7 +467,7 @@ export default function ClientsPage() {
                 return links.length > 0 ? (
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">IMPORTANT LINKS</label>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-1">
                       {links.map((link, idx) => (
                         <a
                           key={idx}
@@ -698,7 +698,7 @@ export default function ClientsPage() {
                     <span className="material-symbols-outlined text-[18px]">add_link</span>
                   </button>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1 p-0.5">
                   {newClientForm.importantLinks.map((link, idx) => (
                     <div key={idx} className="flex gap-2 items-center">
                       <input
@@ -934,7 +934,7 @@ export default function ClientsPage() {
                   <span className="material-symbols-outlined text-[18px]">add_link</span>
                 </button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1 p-0.5">
                 {clientForm.importantLinks.map((link, idx) => (
                   <div key={idx} className="flex gap-2 items-center">
                     <input
