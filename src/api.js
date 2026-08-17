@@ -519,6 +519,9 @@ async function getPayments() {
 async function updatePayment(payload) {
   const clientId = String(payload.clientId || payload.client_id || '')
   if (!clientId) return { ok: false, error: 'Client ID missing.' }
+  if (payload.action === 'record_payment') {
+    return recordPayment(payload)
+  }
   const { data: existing } = await supabase
     .from('payments')
     .select('client_id')
@@ -543,24 +546,49 @@ async function recordPayment(payload) {
   if (payload.amount === undefined || payload.amount === null || payload.amount === '') {
     return { ok: false, error: 'Amount missing.' }
   }
+
+  // Fetch latest existing payment configuration/metadata for this client
   const { data: existing } = await supabase
     .from('payments')
-    .select('client_id')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('data_entry_date_and_time', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const { data: clientRow } = await supabase
+    .from('clients')
+    .select('*')
     .eq('client_id', clientId)
     .maybeSingle()
-  const updateData = {
+
+  // Every installment MUST be inserted as a brand new entry in the payments table
+  const newInstallmentRow = {
+    client_id: clientId,
+    project: existing?.project || clientRow?.project_name || '',
+    client: existing?.client || clientRow?.client_name || '',
+    emails: existing?.emails || clientRow?.contact_email || '',
+    phone_no: existing?.phone_no || clientRow?.phone || '',
+    project_start_date: existing?.project_start_date || clientRow?.project_start_date || '',
+    industry: existing?.industry || clientRow?.industry || '',
+    is_active: existing?.is_active ?? (clientRow?.is_active ? 'Yes' : 'No'),
+    services: existing?.services || clientRow?.services || '',
+    project_end_date: existing?.project_end_date || clientRow?.project_completion_date || '',
+    gst_non_gst: existing?.gst_non_gst || '',
+    gst_amount_new: existing?.gst_amount_new || '',
+    gst_pct: existing?.gst_pct || '',
+    recurring: existing?.recurring || '',
+    recurring_type: existing?.recurring_type || '',
+    total_cost: existing?.total_cost || '',
     payment_date: payload.date || istNow(),
     payment_amount: String(payload.amount),
     payment_note: payload.note || '',
     pending_amount: String(payload.pendingAmount ?? ''),
     data_entry_date_and_time: istNow(),
+    note: payload.note || existing?.note || '',
   }
-  let error
-  if (existing) {
-    ;({ error } = await supabase.from('payments').update(updateData).eq('client_id', clientId))
-  } else {
-    ;({ error } = await supabase.from('payments').insert({ ...updateData, client_id: clientId }))
-  }
+
+  const { error } = await supabase.from('payments').insert(newInstallmentRow)
   if (error) throw error
   return { ok: true }
 }
