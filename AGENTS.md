@@ -1,3 +1,22 @@
+# Session Summary (Aug 17, 2026)
+
+## Changes Made (This Session)
+
+### Inactive User Blurred Avatars, Directory Display & Static User Colors
+- **`src/utils/avatar.jsx`**:
+  - Updated `getUserColor` to generate a static deterministic color hash based strictly on normalized user name (`cleanName`).
+  - Updated `renderAvatar` to support `isInactive` property, applying `filter blur-[0.5px] opacity-60`, `person_off` icons, and hover tooltips.
+- **`src/context/AppContext.jsx`**:
+  - Updated `fetchTeam` logic to set `status: 'Inactive'` and `isActive: 'No'` for deactivated employees, preventing them from resetting status to "Offline" or jumping to "Pending Approvals" on tab refresh.
+- **`src/pages/TeamPage.jsx`**:
+  - Kept deactivated team members visible in the team directory grid with blur cards (`blur-[0.5px] opacity-60`), **"Inactive by Admin"** status badges, and descriptive tooltips.
+- **`src/components/TaskTable.jsx`**:
+  - Added `checkUserInactive` helper to detect inactive users in team state across mobile, desktop table, and Kanban board views, applying avatar blur and **"[User Name] (Inactive by Admin)"** tooltips.
+- **`src/pages/TaskDetailPage.jsx`**:
+  - Updated "Assigned to" and "Assigned by" pills to render blurred names/avatars with `(Inactive by Admin)` tooltips for deactivated users.
+
+---
+
 # Session Summary (Jul 13, 2026)
 
 ## Changes Made (This Session)

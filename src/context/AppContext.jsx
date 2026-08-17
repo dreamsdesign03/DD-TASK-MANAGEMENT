@@ -2800,10 +2800,18 @@ export function AppProvider({ children }) {
           const email = item["Email Address"] || item.Email || item.email || ''
           const role = item.Role || item.role || item.Designation || 'Team Member'
           const avatar = item.Avatar || item.avatar || item["Profile Image"] || ""
-          const id = item["Employee ID"] || item.employeeId || item.id || `emp-${idx}`
-          const isActive = item["Is Active"] || 'Yes'
+          const rawIsActive = item["Is Active"]
+          const isActive = (rawIsActive === true || rawIsActive === 'Yes' || rawIsActive === 'yes' || rawIsActive === 1) ? 'Yes' : 'No'
           const rawStatus = item.Status || item.status || ''
-          const status = rawStatus || (isActive === 'No' ? 'Offline' : 'Online')
+
+          let status = rawStatus
+          const isPendingReg = String(rawStatus).toLowerCase().includes('pending')
+          if (String(rawStatus).toLowerCase() === 'inactive' || (isActive === 'No' && !isPendingReg)) {
+            status = 'Inactive'
+          } else if (!status) {
+            status = 'Online'
+          }
+
           const location = item.Location || item.location || 'Remote'
 
           return { id, name, email, role, avatar, status, department, location, isActive }

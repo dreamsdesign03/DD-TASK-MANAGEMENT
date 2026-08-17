@@ -176,6 +176,19 @@ export default function TaskTable() {
     }
   }, [profile?.systemRole, selectedDepartment])
 
+  const checkUserInactive = (nameOrEmail) => {
+    if (!nameOrEmail) return false
+    const clean = String(nameOrEmail).trim().toLowerCase()
+    const emp = employees?.find(e =>
+      (e.name || '').trim().toLowerCase() === clean ||
+      (e.email || '').trim().toLowerCase() === clean
+    )
+    if (emp) {
+      return String(emp.status || '').toLowerCase() === 'inactive' || (String(emp.isActive || '').toLowerCase() === 'no' && !String(emp.status || '').toLowerCase().includes('pending'))
+    }
+    return true
+  }
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
   const [tasksPerPage, setTasksPerPage] = useState(10)
@@ -1009,9 +1022,9 @@ export default function TaskTable() {
                                               <p className="text-gray-400 font-bold uppercase text-[9px] mb-1">Assigned To</p>
                                               <div className="flex -space-x-2">
                                                 {(task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3).map((a, idx) => {
-                                                  const isDeleted = !employees?.some(e => (e.name || '').toLowerCase() === a.toLowerCase())
+                                                  const isDeleted = checkUserInactive(a)
                                                   return (
-                                                    <div key={idx} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold border border-white relative ${isDeleted ? 'opacity-30 blur-[1px]' : 'text-white'}`} style={{ backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a) }} title={isDeleted ? `${a} (inactive by admin)` : a}>
+                                                    <div key={idx} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold border border-white relative ${isDeleted ? 'opacity-60 filter blur-[0.5px]' : 'text-white'}`} style={{ backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a) }} title={isDeleted ? `${a} (Inactive by Admin)` : a}>
                                                       {isDeleted ? <span className="material-symbols-outlined text-[10px]">person_off</span> : getInitials(a)}
                                                     </div>
                                                   )
@@ -1218,7 +1231,7 @@ export default function TaskTable() {
                                                 String(t.assignedTo).trim().toLowerCase() === a.toLowerCase()
                                               )
                                               const allUserDone = userSubtasks.length > 0 && userSubtasks.every(s => s.status === 'Done')
-                                              const isDeleted = !employees?.some(e => (e.name || '').toLowerCase() === a.toLowerCase())
+                                              const isDeleted = checkUserInactive(a)
                                               return (
                                                 <div key={idx} className={`relative -ml-2 first:ml-0 ${isDeleted ? 'opacity-40 blur-[0.5px]' : ''}`} title={isDeleted ? `${a} (inactive by admin)` : a}>
                                                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 border-2 border-white shadow-[0_2px_4px_rgba(0,0,0,0.05)] ${isDeleted ? 'text-white' : 'text-white'}`} style={{ backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a) }}>
@@ -1537,10 +1550,10 @@ export default function TaskTable() {
                                           String(t.assignedTo).trim().toLowerCase() === a.toLowerCase()
                                         )
                                         const allUserDone = userSubtasks.length > 0 && userSubtasks.every(s => s.status === 'Done')
-                                        const isDeleted = !employees?.some(e => (e.name || '').toLowerCase() === a.toLowerCase())
+                                        const isDeleted = checkUserInactive(a)
                                         return (
-                                          <div key={i} style={{ position: 'relative', marginLeft: i > 0 ? -10 : 0 }} title={isDeleted ? `${a} (inactive by admin)` : a}>
-                                            <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a), border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', opacity: isDeleted ? 0.3 : 1, filter: isDeleted ? 'blur(1px)' : 'none' }}>
+                                          <div key={i} style={{ position: 'relative', marginLeft: i > 0 ? -10 : 0 }} title={isDeleted ? `${a} (Inactive by Admin)` : a}>
+                                            <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a), border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', opacity: isDeleted ? 0.6 : 1, filter: isDeleted ? 'blur(0.5px)' : 'none' }}>
                                               {isDeleted ? <span className="material-symbols-outlined" style={{ fontSize: 10 }}>person_off</span> : getInitials(a)}
                                             </div>
                                             {allUserDone && (

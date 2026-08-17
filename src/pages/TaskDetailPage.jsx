@@ -1002,17 +1002,31 @@ export default function TaskDetailPage() {
                     className={`bg-gray-100 text-gray-600 border border-gray-200 text-[12px] font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${canManageTask && !isTaskDone ? 'cursor-pointer hover:bg-purple-50 hover:border-purple-200 hover:text-[#702c91] transition-colors' : ''}`}
                   >
                     <span className="material-symbols-outlined text-[14px]">person</span>
-                    Assigned to: {task.assignedTo || ''}
+                    Assigned to:
+                    {(task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).map((a, i) => {
+                      const isInactiveUser = employees?.some(e => (e.name || '').toLowerCase() === a.toLowerCase()) ?
+                        employees?.find(e => (e.name || '').toLowerCase() === a.toLowerCase())?.status === 'Inactive' || employees?.find(e => (e.name || '').toLowerCase() === a.toLowerCase())?.isActive === 'No' : true
+                      return (
+                        <span key={i} className={`inline-flex items-center gap-1 ${isInactiveUser ? 'filter blur-[0.5px] opacity-60 font-medium' : ''}`} title={isInactiveUser ? `${a} (Inactive by Admin)` : a}>
+                          {i > 0 ? ', ' : ''}{a}
+                          {isInactiveUser && <span className="material-symbols-outlined text-[11px] text-gray-400">person_off</span>}
+                        </span>
+                      )
+                    })}
                   </span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {task.assignedBy && (
-                    <span className="bg-gray-100 text-gray-600 border border-gray-200 text-[12px] font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[14px]">assignment_ind</span>
-                      Assigned by: {task.assignedBy}
-                    </span>
-                  )}
+                  {task.assignedBy && (() => {
+                    const isAssignerInactive = employees?.some(e => (e.name || '').toLowerCase() === task.assignedBy.toLowerCase()) ?
+                      employees?.find(e => (e.name || '').toLowerCase() === task.assignedBy.toLowerCase())?.status === 'Inactive' || employees?.find(e => (e.name || '').toLowerCase() === task.assignedBy.toLowerCase())?.isActive === 'No' : true
+                    return (
+                      <span className={`bg-gray-100 text-gray-600 border border-gray-200 text-[12px] font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${isAssignerInactive ? 'filter blur-[0.5px] opacity-60' : ''}`} title={isAssignerInactive ? `${task.assignedBy} (Inactive by Admin)` : task.assignedBy}>
+                        <span className="material-symbols-outlined text-[14px]">{isAssignerInactive ? 'person_off' : 'assignment_ind'}</span>
+                        Assigned by: {task.assignedBy}
+                      </span>
+                    )
+                  })()}
                   {profile?.systemRole === 'Admin' && (
                     <button
                       onClick={() => { if (!isTaskDone) setTaskToDelete(task.id) }}
