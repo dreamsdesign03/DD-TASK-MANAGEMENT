@@ -615,6 +615,7 @@ export default function TaskTable() {
   });
 
   const totalTasks = baseTasksForStats.length;
+  const pendingTasks = baseTasksForStats.filter(t => t.status === 'Pending').length;
   const inProgressTasks = baseTasksForStats.filter(t => t.status === 'In Progress').length;
   const completedTasks = baseTasksForStats.filter(t => t.status === 'Done').length;
   const overdueTasks = baseTasksForStats.filter(t => {
@@ -635,11 +636,12 @@ export default function TaskTable() {
         className="hidden"
         onChange={handleDeptFileUpload}
       />
-      {/* â”€â”€ Filter bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── Filter bar ───────────────────────────────────────────────────────── */}
       {/* ─── Summary Cards ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-5">
         {[
           { label: 'Total Tasks', value: totalTasks, icon: 'layers', bg: '#F5F3FF', color: '#702c91' },
+          { label: 'Pending', value: pendingTasks, icon: 'pending_actions', bg: '#FFFBEB', color: '#D97706' },
           { label: 'In Progress', value: inProgressTasks, icon: 'schedule', bg: '#EFF6FF', color: '#2563EB' },
           { label: 'Completed', value: completedTasks, icon: 'task_alt', bg: '#F0FDF4', color: '#16A34A' },
           { label: 'Overdue', value: overdueTasks, icon: 'error', bg: '#FEF2F2', color: '#DC2626', overdue: true },
