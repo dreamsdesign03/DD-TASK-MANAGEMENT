@@ -277,8 +277,35 @@ async function deleteUser(payload) {
 
   const userName = user?.full_name || ''
 
-  await supabase.from('tasks').delete().ilike('assigned_to', `%${userName}%`)
-  await supabase.from('tasks').delete().ilike('assigned_by', userName)
+  const { data: allTasks } = await supabase.from('tasks').select('task_id, assigned_to, assigned_email, employee_ids')
+
+  const tasksWithUser = (allTasks || []).filter(t => {
+    const names = (t.assigned_to || '').split(',').map(s => s.trim()).filter(Boolean)
+    return names.some(n => n.toLowerCase() === userName.toLowerCase())
+  })
+
+  for (const t of tasksWithUser) {
+    const names = (t.assigned_to || '').split(',').map(s => s.trim()).filter(Boolean)
+    const emails = (t.assigned_email || '').split(',').map(s => s.trim()).filter(Boolean)
+    const ids = (t.employee_ids || '').split(',').map(s => s.trim()).filter(Boolean)
+
+    if (names.length <= 1) {
+      await supabase.from('tasks').delete().eq('task_id', t.task_id)
+    } else {
+      const idx = names.findIndex(n => n.toLowerCase() === userName.toLowerCase())
+      if (idx !== -1) {
+        names.splice(idx, 1)
+        if (emails[idx]) emails.splice(idx, 1)
+        if (ids[idx]) ids.splice(idx, 1)
+        await supabase.from('tasks').update({
+          assigned_to: names.join(', '),
+          assigned_email: emails.join(', '),
+          employee_ids: ids.join(', '),
+        }).eq('task_id', t.task_id)
+      }
+    }
+  }
+
   await supabase.from('activity').delete().eq('employee_id', user?.employee_id || '__none__')
   await supabase.from('chat_messages').delete().eq('sender_id', clean)
   await supabase.from('files').delete().ilike('uploaded_by', userName)
