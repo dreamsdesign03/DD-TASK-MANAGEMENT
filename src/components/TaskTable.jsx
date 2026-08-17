@@ -1008,11 +1008,14 @@ export default function TaskTable() {
                                             <div>
                                               <p className="text-gray-400 font-bold uppercase text-[9px] mb-1">Assigned To</p>
                                               <div className="flex -space-x-2">
-                                                {(task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3).map((a, idx) => (
-                                                  <div key={idx} className="w-6 h-6 rounded-full text-white flex items-center justify-center text-[8px] font-bold border border-white relative" style={{ backgroundColor: getUserColor(a) }} title={a}>
-                                                    {getInitials(a)}
-                                                  </div>
-                                                ))}
+                                                {(task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3).map((a, idx) => {
+                                                  const isDeleted = !employees?.some(e => (e.name || '').toLowerCase() === a.toLowerCase())
+                                                  return (
+                                                    <div key={idx} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold border border-white relative ${isDeleted ? 'opacity-40 blur-[0.5px]' : 'text-white'}`} style={{ backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a) }} title={isDeleted ? `${a} (deleted)` : a}>
+                                                      {isDeleted ? <span className="material-symbols-outlined text-[10px]">person_off</span> : getInitials(a)}
+                                                    </div>
+                                                  )
+                                                })}
                                                 {(task.assignedTo || '').split(',').filter(Boolean).length > 3 && (
                                                   <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-[8px] font-bold border border-white">
                                                     +{(task.assignedTo || '').split(',').filter(Boolean).length - 3}
@@ -1215,10 +1218,11 @@ export default function TaskTable() {
                                                 String(t.assignedTo).trim().toLowerCase() === a.toLowerCase()
                                               )
                                               const allUserDone = userSubtasks.length > 0 && userSubtasks.every(s => s.status === 'Done')
+                                              const isDeleted = !employees?.some(e => (e.name || '').toLowerCase() === a.toLowerCase())
                                               return (
-                                                <div key={idx} className="relative -ml-2 first:ml-0">
-                                                  <div className="w-8 h-8 rounded-full text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0 border-2 border-white shadow-[0_2px_4px_rgba(0,0,0,0.05)]" style={{ backgroundColor: getUserColor(a) }} title={a}>
-                                                    {getInitials(a)}
+                                                <div key={idx} className={`relative -ml-2 first:ml-0 ${isDeleted ? 'opacity-40 blur-[0.5px]' : ''}`} title={isDeleted ? `${a} (deleted)` : a}>
+                                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 border-2 border-white shadow-[0_2px_4px_rgba(0,0,0,0.05)] ${isDeleted ? 'text-white' : 'text-white'}`} style={{ backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a) }}>
+                                                    {isDeleted ? <span className="material-symbols-outlined text-[12px]">person_off</span> : getInitials(a)}
                                                   </div>
                                                   {allUserDone && (
                                                     <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 border-2 border-white rounded-full flex items-center justify-center">
@@ -1526,17 +1530,18 @@ export default function TaskTable() {
                                                                   
                                                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 0 }}>
                                                                     <div style={{ display: 'flex' }}>
-                                                                      {(task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).map((a, i) => {
+                                                                       {(task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).map((a, i) => {
                                         const userSubtasks = tasks.filter(t =>
                                           String(t.mainTaskId) === String(task.id) &&
                                           (t.taskType === 'Sub Task' || t.taskType === 'Subtask') &&
                                           String(t.assignedTo).trim().toLowerCase() === a.toLowerCase()
                                         )
                                         const allUserDone = userSubtasks.length > 0 && userSubtasks.every(s => s.status === 'Done')
+                                        const isDeleted = !employees?.some(e => (e.name || '').toLowerCase() === a.toLowerCase())
                                         return (
-                                          <div key={i} style={{ position: 'relative', marginLeft: i > 0 ? -10 : 0 }}>
-                                            <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: getUserColor(a), border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} title={a}>
-                                              {getInitials(a)}
+                                          <div key={i} style={{ position: 'relative', marginLeft: i > 0 ? -10 : 0 }} title={isDeleted ? `${a} (deleted)` : a}>
+                                            <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a), border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', opacity: isDeleted ? 0.4 : 1, filter: isDeleted ? 'blur(0.5px)' : 'none' }}>
+                                              {isDeleted ? <span className="material-symbols-outlined" style={{ fontSize: 10 }}>person_off</span> : getInitials(a)}
                                             </div>
                                             {allUserDone && (
                                               <span style={{ position: 'absolute', bottom: -2, right: -2, width: 14, height: 14, backgroundColor: '#10B981', border: '2px solid white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

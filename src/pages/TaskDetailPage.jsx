@@ -1618,11 +1618,16 @@ export default function TaskDetailPage() {
                         const assigneeEmails = (task.assignedEmail || '').split(',').map(s => s.trim()).filter(Boolean)
                         const assigneeEmail = assigneeEmails[idx] || ''
                         const totalAssignees = (task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).length
-                        const canRemove = !isTaskDone && canManageTask && totalAssignees > 1 && trimmedAssignee !== profile.name
+                        const isDeleted = !employees?.some(e => (e.name || '').toLowerCase() === trimmedAssignee.toLowerCase())
+                        const canRemove = !isTaskDone && canManageTask && totalAssignees > 1 && trimmedAssignee !== profile.name && !isDeleted
                         return (
-                          <div key={idx} className="flex items-center gap-2">
-                            <span className="text-[13px] font-bold text-[#1E1B2E]">{trimmedAssignee}</span>
-                            {trimmedAssignee === profile.name && profile.avatar ? (
+                          <div key={idx} className={`flex items-center gap-2 ${isDeleted ? 'opacity-40 blur-[0.5px]' : ''}`} title={isDeleted ? 'This user has been deleted' : ''}>
+                            <span className={`text-[13px] font-bold ${isDeleted ? 'text-gray-400 line-through' : 'text-[#1E1B2E]'}`}>{trimmedAssignee}</span>
+                            {isDeleted ? (
+                              <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-[10px] text-gray-400">person_off</span>
+                              </div>
+                            ) : trimmedAssignee === profile.name && profile.avatar ? (
                               <img
                                 className="w-6 h-6 rounded-full object-cover"
                                 src={profile.avatar}
