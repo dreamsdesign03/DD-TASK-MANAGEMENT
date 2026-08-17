@@ -1105,6 +1105,14 @@ export function AppProvider({ children }) {
   const initialTaskData = useRef({})
   const recentTaskUpdates = useRef({}) // { taskId: { timestamp, fields } }
 
+  // Persistent dedup: tracks which task+user combos already triggered "New Task Assigned"
+  const loadNotifiedAssignments = () => {
+    try { return JSON.parse(localStorage.getItem('dd_notified_assignments') || '{}') } catch { return {} }
+  }
+  const saveNotifiedAssignments = (map) => {
+    try { localStorage.setItem('dd_notified_assignments', JSON.stringify(map)) } catch {}
+  }
+
   const addSystemAndWebNotification = (category, title, subtitle, taskId = null) => {
     // Cross-tab deduplication: prevent multiple open tabs from triggering the exact same notification
     const notifHash = `${category}_${title}_${subtitle}_${taskId}`
@@ -2356,10 +2364,17 @@ export function AppProvider({ children }) {
       if (newTasksList.length > 0) {
         if (initialTaskIds.current === null) {
           initialTaskIds.current = new Set(newTasksList.map(t => t.id))
+          const myName = String(profile?.name || 'User').trim().toLowerCase()
+          const notifiedAssign = loadNotifiedAssignments()
           newTasksList.forEach(t => {
             initialTaskStatuses.current[t.id] = t.status
             initialTaskData.current[t.id] = { ...t }
+            const assigneesArr = (t.assignedTo || '').split(',').map(s => s.trim().toLowerCase())
+            if (assigneesArr.includes(myName)) {
+              notifiedAssign[`${t.id}_${myName}`] = Date.now()
+            }
           })
+          saveNotifiedAssignments(notifiedAssign)
         } else {
           newTasksList.forEach(nt => {
             const hasId = initialTaskIds.current.has(nt.id)
@@ -2374,24 +2389,32 @@ export function AppProvider({ children }) {
               const isRelated = assigneesArr.includes(myName) || assignedByStr === myName
 
               if (isRelated) {
-                let title = `New Task Created: ${nt.title}`
-                let subtitle = `Assigned to: ${nt.assignedTo} by ${nt.assignedBy}`
-                let category = 'Task Reminders'
+                const isDone = nt.status === 'Done' || nt.status === 'Blocked'
+                const notifiedAssign = loadNotifiedAssignments()
+                const alreadyNotified = notifiedAssign[`${nt.id}_${myName}`]
 
-                if (assigneesArr.includes(myName)) {
-                  title = `New Task Assigned to You`
-                  subtitle = `${nt.assignedBy} assigned you: ${nt.title}`
-                } else {
-                  title = `New Task for ${nt.assignedTo}`
-                  subtitle = `${nt.assignedBy} assigned a task to ${nt.assignedTo}`
+                if (!alreadyNotified && !isDone) {
+                  let title = `New Task Created: ${nt.title}`
+                  let subtitle = `Assigned to: ${nt.assignedTo} by ${nt.assignedBy}`
+                  let category = 'Task Reminders'
+
+                  if (assigneesArr.includes(myName)) {
+                    title = `New Task Assigned to You`
+                    subtitle = `${nt.assignedBy} assigned you: ${nt.title}`
+                  } else {
+                    title = `New Task for ${nt.assignedTo}`
+                    subtitle = `${nt.assignedBy} assigned a task to ${nt.assignedTo}`
+                  }
+
+                  addSystemAndWebNotification(
+                    category,
+                    title,
+                    subtitle,
+                    nt.id
+                  )
+                  notifiedAssign[`${nt.id}_${myName}`] = Date.now()
+                  saveNotifiedAssignments(notifiedAssign)
                 }
-
-                addSystemAndWebNotification(
-                  category,
-                  title,
-                  subtitle,
-                  nt.id
-                )
               }
 
               // Auto-set the due date for recurring auto-generated tasks (frontend-only fix)
@@ -2443,12 +2466,19 @@ export function AppProvider({ children }) {
               if (justAssignedToMe) {
                 initialTaskStatuses.current[nt.id] = nt.status
                 initialTaskData.current[nt.id] = { ...nt }
-                addSystemAndWebNotification(
-                  'Task Reminders',
-                  `New Task Assigned to You`,
-                  `${nt.assignedBy} assigned you to: ${nt.title}`,
-                  nt.id
-                )
+                const isDone = nt.status === 'Done' || nt.status === 'Blocked'
+                const notifiedAssign = loadNotifiedAssignments()
+                const alreadyNotified = notifiedAssign[`${nt.id}_${myName}`]
+                if (!alreadyNotified && !isDone) {
+                  addSystemAndWebNotification(
+                    'Task Reminders',
+                    `New Task Assigned to You`,
+                    `${nt.assignedBy} assigned you to: ${nt.title}`,
+                    nt.id
+                  )
+                  notifiedAssign[`${nt.id}_${myName}`] = Date.now()
+                  saveNotifiedAssignments(notifiedAssign)
+                }
               } else if (updatedFields.length > 0 && isRelated) {
                 initialTaskStatuses.current[nt.id] = nt.status
                 initialTaskData.current[nt.id] = { ...nt }
