@@ -263,6 +263,29 @@ async function rejectUser(email) {
   return { ok: true, deleted: true }
 }
 
+async function deleteUser(email) {
+  const clean = String(email || '').trim().toLowerCase()
+  if (!clean) return { ok: false, error: 'No email provided.' }
+
+  const { data: user } = await supabase
+    .from('team')
+    .select('full_name, employee_id')
+    .ilike('email_address', clean)
+    .maybeSingle()
+
+  const userName = user?.full_name || ''
+
+  await supabase.from('tasks').delete().ilike('assigned_to', `%${userName}%`)
+  await supabase.from('tasks').delete().ilike('assigned_by', userName)
+  await supabase.from('activity').delete().eq('employee_id', user?.employee_id || '__none__')
+  await supabase.from('chat_messages').delete().eq('sender_id', clean)
+  await supabase.from('files').delete().ilike('uploaded_by', userName)
+
+  const { error } = await supabase.from('team').delete().ilike('email_address', clean)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, deleted: true }
+}
+
 async function setPresence(email, status) {
   const clean = String(email || '').trim().toLowerCase()
   if (!clean) return { ok: false, error: 'No email provided.' }
@@ -556,6 +579,7 @@ const POST_HANDLERS = {
   login,
   google_login: googleLogin,
   reject_user: rejectUser,
+  delete_user: deleteUser,
   user_online: (p) => setPresence(p.email, 'Online'),
   user_offline: (p) => setPresence(p.email, 'Offline'),
   punch_in: punchIn,
