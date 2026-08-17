@@ -89,7 +89,7 @@ const getPriorityConfig = (priority) => {
 export default function TaskDetailPage() {
   const { taskId } = useParams()
   const navigate = useNavigate()
-  const { tasks, updateTask, addTask, deleteTask, profile, employees, addSystemAndWebNotification, messagesByChatId, setMessagesByChatId, fetchMessages, markChatAsRead, addToast, activeTimer, sessionSecs: globalSessionSecs, toggleTimer, isPunchedIn } = useApp()
+  const { tasks, updateTask, addTask, deleteTask, removePersonFromTask, profile, employees, addSystemAndWebNotification, messagesByChatId, setMessagesByChatId, fetchMessages, markChatAsRead, addToast, activeTimer, sessionSecs: globalSessionSecs, toggleTimer, isPunchedIn } = useApp()
 
   const task = (tasks || []).find((t) => t.id === taskId) || (tasks && tasks.length > 0 ? tasks[0] : {})
 
@@ -171,6 +171,7 @@ export default function TaskDetailPage() {
   const [lightboxUrl, setLightboxUrl] = useState(null)
   const [taskToDelete, setTaskToDelete] = useState(null)
   const [subtaskToDelete, setSubtaskToDelete] = useState(null)
+  const [personToRemove, setPersonToRemove] = useState(null)
 
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [editDescriptionContent, setEditDescriptionContent] = useState('')
@@ -1614,6 +1615,10 @@ export default function TaskDetailPage() {
                       {(task.assignedTo || '').split(',').map((assignee, idx) => {
                         const trimmedAssignee = assignee.trim()
                         if (!trimmedAssignee) return null
+                        const assigneeEmails = (task.assignedEmail || '').split(',').map(s => s.trim()).filter(Boolean)
+                        const assigneeEmail = assigneeEmails[idx] || ''
+                        const totalAssignees = (task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).length
+                        const canRemove = !isTaskDone && canManageTask && totalAssignees > 1 && trimmedAssignee !== profile.name
                         return (
                           <div key={idx} className="flex items-center gap-2">
                             <span className="text-[13px] font-bold text-[#1E1B2E]">{trimmedAssignee}</span>
@@ -1626,6 +1631,15 @@ export default function TaskDetailPage() {
                               />
                             ) : (
                               renderAvatar(null, trimmedAssignee, "w-6 h-6 rounded-full text-[10px]")
+                            )}
+                            {canRemove && (
+                              <button
+                                onClick={() => setPersonToRemove({ name: trimmedAssignee, email: assigneeEmail })}
+                                className="w-5 h-5 rounded-full bg-red-100 text-red-500 flex items-center justify-center hover:bg-red-200 transition-colors cursor-pointer border-none p-0"
+                                title={`Remove ${trimmedAssignee}`}
+                              >
+                                <span className="material-symbols-outlined text-[12px] leading-none">close</span>
+                              </button>
                             )}
                           </div>
                         )
@@ -2058,7 +2072,11 @@ export default function TaskDetailPage() {
             </div>
             <div className="px-6 py-5 bg-surface-container-lowest">
               <p className="text-body-sm text-secondary leading-relaxed">
-                Are you sure you want to delete this task? This action cannot be undone.
+                {'Are you sure you want to delete this task? '}
+                {subtasks.length > 0 && (
+                  <>All <strong className="text-on-surface">{subtasks.length} subtask{subtasks.length > 1 ? 's' : ''}</strong> {'will also be deleted. '}</>
+                )}
+                {'This action cannot be undone.'}
               </p>
             </div>
             <div className="px-6 py-4 bg-surface-container-low border-t border-outline-variant flex justify-end gap-3">
@@ -2250,6 +2268,42 @@ export default function TaskDetailPage() {
                 className="px-5 py-2 bg-error text-on-error rounded-lg font-label-md shadow-md hover:brightness-105 active:scale-95 transition-all text-sm font-bold"
               >
                 Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Person Confirmation Modal */}
+      {personToRemove && (
+        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[400px] overflow-hidden animate-scale-in flex flex-col border border-outline-variant">
+            <div className="flex items-center gap-3 px-6 py-5 border-b border-outline-variant bg-surface-container-low">
+              <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+                <span className="material-symbols-outlined text-amber-600 text-[20px]">person_remove</span>
+              </div>
+              <h2 className="text-label-lg font-bold text-on-surface">Remove from Task</h2>
+            </div>
+            <div className="px-6 py-5 bg-surface-container-lowest">
+              <p className="text-body-sm text-secondary leading-relaxed">
+                Are you sure you want to remove <strong className="text-on-surface">{personToRemove.name}</strong> from this task? The task will remain for other assignees.
+              </p>
+            </div>
+            <div className="px-6 py-4 bg-surface-container-low border-t border-outline-variant flex justify-end gap-3">
+              <button
+                onClick={() => setPersonToRemove(null)}
+                className="px-5 py-2 border border-outline-variant text-secondary rounded-lg font-label-md hover:bg-surface-container-high transition-all text-sm font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await removePersonFromTask(task.id, personToRemove.email)
+                  setPersonToRemove(null)
+                }}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-label-md shadow-md hover:brightness-105 active:scale-95 transition-all text-sm font-bold"
+              >
+                Remove
               </button>
             </div>
           </div>

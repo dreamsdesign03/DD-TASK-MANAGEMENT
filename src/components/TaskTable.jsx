@@ -1754,7 +1754,9 @@ export default function TaskTable() {
             </div>
             <div className="px-6 py-5 bg-surface-container-lowest">
               <p className="text-body-sm text-secondary leading-relaxed">
-                Are you sure you want to delete this task? This action cannot be undone.
+                {'Are you sure you want to delete this task? '}
+                {(() => { const subCount = tasks.filter(t => String(t.mainTaskId || t.main_task_id) === String(taskToDelete)).length; return subCount > 0 ? <>All <strong className="text-on-surface">{subCount} subtask{subCount > 1 ? 's' : ''}</strong> {'will also be deleted. '}</> : null })()}
+                {'This action cannot be undone.'}
               </p>
             </div>
             <div className="px-6 py-4 bg-surface-container-low border-t border-outline-variant flex justify-end gap-3">

@@ -2328,16 +2328,48 @@ export function AppProvider({ children }) {
         userEmail: profile?.email
       })
       if (data && data.ok) {
-        setTasks((prev) => prev.filter((t) => t.id !== id))
+        setTasks((prev) => prev.filter((t) => t.id !== id && String(t.mainTaskId || t.main_task_id) !== String(id)))
         if (mqttClient && mqttClient.connected) {
           mqttClient.publish('dd_task_engine_v1/sync', JSON.stringify({ action: 'sync' }))
         }
       } else {
-        setTasks((prev) => prev.filter((t) => t.id !== id))
+        setTasks((prev) => prev.filter((t) => t.id !== id && String(t.mainTaskId || t.main_task_id) !== String(id)))
       }
     } catch (err) {
       console.warn('Delete task failed:', err)
-      setTasks((prev) => prev.filter((t) => t.id !== id))
+      setTasks((prev) => prev.filter((t) => t.id !== id && String(t.mainTaskId || t.main_task_id) !== String(id)))
+    }
+  }
+
+  const removePersonFromTask = async (taskId, removeEmail) => {
+    try {
+      const data = await api.post({ action: 'remove_person_from_task', taskId, removeEmail })
+      if (data && data.ok) {
+        setTasks(prev => prev.map(t => {
+          if (t.id !== taskId) return t
+          const names = (t.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean)
+          const emails = (t.assignedEmail || '').split(',').map(s => s.trim()).filter(Boolean)
+          const ids = (t.employeeIds || t.assignedToIds || '').split(',').map(s => s.trim()).filter(Boolean)
+          const idx = emails.findIndex(e => e.toLowerCase() === removeEmail.toLowerCase())
+          if (idx === -1) return t
+          names.splice(idx, 1)
+          emails.splice(idx, 1)
+          if (ids[idx]) ids.splice(idx, 1)
+          return {
+            ...t,
+            assignedTo: names.join(', '),
+            assignedEmail: emails.join(', '),
+            employeeIds: ids.join(', '),
+            assignedToIds: ids.join(', '),
+          }
+        }))
+        addToast('Person removed from task', 'success')
+        if (mqttClient && mqttClient.connected) {
+          mqttClient.publish('dd_task_engine_v1/sync', JSON.stringify({ action: 'sync' }))
+        }
+      }
+    } catch (err) {
+      console.warn('Remove person failed:', err)
     }
   }
 
@@ -3025,6 +3057,7 @@ export function AppProvider({ children }) {
         updateTask,
         addTask,
         deleteTask,
+        removePersonFromTask,
         notifications,
         setNotifications,
         markAllNotificationsRead,

@@ -391,9 +391,43 @@ async function updateTask(payload) {
 async function deleteTask(payload) {
   const taskId = String(payload.taskId || payload.task_id || '')
   if (!taskId) return { ok: false, error: 'Task ID missing.' }
+  const { error: subErr } = await supabase.from('tasks').delete().eq('main_task_id', taskId)
+  if (subErr) console.warn('Failed to cascade-delete subtasks:', subErr.message)
   const { error } = await supabase.from('tasks').delete().eq('task_id', taskId)
   if (error) throw error
   return { ok: true, deleted: true }
+}
+
+async function removePersonFromTask(payload) {
+  const taskId = String(payload.taskId || '')
+  const removeEmail = String(payload.removeEmail || '').trim().toLowerCase()
+  if (!taskId || !removeEmail) return { ok: false, error: 'Task ID and email required.' }
+
+  const { data: task, error: fetchErr } = await supabase
+    .from('tasks')
+    .select('assigned_to, assigned_email, employee_ids')
+    .eq('task_id', taskId)
+    .maybeSingle()
+  if (fetchErr || !task) return { ok: false, error: 'Task not found.' }
+
+  const names = (task.assigned_to || '').split(',').map(s => s.trim()).filter(Boolean)
+  const emails = (task.assigned_email || '').split(',').map(s => s.trim()).filter(Boolean)
+  const ids = (task.employee_ids || '').split(',').map(s => s.trim()).filter(Boolean)
+
+  const idx = emails.findIndex(e => e.toLowerCase() === removeEmail)
+  if (idx === -1) return { ok: false, error: 'Person not found in task.' }
+
+  names.splice(idx, 1)
+  emails.splice(idx, 1)
+  if (ids[idx]) ids.splice(idx, 1)
+
+  const { error } = await supabase.from('tasks').update({
+    assigned_to: names.join(', '),
+    assigned_email: emails.join(', '),
+    employee_ids: ids.join(', '),
+  }).eq('task_id', taskId)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
 }
 
 /* ─── Clients ────────────────────────────────────────────────────────────── */
@@ -589,6 +623,7 @@ const POST_HANDLERS = {
   add_task: addTask,
   update_task: updateTask,
   delete_task: deleteTask,
+  remove_person_from_task: removePersonFromTask,
   add_client: addClient,
   update_client: updateClient,
   update_payment: updatePayment,
