@@ -1621,10 +1621,10 @@ export default function TaskDetailPage() {
                         const isDeleted = !employees?.some(e => (e.name || '').toLowerCase() === trimmedAssignee.toLowerCase())
                         const canRemove = !isTaskDone && canManageTask && totalAssignees > 1 && trimmedAssignee !== profile.name && !isDeleted
                         return (
-                          <div key={idx} className={`flex items-center gap-2 ${isDeleted ? 'opacity-40 blur-[0.5px]' : ''}`} title={isDeleted ? 'Inactive by Admin' : ''}>
+                          <div key={idx} className={`flex items-center gap-2 ${isDeleted ? 'opacity-30 blur-[1px]' : ''}`} title={isDeleted ? 'Inactive by Admin' : ''}>
                             <span className={`text-[13px] font-bold ${isDeleted ? 'text-gray-400 line-through' : 'text-[#1E1B2E]'}`}>{trimmedAssignee}</span>
                             {isDeleted ? (
-                              <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+                              <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center blur-[1px] opacity-50">
                                 <span className="material-symbols-outlined text-[10px] text-gray-400">person_off</span>
                               </div>
                             ) : trimmedAssignee === profile.name && profile.avatar ? (

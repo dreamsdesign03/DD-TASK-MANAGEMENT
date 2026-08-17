@@ -1011,7 +1011,7 @@ export default function TaskTable() {
                                                 {(task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3).map((a, idx) => {
                                                   const isDeleted = !employees?.some(e => (e.name || '').toLowerCase() === a.toLowerCase())
                                                   return (
-                                                    <div key={idx} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold border border-white relative ${isDeleted ? 'opacity-40 blur-[0.5px]' : 'text-white'}`} style={{ backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a) }} title={isDeleted ? `${a} (inactive by admin)` : a}>
+                                                    <div key={idx} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold border border-white relative ${isDeleted ? 'opacity-30 blur-[1px]' : 'text-white'}`} style={{ backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a) }} title={isDeleted ? `${a} (inactive by admin)` : a}>
                                                       {isDeleted ? <span className="material-symbols-outlined text-[10px]">person_off</span> : getInitials(a)}
                                                     </div>
                                                   )
@@ -1540,7 +1540,7 @@ export default function TaskTable() {
                                         const isDeleted = !employees?.some(e => (e.name || '').toLowerCase() === a.toLowerCase())
                                         return (
                                           <div key={i} style={{ position: 'relative', marginLeft: i > 0 ? -10 : 0 }} title={isDeleted ? `${a} (inactive by admin)` : a}>
-                                            <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a), border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', opacity: isDeleted ? 0.4 : 1, filter: isDeleted ? 'blur(0.5px)' : 'none' }}>
+                                            <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: isDeleted ? '#9CA3AF' : getUserColor(a), border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', opacity: isDeleted ? 0.3 : 1, filter: isDeleted ? 'blur(1px)' : 'none' }}>
                                               {isDeleted ? <span className="material-symbols-outlined" style={{ fontSize: 10 }}>person_off</span> : getInitials(a)}
                                             </div>
                                             {allUserDone && (
