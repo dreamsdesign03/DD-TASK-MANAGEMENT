@@ -125,6 +125,7 @@ export default function AccountClientsPage() {
       services: viewingClient['Services'] || '',
       projectEndDate: viewingClient['Project Completion Date'] || viewingClient['Project Completion date'] || '',
       'GST/NON GST': paymentForm.gstType || 'Non-GST',
+      'GST AMOUNT (NEW)': calcGstAmount() || '',
       'GST (%)': paymentForm.gstType === 'GST' ? GST_FIXED_PCT : '',
       'RECURRING': paymentForm.recurring || 'No',
       'RECURRING TYPE': paymentForm.recurring === 'Yes' ? paymentForm.recurringType : '',
