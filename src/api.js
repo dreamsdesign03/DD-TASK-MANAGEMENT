@@ -464,21 +464,25 @@ async function recordPayment(payload) {
   if (payload.amount === undefined || payload.amount === null || payload.amount === '') {
     return { ok: false, error: 'Amount missing.' }
   }
-  const { error } = await supabase.from('payments').insert({
-    client_id: clientId,
+  const { data: existing } = await supabase
+    .from('payments')
+    .select('client_id')
+    .eq('client_id', clientId)
+    .maybeSingle()
+  const updateData = {
     payment_date: payload.date || istNow(),
     payment_amount: String(payload.amount),
     payment_note: payload.note || '',
     pending_amount: String(payload.pendingAmount ?? ''),
     data_entry_date_and_time: istNow(),
-  })
-  if (error) throw error
-  if (payload.pendingAmount !== undefined && payload.pendingAmount !== null) {
-    await supabase
-      .from('payments')
-      .update({ pending_amount: String(payload.pendingAmount) })
-      .eq('client_id', clientId)
   }
+  let error
+  if (existing) {
+    ;({ error } = await supabase.from('payments').update(updateData).eq('client_id', clientId))
+  } else {
+    ;({ error } = await supabase.from('payments').insert({ ...updateData, client_id: clientId }))
+  }
+  if (error) throw error
   return { ok: true }
 }
 
