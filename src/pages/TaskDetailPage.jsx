@@ -763,10 +763,6 @@ export default function TaskDetailPage() {
         import('canvas-confetti').then((confetti) => {
           confetti.default({ particleCount: 150, spread: 70, origin: { y: 0.6 } })
         })
-        setTimeout(() => {
-          navigate('/tasks', { state: { viewMode: 'Board' } })
-        }, 1500)
-        return
       }
     }
 
