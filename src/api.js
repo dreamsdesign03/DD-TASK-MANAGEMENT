@@ -281,7 +281,10 @@ async function deleteUser(payload) {
   await supabase.from('chat_messages').delete().eq('sender_id', clean)
   await supabase.from('files').delete().ilike('uploaded_by', userName)
 
-  const { error } = await supabase.from('team').delete().ilike('email_address', clean)
+  const { error } = await supabase.from('team').update({
+    is_active: false,
+    status: 'Inactive',
+  }).ilike('email_address', clean)
   if (error) return { ok: false, error: error.message }
   return { ok: true, deleted: true }
 }

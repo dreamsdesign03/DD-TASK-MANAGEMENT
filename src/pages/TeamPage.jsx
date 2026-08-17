@@ -61,12 +61,15 @@ export default function TeamPage() {
     return { ...emp, taskCount }
   })
 
-  const isPending = (e) => String(e.isActive).toLowerCase() === 'no'
+  const isPending = (e) => String(e.isActive).toLowerCase() === 'no' && String(e.status).toLowerCase() !== 'inactive'
+  const isInactive = (e) => String(e.status).toLowerCase() === 'inactive'
   const pendingMembers = employees.filter(isPending)
-  const approvedMembers = employees.filter(e => !isPending(e))
+  const inactiveMembers = employees.filter(isInactive)
+  const approvedMembers = employees.filter(e => !isPending(e) && !isInactive(e))
 
-  // Filter Employees (search only)
-  const filtered = approvedMembers.filter((e) => {
+  // Filter Employees (search only) — include inactive in search
+  const allVisible = [...approvedMembers, ...inactiveMembers]
+  const filtered = allVisible.filter((e) => {
     const query = search.toLowerCase()
     return !query ||
       (e.name || '').toLowerCase().includes(query) ||
@@ -113,7 +116,7 @@ export default function TeamPage() {
     try {
       const data = await api.post({ action: 'delete_user', email: emp.email })
       if (data.ok) {
-        addToast(`${emp.name} has been deleted.`, 'success')
+        addToast(`${emp.name} has been deactivated.`, 'success')
         setConfirmDelete(null)
         await fetchTeam()
       } else {
@@ -271,11 +274,17 @@ export default function TeamPage() {
                   return (
                     <div
                       key={emp.id}
-                      className="member-card bg-white rounded-[20px] p-5 shadow-[0_8px_24px_rgba(91,33,182,0.08)] relative overflow-hidden transition-all duration-300 border border-[#E5E7EB]"
+                      className={`member-card bg-white rounded-[20px] p-5 shadow-[0_8px_24px_rgba(91,33,182,0.08)] relative overflow-hidden transition-all duration-300 border ${isInactive(emp) ? 'border-gray-200 opacity-50' : 'border-[#E5E7EB]'}`}
+                      title={isInactive(emp) ? 'Inactive by Admin' : ''}
                     >
-                      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${theme.topBar}`}></div>
+                      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${isInactive(emp) ? 'from-gray-300 to-gray-400' : theme.topBar}`}></div>
+                      {isInactive(emp) && (
+                        <div className="absolute top-3 right-3 z-10">
+                          <span className="bg-gray-100 text-gray-500 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-gray-200">Inactive by Admin</span>
+                        </div>
+                      )}
                       
-                      <div className="flex justify-between items-start mb-4">
+                      <div className={`flex justify-between items-start mb-4 ${isInactive(emp) ? 'blur-[0.5px]' : ''}`}>
                         {renderAvatar(
                           emp.email === profile.email ? profile.avatar : emp.avatar,
                           emp.email === profile.email ? (profile.name || emp.name) : emp.name,
@@ -284,14 +293,16 @@ export default function TeamPage() {
                           emp.email
                         )}
                         <div className="relative mt-1 mr-1">
-                          {getStatusElement(emp.status)}
+                          {isInactive(emp) ? (
+                            <div className="w-2.5 h-2.5 bg-gray-300 rounded-full ring-4 ring-gray-100"></div>
+                          ) : getStatusElement(emp.status)}
                         </div>
                       </div>
 
-                      <div className="mb-4">
+                      <div className={`mb-4 ${isInactive(emp) ? 'blur-[0.5px]' : ''}`}>
                         <h3 className="text-[15px] font-bold text-[#1E1B2E] m-0 mb-1">{emp.name}</h3>
                         <div className="flex items-center gap-2 mt-2">
-                          <span className={`px-2.5 py-0.5 rounded-full ${theme.tagBg} ${theme.tagText} text-[11px] font-bold`}>
+                          <span className={`px-2.5 py-0.5 rounded-full ${isInactive(emp) ? 'bg-gray-100 text-gray-400' : `${theme.tagBg} ${theme.tagText}`} text-[11px] font-bold`}>
                             {emp.role}
                           </span>
                           <span className="text-[11px] uppercase text-[#9CA3AF] font-bold tracking-wider">
@@ -300,9 +311,9 @@ export default function TeamPage() {
                         </div>
                       </div>
 
-                      <div className="h-[1px] bg-[#F3F4F6] w-full mb-4"></div>
+                      <div className={`h-[1px] w-full mb-4 ${isInactive(emp) ? 'bg-gray-100' : 'bg-[#F3F4F6]'}`}></div>
                       
-                      <div className="flex items-center gap-3 mb-5">
+                      <div className={`flex items-center gap-3 mb-5 ${isInactive(emp) ? 'blur-[0.5px]' : ''}`}>
                         <div className="w-7 h-7 rounded-lg bg-[#F9FAFB] flex items-center justify-center shrink-0">
                           <span className="material-symbols-outlined text-[16px] text-[#6B7280]">mail</span>
                         </div>
@@ -310,7 +321,12 @@ export default function TeamPage() {
                       </div>
 
                       <div className="w-full">
-                        {emp.email !== profile.email ? (
+                        {isInactive(emp) ? (
+                          <div className="w-full h-[38px] rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center gap-2">
+                            <span className="material-symbols-outlined text-[16px] text-gray-400">person_off</span>
+                            <span className="text-[12px] font-semibold text-gray-400">Inactive by Admin</span>
+                          </div>
+                        ) : emp.email !== profile.email ? (
                           <div className="flex gap-2">
                             <button
                               onClick={() => navigate('/chat', { state: { openChatWithName: emp.name } })}
@@ -357,23 +373,23 @@ export default function TeamPage() {
         <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-[400px] rounded-2xl shadow-2xl flex flex-col animate-scale-in">
             <div className="flex items-center gap-3 px-6 pt-6 pb-2">
-              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[24px] text-red-500">delete_forever</span>
+              <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[24px] text-amber-500">person_off</span>
               </div>
               <div>
-                <h3 className="text-[16px] font-bold text-[#1E1B2E] m-0">Delete User</h3>
-                <p className="text-[13px] text-[#6B7280] m-0 mt-0.5">This action cannot be undone</p>
+                <h3 className="text-[16px] font-bold text-[#1E1B2E] m-0">Deactivate User</h3>
+                <p className="text-[13px] text-[#6B7280] m-0 mt-0.5">This user will be marked inactive</p>
               </div>
             </div>
             <div className="px-6 py-4">
               <p className="text-[13px] text-[#4B5563] m-0 leading-relaxed">
-                Are you sure you want to delete <strong className="text-[#1E1B2E]">{confirmDelete.name}</strong>? This will permanently remove:
+                Are you sure you want to deactivate <strong className="text-[#1E1B2E]">{confirmDelete.name}</strong>? This will:
               </p>
               <ul className="mt-3 space-y-1.5 text-[12px] text-[#6B7280]">
-                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>Team profile &amp; account</li>
-                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>All assigned &amp; created tasks</li>
-                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>Activity &amp; attendance logs</li>
-                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>Chat messages &amp; file uploads</li>
+                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-amber-400">check</span>Mark their profile as inactive</li>
+                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-amber-400">check</span>Remove activity &amp; attendance logs</li>
+                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-amber-400">check</span>Clear chat messages &amp; file uploads</li>
+                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-green-400">check</span>Task names will appear blurred</li>
               </ul>
             </div>
             <div className="border-t border-gray-200 px-6 py-4 flex gap-3">
@@ -386,14 +402,14 @@ export default function TeamPage() {
               <button
                 onClick={() => handleDelete(confirmDelete)}
                 disabled={deleting === confirmDelete.email}
-                className="flex-1 h-[42px] rounded-xl bg-red-500 hover:bg-red-600 text-white text-[13px] font-bold cursor-pointer transition-all border-none disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 h-[42px] rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[13px] font-bold cursor-pointer transition-all border-none disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {deleting === confirmDelete.email ? (
-                  'Deleting...'
+                  'Deactivating...'
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-[18px]">delete</span>
-                    Delete Permanently
+                    <span className="material-symbols-outlined text-[18px]">person_off</span>
+                    Deactivate User
                   </>
                 )}
               </button>
