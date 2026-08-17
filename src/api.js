@@ -255,7 +255,8 @@ async function approveUser(email) {
   return { ok: true }
 }
 
-async function rejectUser(email) {
+async function rejectUser(payload) {
+  const email = payload.email || payload
   const clean = String(email || '').trim().toLowerCase()
   if (!clean) return { ok: false, error: 'No email provided.' }
   const { error } = await supabase.from('team').delete().eq('email_address', clean)
@@ -263,7 +264,8 @@ async function rejectUser(email) {
   return { ok: true, deleted: true }
 }
 
-async function deleteUser(email) {
+async function deleteUser(payload) {
+  const email = payload.email || payload
   const clean = String(email || '').trim().toLowerCase()
   if (!clean) return { ok: false, error: 'No email provided.' }
 
