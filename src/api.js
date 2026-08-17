@@ -255,6 +255,18 @@ async function approveUser(email) {
   return { ok: true }
 }
 
+async function reactivateUser(payload) {
+  const email = typeof payload === 'string' ? payload : (payload?.email || '')
+  const clean = String(email || '').trim().toLowerCase()
+  if (!clean) return { ok: false, error: 'No email provided.' }
+  const { error } = await supabase
+    .from('team')
+    .update({ is_active: true, status: 'Offline' })
+    .ilike('email_address', clean)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
 async function rejectUser(payload) {
   const email = payload.email || payload
   const clean = String(email || '').trim().toLowerCase()
@@ -617,6 +629,7 @@ const POST_HANDLERS = {
   google_login: googleLogin,
   reject_user: rejectUser,
   delete_user: deleteUser,
+  reactivate_user: reactivateUser,
   user_online: (p) => setPresence(p.email, 'Online'),
   user_offline: (p) => setPresence(p.email, 'Offline'),
   punch_in: punchIn,
@@ -655,6 +668,7 @@ export const api = {
       case 'get_activities': return getActivities()
       case 'get_project_files': return getProjectFiles(params.projectName)
       case 'approve_user': return approveUser(params.email)
+      case 'reactivate_user': return reactivateUser(params.email)
       default:
         if (!action) return getChats()
         throw new Error(`Unknown action: ${action}`)

@@ -110,6 +110,25 @@ export default function TeamPage() {
     }
   }
 
+  const [reactivating, setReactivating] = useState(null)
+
+  const handleReactivate = async (emp) => {
+    setReactivating(emp.email)
+    try {
+      const data = await api.post({ action: 'reactivate_user', email: emp.email })
+      if (data.ok) {
+        addToast(`${emp.name} has been reactivated!`, 'success')
+        await fetchTeam()
+      } else {
+        addToast('Failed to reactivate: ' + (data.error || ''), 'error')
+      }
+    } catch (err) {
+      addToast('Failed to reactivate: ' + err.message, 'error')
+    } finally {
+      setReactivating(null)
+    }
+  }
+
   const handleDelete = async (emp) => {
     setDeleting(emp.email)
     try {
@@ -311,10 +330,22 @@ export default function TeamPage() {
 
                       <div className="w-full">
                         {empInactive ? (
-                          <div className="w-full h-[38px] rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center gap-2" title="User is inactive (deactivated by admin)">
-                            <span className="material-symbols-outlined text-[16px] text-gray-400">person_off</span>
-                            <span className="text-[12px] font-semibold text-gray-400">Inactive by Admin</span>
-                          </div>
+                          profile?.systemRole === 'Admin' ? (
+                            <button
+                              onClick={() => handleReactivate(emp)}
+                              disabled={reactivating === emp.email}
+                              className="w-full h-[38px] border-none cursor-pointer rounded-full bg-gradient-to-r from-[#10B981] to-[#059669] text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+                              title="Reactivate user profile"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">person_add</span>
+                              {reactivating === emp.email ? 'Reactivating...' : 'Reactivate User'}
+                            </button>
+                          ) : (
+                            <div className="w-full h-[38px] rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center gap-2" title="User is inactive (deactivated by admin)">
+                              <span className="material-symbols-outlined text-[16px] text-gray-400">person_off</span>
+                              <span className="text-[12px] font-semibold text-gray-400">Inactive by Admin</span>
+                            </div>
+                          )
                         ) : emp.email !== profile.email ? (
                           <div className="flex gap-2">
                             <button
