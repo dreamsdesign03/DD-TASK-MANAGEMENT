@@ -2800,6 +2800,7 @@ export function AppProvider({ children }) {
           const email = item["Email Address"] || item.Email || item.email || ''
           const role = item.Role || item.role || item.Designation || 'Team Member'
           const avatar = item.Avatar || item.avatar || item["Profile Image"] || ""
+          const id = item["Employee ID"] || item.employeeId || item.id || `emp-${idx}`
           const rawIsActive = item["Is Active"]
           const isActive = (rawIsActive === true || rawIsActive === 'Yes' || rawIsActive === 'yes' || rawIsActive === 1) ? 'Yes' : 'No'
           const rawStatus = item.Status || item.status || ''
