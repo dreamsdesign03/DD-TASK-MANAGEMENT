@@ -412,31 +412,38 @@ async function deleteTask(payload) {
 }
 
 async function removePersonFromTask(payload) {
-  const taskId = String(payload.taskId || '')
-  const removeEmail = String(payload.removeEmail || '').trim().toLowerCase()
-  if (!taskId || !removeEmail) return { ok: false, error: 'Task ID and email required.' }
+  const taskId = String(payload.taskId || payload.task_id || '')
+  const removeEmail = String(payload.removeEmail || payload.email || '').trim().toLowerCase()
+  const removeName = String(payload.removeName || payload.name || '').trim().toLowerCase()
+  if (!taskId || (!removeEmail && !removeName)) return { ok: false, error: 'Task ID and name/email required.' }
 
   const { data: task, error: fetchErr } = await supabase
     .from('tasks')
-    .select('assigned_to, assigned_email, employee_ids')
+    .select('assigned_to, assigned_emails, employee_ids')
     .eq('task_id', taskId)
     .maybeSingle()
   if (fetchErr || !task) return { ok: false, error: 'Task not found.' }
 
   const names = (task.assigned_to || '').split(',').map(s => s.trim()).filter(Boolean)
-  const emails = (task.assigned_email || '').split(',').map(s => s.trim()).filter(Boolean)
+  const emails = (task.assigned_emails || '').split(',').map(s => s.trim()).filter(Boolean)
   const ids = (task.employee_ids || '').split(',').map(s => s.trim()).filter(Boolean)
 
-  const idx = emails.findIndex(e => e.toLowerCase() === removeEmail)
+  let idx = -1
+  if (removeEmail) {
+    idx = emails.findIndex(e => e.toLowerCase() === removeEmail)
+  }
+  if (idx === -1 && removeName) {
+    idx = names.findIndex(n => n.toLowerCase() === removeName)
+  }
   if (idx === -1) return { ok: false, error: 'Person not found in task.' }
 
   names.splice(idx, 1)
-  emails.splice(idx, 1)
+  if (emails[idx]) emails.splice(idx, 1)
   if (ids[idx]) ids.splice(idx, 1)
 
   const { error } = await supabase.from('tasks').update({
     assigned_to: names.join(', '),
-    assigned_email: emails.join(', '),
+    assigned_emails: emails.join(', '),
     employee_ids: ids.join(', '),
   }).eq('task_id', taskId)
   if (error) return { ok: false, error: error.message }

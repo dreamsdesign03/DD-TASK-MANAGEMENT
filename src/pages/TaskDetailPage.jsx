@@ -1644,7 +1644,8 @@ export default function TaskDetailPage() {
                         const trimmedAssignee = assignee.trim()
                         if (!trimmedAssignee) return null
                         const assigneeEmails = (task.assignedEmail || '').split(',').map(s => s.trim()).filter(Boolean)
-                        const assigneeEmail = assigneeEmails[idx] || ''
+                        const empMatch = employees?.find(e => (e.name || '').toLowerCase() === trimmedAssignee.toLowerCase())
+                        const assigneeEmail = assigneeEmails[idx] || empMatch?.email || ''
                         const totalAssignees = (task.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean).length
                         const isDeleted = !employees?.some(e => (e.name || '').toLowerCase() === trimmedAssignee.toLowerCase())
                         const canRemove = !isTaskDone && canManageTask && totalAssignees > 1 && trimmedAssignee !== profile.name && !isDeleted
@@ -2331,8 +2332,10 @@ export default function TaskDetailPage() {
               </button>
               <button
                 onClick={async () => {
-                  await removePersonFromTask(task.id, personToRemove.email)
-                  setPersonToRemove(null)
+                  if (personToRemove) {
+                    await removePersonFromTask(task.id, personToRemove.email || personToRemove.name)
+                    setPersonToRemove(null)
+                  }
                 }}
                 className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-label-md shadow-md hover:brightness-105 active:scale-95 transition-all text-sm font-bold"
               >

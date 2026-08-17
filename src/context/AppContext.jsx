@@ -2341,19 +2341,37 @@ export function AppProvider({ children }) {
     }
   }
 
-  const removePersonFromTask = async (taskId, removeEmail) => {
+  const removePersonFromTask = async (taskId, removeEmailOrName) => {
     try {
-      const data = await api.post({ action: 'remove_person_from_task', taskId, removeEmail })
+      const isEmail = String(removeEmailOrName || '').includes('@')
+      const targetStr = String(removeEmailOrName || '').trim().toLowerCase()
+      const payload = isEmail
+        ? { action: 'remove_person_from_task', taskId, removeEmail: targetStr }
+        : { action: 'remove_person_from_task', taskId, removeName: targetStr }
+
+      const data = await api.post(payload)
       if (data && data.ok) {
         setTasks(prev => prev.map(t => {
           if (t.id !== taskId) return t
           const names = (t.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean)
           const emails = (t.assignedEmail || '').split(',').map(s => s.trim()).filter(Boolean)
           const ids = (t.employeeIds || t.assignedToIds || '').split(',').map(s => s.trim()).filter(Boolean)
-          const idx = emails.findIndex(e => e.toLowerCase() === removeEmail.toLowerCase())
-          if (idx === -1) return t
+
+          let idx = -1
+          if (isEmail) {
+            idx = emails.findIndex(e => e.toLowerCase() === targetStr)
+          }
+          if (idx === -1) {
+            idx = names.findIndex(n => n.toLowerCase() === targetStr)
+          }
+          if (idx === -1) {
+            // If direct index match failed, remove matching name
+            const newNames = names.filter(n => n.toLowerCase() !== targetStr)
+            return { ...t, assignedTo: newNames.join(', ') }
+          }
+
           names.splice(idx, 1)
-          emails.splice(idx, 1)
+          if (emails[idx]) emails.splice(idx, 1)
           if (ids[idx]) ids.splice(idx, 1)
           return {
             ...t,
@@ -2367,9 +2385,12 @@ export function AppProvider({ children }) {
         if (mqttClient && mqttClient.connected) {
           mqttClient.publish('dd_task_engine_v1/sync', JSON.stringify({ action: 'sync' }))
         }
+      } else {
+        addToast('Failed to remove person: ' + (data?.error || ''), 'error')
       }
     } catch (err) {
       console.warn('Remove person failed:', err)
+      addToast('Failed to remove person: ' + err.message, 'error')
     }
   }
 
