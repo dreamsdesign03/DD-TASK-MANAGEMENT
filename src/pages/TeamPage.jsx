@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
@@ -137,6 +138,7 @@ export default function TeamPage() {
   }
 
   return (
+    <>
     <div className="bg-[#F0EDF8] font-['Inter',sans-serif] text-[#151c27] overflow-hidden h-screen flex">
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -206,59 +208,9 @@ export default function TeamPage() {
                             <h3 className="text-[15px] font-bold text-[#1E1B2E] m-0 truncate">{emp.name}</h3>
                             <div className="flex items-center gap-2 mt-1">
                               <span className={`px-2 py-0.5 rounded-full ${theme.tagBg} ${theme.tagText} text-[10px] font-bold uppercase tracking-wide`}>Pending</span>
-          </div>
-          </div>
-
-      {/* Delete Confirmation Modal */}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-[400px] rounded-2xl shadow-2xl flex flex-col animate-scale-in">
-            <div className="flex items-center gap-3 px-6 pt-6 pb-2">
-              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[24px] text-red-500">delete_forever</span>
-              </div>
-              <div>
-                <h3 className="text-[16px] font-bold text-[#1E1B2E] m-0">Delete User</h3>
-                <p className="text-[13px] text-[#6B7280] m-0 mt-0.5">This action cannot be undone</p>
-              </div>
-            </div>
-            <div className="px-6 py-4">
-              <p className="text-[13px] text-[#4B5563] m-0 leading-relaxed">
-                Are you sure you want to delete <strong className="text-[#1E1B2E]">{confirmDelete.name}</strong>? This will permanently remove:
-              </p>
-              <ul className="mt-3 space-y-1.5 text-[12px] text-[#6B7280]">
-                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>Team profile & account</li>
-                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>All assigned & created tasks</li>
-                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>Activity & attendance logs</li>
-                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>Chat messages & file uploads</li>
-              </ul>
-            </div>
-            <div className="border-t border-gray-200 px-6 py-4 flex gap-3">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="flex-1 h-[42px] rounded-xl bg-white border border-[#E5E7EB] text-[#4B5563] text-[13px] font-bold cursor-pointer hover:bg-gray-50 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(confirmDelete)}
-                disabled={deleting === confirmDelete.email}
-                className="flex-1 h-[42px] rounded-xl bg-red-500 hover:bg-red-600 text-white text-[13px] font-bold cursor-pointer transition-all border-none disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {deleting === confirmDelete.email ? (
-                  'Deleting...'
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[18px]">delete</span>
-                    Delete Permanently
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+                            </div>
+                          </div>
+                        </div>
                         <div className="h-[1px] bg-[#F3F4F6] w-full mb-3"></div>
                         <div className="space-y-1.5 mb-4 text-[12px] text-[#6B7280]">
                           <div className="flex items-center gap-2"><span className="material-symbols-outlined text-[15px]">mail</span><span className="truncate">{emp.email}</span></div>
@@ -400,6 +352,58 @@ export default function TeamPage() {
           </div>
       </main>
     </div>
+    {createPortal(
+      confirmDelete && (
+        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-[400px] rounded-2xl shadow-2xl flex flex-col animate-scale-in">
+            <div className="flex items-center gap-3 px-6 pt-6 pb-2">
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[24px] text-red-500">delete_forever</span>
+              </div>
+              <div>
+                <h3 className="text-[16px] font-bold text-[#1E1B2E] m-0">Delete User</h3>
+                <p className="text-[13px] text-[#6B7280] m-0 mt-0.5">This action cannot be undone</p>
+              </div>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-[13px] text-[#4B5563] m-0 leading-relaxed">
+                Are you sure you want to delete <strong className="text-[#1E1B2E]">{confirmDelete.name}</strong>? This will permanently remove:
+              </p>
+              <ul className="mt-3 space-y-1.5 text-[12px] text-[#6B7280]">
+                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>Team profile &amp; account</li>
+                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>All assigned &amp; created tasks</li>
+                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>Activity &amp; attendance logs</li>
+                <li className="flex items-center gap-2"><span className="material-symbols-outlined text-[14px] text-red-400">check</span>Chat messages &amp; file uploads</li>
+              </ul>
+            </div>
+            <div className="border-t border-gray-200 px-6 py-4 flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 h-[42px] rounded-xl bg-white border border-[#E5E7EB] text-[#4B5563] text-[13px] font-bold cursor-pointer hover:bg-gray-50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(confirmDelete)}
+                disabled={deleting === confirmDelete.email}
+                className="flex-1 h-[42px] rounded-xl bg-red-500 hover:bg-red-600 text-white text-[13px] font-bold cursor-pointer transition-all border-none disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting === confirmDelete.email ? (
+                  'Deleting...'
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                    Delete Permanently
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      ),
+      document.body
+    )}
+    </>
   )
 }
 
