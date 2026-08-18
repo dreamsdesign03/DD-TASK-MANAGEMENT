@@ -24,7 +24,7 @@ const emptyRecordForm = {
 }
 
 export default function AccountClientsPage() {
-  const { clients, payments, profile, updatePayment, addToast } = useApp()
+  const { clients, payments, profile, updatePayment, deletePayment, addToast } = useApp()
   const [searchQuery, setSearchQuery] = useState('')
   const [viewingClient, setViewingClient] = useState(null)
   const [showPaymentForm, setShowPaymentForm] = useState(false)
@@ -443,38 +443,65 @@ export default function AccountClientsPage() {
                       </div>
 
                       {/* Payment History Ledger */}
-                      {allClientPayments.length > 0 && allClientPayments.some(p => p['PAYMENT AMOUNT']) && (
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Payment History Ledger</label>
-                          <div className="flex flex-col gap-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
-                            {allClientPayments.filter(p => p['PAYMENT AMOUNT']).map((p, idx) => (
-                              <div key={idx} className="bg-white border border-gray-200 rounded-xl p-3 shadow-xs hover:border-purple-200 transition-colors">
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="text-[11px] font-bold text-purple-700">Installment #{idx + 1}</span>
-                                  <span className="text-[11px] text-gray-500">{p['PAYMENT DATE'] ? formatDateShort(p['PAYMENT DATE']) : '-'}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[14px] font-bold text-[#16a34a]">₹{parseFloat(p['PAYMENT AMOUNT'] || 0).toLocaleString('en-IN')}</span>
-                                  {p['PENDING AMOUNT'] !== undefined && (() => {
-                                    const pVal = parseFloat(p['PENDING AMOUNT'] || 0)
-                                    return (
-                                      <span className={`text-[11px] font-medium ${pVal === 0 ? 'text-green-700 font-bold' : 'text-[#ef4444]'}`}>
-                                        Pending Amount: ₹{pVal.toLocaleString('en-IN')}
+                      {(() => {
+                        const validInstallments = allClientPayments.filter(p => parseFloat(p['PAYMENT AMOUNT']) > 0)
+                        if (validInstallments.length === 0) return null
+
+                        let runningTotal = 0
+                        return (
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Payment History Ledger</label>
+                            <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
+                              {validInstallments.map((p, idx) => {
+                                const payAmt = parseFloat(p['PAYMENT AMOUNT']) || 0
+                                runningTotal += payAmt
+                                const installmentPending = Math.max(0, totalWithGst - runningTotal)
+                                return (
+                                  <div key={idx} className="bg-white border border-gray-200 rounded-xl p-3 shadow-xs hover:border-purple-200 transition-colors">
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="text-[11px] font-bold text-purple-700">Installment #{idx + 1}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[11px] text-gray-500">{p['PAYMENT DATE'] ? formatDateShort(p['PAYMENT DATE']) : '-'}</span>
+                                        {canEditPayment && (
+                                          <button
+                                            type="button"
+                                            onClick={async (e) => {
+                                              e.stopPropagation()
+                                              if (window.confirm(`Are you sure you want to remove Installment #${idx + 1} (₹${payAmt.toLocaleString('en-IN')})?`)) {
+                                                await deletePayment({
+                                                  id: p.id,
+                                                  clientId: viewingClient['Client ID'],
+                                                  dataEntryTime: p['DATA ENTRY DATE AND TIME']
+                                                })
+                                              }
+                                            }}
+                                            className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-full border-none cursor-pointer flex items-center justify-center transition-colors"
+                                            title="Remove installment"
+                                          >
+                                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-[14px] font-bold text-[#16a34a]">₹{payAmt.toLocaleString('en-IN')}</span>
+                                      <span className={`text-[11px] font-medium ${installmentPending === 0 ? 'text-green-700 font-bold' : 'text-[#ef4444]'}`}>
+                                        Pending Amount: ₹{installmentPending.toLocaleString('en-IN')}
                                       </span>
-                                    )
-                                  })()}
-                                </div>
-                                {p['PAYMENT NOTE'] && (
-                                  <p className="text-[11px] text-gray-500 m-0 mt-1 italic">"{p['PAYMENT NOTE']}"</p>
-                                )}
-                                {p['DATA ENTRY DATE AND TIME'] && (
-                                  <p className="text-[9px] text-gray-400 m-0 mt-1 text-right">Logged: {String(p['DATA ENTRY DATE AND TIME'])}</p>
-                                )}
-                              </div>
-                            ))}
+                                    </div>
+                                    {p['PAYMENT NOTE'] && (
+                                      <p className="text-[11px] text-gray-500 m-0 mt-1 italic">"{p['PAYMENT NOTE']}"</p>
+                                    )}
+                                    {p['DATA ENTRY DATE AND TIME'] && (
+                                      <p className="text-[9px] text-gray-400 m-0 mt-1 text-right">Logged: {String(p['DATA ENTRY DATE AND TIME'])}</p>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )
+                      })()}
                     </div>
                   )
                 })() : (

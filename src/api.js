@@ -593,6 +593,21 @@ async function recordPayment(payload) {
   return { ok: true }
 }
 
+async function deletePayment(payload) {
+  const { id, clientId, dataEntryTime } = payload
+  let query = supabase.from('payments').delete()
+  if (id) {
+    query = query.eq('id', id)
+  } else if (clientId && dataEntryTime) {
+    query = query.eq('client_id', clientId).eq('data_entry_date_and_time', dataEntryTime)
+  } else {
+    return { ok: false, error: 'Target payment identifier missing.' }
+  }
+  const { error } = await query
+  if (error) throw error
+  return { ok: true, deleted: true }
+}
+
 /* ─── Activities ─────────────────────────────────────────────────────────── */
 async function getActivities() {
   const { data, error } = await supabase
@@ -677,6 +692,7 @@ const POST_HANDLERS = {
   update_client: updateClient,
   update_payment: updatePayment,
   record_payment: recordPayment,
+  delete_payment: deletePayment,
   send: sendMessage,
   read_receipt: receipt,
   delivery_receipt: receipt,

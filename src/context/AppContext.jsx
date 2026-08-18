@@ -2889,6 +2889,21 @@ export function AppProvider({ children }) {
     return false
   }
 
+  const deletePayment = async (paymentData) => {
+    try {
+      const data = await api.post({ action: 'delete_payment', ...paymentData })
+      if (data && data.ok) {
+        await fetchPayments()
+        addToast('Payment installment removed', 'success')
+        return true
+      }
+    } catch (err) {
+      console.warn('Payment delete failed:', err)
+      addToast('Failed to remove payment: ' + err.message, 'error')
+    }
+    return false
+  }
+
   const fetchActivities = async () => {
     try {
       const data = await api.get('get_activities')
@@ -3117,6 +3132,7 @@ export function AppProvider({ children }) {
         payments,
         fetchPayments,
         updatePayment,
+        deletePayment,
         fetchTeam,
         messagesByChatId,
         setMessagesByChatId,
