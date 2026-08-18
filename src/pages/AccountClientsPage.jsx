@@ -34,7 +34,11 @@ const getPaymentStatusInfo = (client, existingPay, allPays) => {
     return {
       status: 'Details Needed',
       badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
-      icon: 'warning'
+      icon: 'warning',
+      pending: 0,
+      totalPaid: 0,
+      totalWithGst: 0,
+      isFullyPaid: false
     }
   }
 
@@ -44,7 +48,11 @@ const getPaymentStatusInfo = (client, existingPay, allPays) => {
     return {
       status: 'Details Needed',
       badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
-      icon: 'warning'
+      icon: 'warning',
+      pending: 0,
+      totalPaid: 0,
+      totalWithGst: 0,
+      isFullyPaid: false
     }
   }
 
@@ -63,7 +71,7 @@ const getPaymentStatusInfo = (client, existingPay, allPays) => {
     if (!isNaN(start.getTime()) && now >= start) {
       if (recurringType.includes('month')) {
         const monthsDiff = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth())
-        cycleCount = Math.max(1, monthsDiff + 1)
+        cycleCount = Math.max(1, monthsDiff + (now.getDate() >= start.getDate() ? 1 : 0))
       } else if (recurringType.includes('year')) {
         const yearsDiff = now.getFullYear() - start.getFullYear()
         cycleCount = Math.max(1, yearsDiff + 1)
@@ -72,26 +80,39 @@ const getPaymentStatusInfo = (client, existingPay, allPays) => {
   }
 
   const totalPayableToDate = isRecurring ? basePayable * cycleCount : basePayable
-  const totalPaid = allPays.reduce((sum, p) => sum + (parseFloat(p['PAYMENT AMOUNT']) || 0), 0)
+  const totalPaid = (allPays || []).reduce((sum, p) => sum + (parseFloat(p['PAYMENT AMOUNT']) || 0), 0)
   const pendingAmt = Math.max(0, totalPayableToDate - totalPaid)
+  const isFullyPaid = basePayable > 0 && pendingAmt === 0
 
-  if (basePayable > 0 && pendingAmt === 0) {
+  if (isFullyPaid) {
     return {
       status: isRecurring ? `Month ${cycleCount} Paid` : 'Paid',
       badgeClass: 'bg-green-50 text-green-700 border border-green-200 shadow-xs',
-      icon: 'check_circle'
+      icon: 'check_circle',
+      pending: 0,
+      totalPaid,
+      totalWithGst: totalPayableToDate,
+      isFullyPaid: true
     }
   } else if (totalPaid > 0) {
     return {
       status: `Pending: ₹${formatCurrency(pendingAmt)}`,
       badgeClass: 'bg-purple-50 text-[#702c91] border border-purple-200',
-      icon: 'schedule'
+      icon: 'schedule',
+      pending: pendingAmt,
+      totalPaid,
+      totalWithGst: totalPayableToDate,
+      isFullyPaid: false
     }
   } else {
     return {
       status: 'Payment Due',
       badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
-      icon: 'account_balance_wallet'
+      icon: 'account_balance_wallet',
+      pending: totalPayableToDate,
+      totalPaid: 0,
+      totalWithGst: totalPayableToDate,
+      isFullyPaid: false
     }
   }
 }
