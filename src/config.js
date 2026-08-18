@@ -16,4 +16,5 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 // Daily task sheet backend: punch in/out + per-task timer rows.
 export const DAILY_SHEET_WEB_APP_URL =
-  import.meta.env.VITE_DAILY_SHEET_WEB_APP_URL || ''
+  import.meta.env.VITE_DAILY_SHEET_WEB_APP_URL ||
+  'https://script.google.com/macros/s/AKfycbw86Ttol6GkUPh0Er5Ge83D7oWCpx7DTNmFLo6vh-cEk-jWZy8q5OUhSndB3Vo4jbsI/exec'
