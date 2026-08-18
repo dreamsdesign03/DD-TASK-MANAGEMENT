@@ -114,8 +114,6 @@ export default function AccountClientsPage() {
 
   const query = searchQuery.toLowerCase()
   const filteredClients = clients.filter(c => {
-    const isActive = String(c['Is Active'] || c['isActive'] || c['is_active'] || '').toLowerCase() === 'yes'
-    if (!isActive) return false
     return (
       String(c['Project Name'] || '').toLowerCase().includes(query) ||
       String(c['Client Name'] || c['Company Name'] || '').toLowerCase().includes(query) ||
@@ -419,11 +417,12 @@ export default function AccountClientsPage() {
                     <tbody className="block lg:table-row-group divide-y lg:divide-none divide-[#E5E7EB]">
                       {clientRows.map((rowItem, idx) => {
                         const { client, billingCycleLabel, totalPayable, totalPaid, isConfigured, statusInfo } = rowItem
+                        const clientIsActive = String(client['Is Active'] || client['isActive'] || client['is_active'] || '').toLowerCase() === 'yes' || client['Is Active'] === true
                         return (
                           <tr
                             key={rowItem.rowKey || idx}
                             onClick={() => { setViewingClient(client); setShowPaymentForm(false); setShowRecordForm(false) }}
-                            className={`block lg:table-row bg-white border-b border-[#E5E7EB] lg:hover:bg-white lg:hover:scale-[1.005] lg:hover:shadow-[0_4px_20px_rgba(91,33,182,0.06)] transition-all duration-200 cursor-pointer ${idx === clientRows.length - 1 ? 'border-b-0' : ''}`}
+                            className={`block lg:table-row bg-white border-b border-[#E5E7EB] lg:hover:bg-white lg:hover:scale-[1.005] lg:hover:shadow-[0_4px_20px_rgba(91,33,182,0.06)] transition-all duration-200 cursor-pointer ${!clientIsActive ? 'opacity-60 filter blur-[0.3px]' : ''} ${idx === clientRows.length - 1 ? 'border-b-0' : ''}`}
                           >
                             <td className="block lg:table-cell py-3 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#1E1B2E]">
                               <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">ID:</span>
@@ -432,7 +431,16 @@ export default function AccountClientsPage() {
                             <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px]">
                               <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Project:</span>
                               <div className="flex flex-col">
-                                <span className="font-bold text-[#702c91]">{client['Project Name'] || '-'}</span>
+                                <div className="inline-flex items-center gap-1.5">
+                                  <span className={clientIsActive ? "font-bold text-[#702c91]" : "font-normal text-gray-400"}>
+                                    {client['Project Name'] || '-'}
+                                  </span>
+                                  {!clientIsActive && (
+                                    <span className="bg-gray-100 text-gray-400 border border-gray-200 text-[9px] font-normal px-1.5 py-0.5 rounded-full">
+                                      Deactivated
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="text-[11px] text-[#6B7280]">{client['Client Name'] || client['Company Name'] || '-'}</span>
                               </div>
                             </td>

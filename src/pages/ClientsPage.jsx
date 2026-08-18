@@ -310,10 +310,11 @@ export default function ClientsPage() {
                 </thead>
                 <tbody className="block lg:table-row-group divide-y lg:divide-none divide-[#E5E7EB]">
                   {filteredClients.map((client, idx) => {
+                    const isActive = String(client['Is Active'] || client['isActive'] || client['is_active'] || '').toLowerCase() === 'yes' || client['Is Active'] === true
                     return (
                       <tr
                         key={client['Client ID'] || idx}
-                        className={`block lg:table-row bg-white border-b border-[#E5E7EB] lg:hover:bg-white lg:hover:scale-[1.01] lg:hover:shadow-[0_8px_24px_rgba(91,33,182,0.08)] transition-all duration-200 relative ${idx === filteredClients.length - 1 ? 'border-b-0' : ''}`}
+                        className={`block lg:table-row bg-white border-b border-[#E5E7EB] lg:hover:bg-white lg:hover:scale-[1.01] lg:hover:shadow-[0_8px_24px_rgba(91,33,182,0.08)] transition-all duration-200 relative ${!isActive ? 'opacity-60 filter blur-[0.3px]' : ''} ${idx === filteredClients.length - 1 ? 'border-b-0' : ''}`}
                         style={{ cursor: 'pointer', zIndex: 1 }}
                       >
                         {/* Client ID */}
@@ -323,13 +324,22 @@ export default function ClientsPage() {
                         </td>
                         {/* Project Name */}
                         <td
-                          className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#702c91] cursor-pointer hover:underline"
+                          className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] font-bold cursor-pointer hover:underline"
                           onClick={() => {
                             if (canManageClients(profile)) openClientInfo(client)
                           }}
                         >
                           <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Project Name:</span>
-                          {client['Project Name'] || client['Client Name'] || client['Company Name'] || '-'}
+                          <div className="inline-flex items-center gap-1.5">
+                            <span className={isActive ? "font-bold text-[#702c91]" : "font-normal text-gray-400"}>
+                              {client['Project Name'] || client['Client Name'] || client['Company Name'] || '-'}
+                            </span>
+                            {!isActive && (
+                              <span className="bg-gray-100 text-gray-400 border border-gray-200 text-[10px] font-normal px-2 py-0.5 rounded-full">
+                                Inactive
+                              </span>
+                            )}
+                          </div>
                         </td>
                         {/* Client Name */}
                         <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#4B5563]">
