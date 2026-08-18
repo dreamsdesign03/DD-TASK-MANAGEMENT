@@ -777,7 +777,11 @@ function VoiceBotInner({ onTaskAdd }) {
     if (isActive) {
       await conversation.endSession();
     } else {
-      const agentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID || 'your-elevenlabs-agent-id';
+      const agentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID || '';
+      if (!agentId || agentId === 'your-elevenlabs-agent-id') {
+        alert("ElevenLabs Agent ID not configured. Please set VITE_ELEVENLABS_AGENT_ID in your .env file with a valid ElevenLabs Agent ID.");
+        return;
+      }
       
       try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
