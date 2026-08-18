@@ -475,13 +475,24 @@ export default function AccountClientsPage() {
                             {canEditPayment && (
                               <td className="block lg:table-cell py-2 px-4 pb-4 lg:py-4 lg:px-6 text-[13px] text-right">
                                 {isConfigured ? (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setViewingClient(client); openRecordFormForClient(client) }}
-                                    className="h-[32px] px-3 rounded-lg bg-[#702c91] hover:bg-[#5c2280] text-white text-[11px] font-bold cursor-pointer transition-all border-none inline-flex items-center gap-1"
-                                  >
-                                    <span className="material-symbols-outlined text-[14px]">payments</span>
-                                    Add Payment
-                                  </button>
+                                  rowItem.pendingAmt === 0 ? (
+                                    <button
+                                      disabled
+                                      className="h-[32px] px-3 rounded-lg bg-gray-100 border border-gray-200 text-gray-400 text-[11px] font-bold cursor-not-allowed transition-all inline-flex items-center gap-1 opacity-60"
+                                      title="Installment fully completed"
+                                    >
+                                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                      Paid
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setViewingClient(client); openRecordFormForClient(client) }}
+                                      className="h-[32px] px-3 rounded-lg bg-[#702c91] hover:bg-[#5c2280] text-white text-[11px] font-bold cursor-pointer transition-all border-none inline-flex items-center gap-1 shadow-sm"
+                                    >
+                                      <span className="material-symbols-outlined text-[14px]">payments</span>
+                                      Add Payment
+                                    </button>
+                                  )
                                 ) : (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setViewingClient(client); openPaymentFormForClient(client) }}
@@ -702,13 +713,34 @@ export default function AccountClientsPage() {
                   <span className="material-symbols-outlined text-[18px]">edit_note</span>
                   {viewingPayment ? 'Edit Payment Details' : 'Set Payment Details'}
                 </button>
-                <button
-                  onClick={() => openRecordFormForClient(viewingClient)}
-                  className="flex-1 h-[42px] rounded-xl bg-[#702c91] hover:bg-[#5c2280] text-white text-[13px] font-bold cursor-pointer transition-all border-none flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-[18px]">payments</span>
-                  Add Payment
-                </button>
+                {(() => {
+                  const allClientPayments = getAllPayments(viewingClient['Client ID'])
+                  const statusInfo = getPaymentStatusInfo(viewingClient, viewingPayment, allClientPayments)
+                  const isFullyPaid = statusInfo.pending === 0 && (statusInfo.totalWithGst > 0 || statusInfo.totalPaid > 0)
+
+                  if (isFullyPaid) {
+                    return (
+                      <button
+                        disabled
+                        className="flex-1 h-[42px] rounded-xl bg-gray-100 border border-gray-200 text-gray-400 text-[13px] font-bold cursor-not-allowed transition-all flex items-center justify-center gap-2 opacity-60"
+                        title="Installment fully completed"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                        Payment Completed
+                      </button>
+                    )
+                  }
+
+                  return (
+                    <button
+                      onClick={() => openRecordFormForClient(viewingClient)}
+                      className="flex-1 h-[42px] rounded-xl bg-[#702c91] hover:bg-[#5c2280] text-white text-[13px] font-bold cursor-pointer transition-all border-none flex items-center justify-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">payments</span>
+                      Add Payment
+                    </button>
+                  )
+                })()}
               </div>
             )}
           </div>
