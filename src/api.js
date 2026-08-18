@@ -522,13 +522,14 @@ async function checkAndAutoCreateRecurringPayments() {
       if (!clientId) continue
 
       const clientPays = paymentsData.filter(p => String(p.client_id).trim() === String(clientId).trim())
-      if (clientPays.length === 0) continue
+      const latestPay = clientPays.length > 0 ? clientPays[clientPays.length - 1] : null
 
-      const latestPay = clientPays[clientPays.length - 1]
-      const isRecurring = String(latestPay.recurring || '').toLowerCase() === 'yes' || String(latestPay.recurring || '').toLowerCase() === 'true'
+      const isRecurring =
+        String(latestPay?.recurring || client?.recurring || '').toLowerCase() === 'yes' ||
+        String(latestPay?.recurring || client?.recurring || '').toLowerCase() === 'true'
       if (!isRecurring) continue
 
-      const startDateStr = client.project_start_date || latestPay.project_start_date
+      const startDateStr = client.project_start_date || latestPay?.project_start_date
       if (!startDateStr) continue
       const start = new Date(startDateStr)
       if (isNaN(start.getTime()) || start > now) continue
@@ -540,34 +541,35 @@ async function checkAndAutoCreateRecurringPayments() {
       }
       requiredCycles = Math.max(1, requiredCycles)
 
-      if (clientPays.length < requiredCycles) {
-        for (let cycle = clientPays.length + 1; cycle <= requiredCycles; cycle++) {
+      const existingCount = clientPays.length
+      if (existingCount < requiredCycles) {
+        for (let cycle = existingCount + 1; cycle <= requiredCycles; cycle++) {
           const cycleDate = new Date(start)
           cycleDate.setMonth(start.getMonth() + (cycle - 1))
           const dateStr = cycleDate.toISOString().split('T')[0]
 
-          const cost = parseFloat(latestPay.total_cost) || 0
-          const isGst = latestPay.gst_non_gst === 'GST'
-          const gstAmt = isGst ? (parseFloat(latestPay.gst_amount_new) || Math.round(cost * 0.18)) : 0
+          const cost = parseFloat(latestPay?.total_cost || client?.total_cost) || 0
+          const isGst = (latestPay?.gst_non_gst || client?.gst_non_gst) === 'GST'
+          const gstAmt = isGst ? (parseFloat(latestPay?.gst_amount_new || client?.gst_amount_new) || Math.round(cost * 0.18)) : 0
           const totalPayable = cost + gstAmt
 
           const newCycleRow = {
             client_id: clientId,
-            project: latestPay.project || client.project_name || '',
-            client: latestPay.client || client.client_name || '',
-            emails: latestPay.emails || client.contact_email || '',
-            phone_no: latestPay.phone_no || client.phone || '',
+            project: latestPay?.project || client.project_name || '',
+            client: latestPay?.client || client.client_name || '',
+            emails: latestPay?.emails || client.contact_email || '',
+            phone_no: latestPay?.phone_no || client.phone || '',
             project_start_date: startDateStr,
-            industry: latestPay.industry || client.industry || '',
-            is_active: latestPay.is_active || (client.is_active ? 'Yes' : 'No'),
-            services: latestPay.services || client.services || '',
-            project_end_date: latestPay.project_end_date || client.project_completion_date || '',
-            gst_non_gst: latestPay.gst_non_gst || '',
-            gst_amount_new: latestPay.gst_amount_new || '',
-            gst_pct: latestPay.gst_pct || '',
-            recurring: latestPay.recurring || 'Yes',
-            recurring_type: latestPay.recurring_type || 'Monthly',
-            total_cost: latestPay.total_cost || '',
+            industry: latestPay?.industry || client.industry || '',
+            is_active: latestPay?.is_active || (client.is_active ? 'Yes' : 'No'),
+            services: latestPay?.services || client.services || '',
+            project_end_date: latestPay?.project_end_date || client.project_completion_date || '',
+            gst_non_gst: latestPay?.gst_non_gst || client?.gst_non_gst || '',
+            gst_amount_new: latestPay?.gst_amount_new || client?.gst_amount_new || '',
+            gst_pct: latestPay?.gst_pct || client?.gst_pct || '',
+            recurring: latestPay?.recurring || client?.recurring || 'Yes',
+            recurring_type: latestPay?.recurring_type || client?.recurring_type || 'Monthly',
+            total_cost: latestPay?.total_cost || client?.total_cost || '',
             payment_date: dateStr,
             payment_amount: '',
             payment_note: `Auto-generated Month ${cycle} recurring payment cycle`,
