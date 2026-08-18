@@ -108,13 +108,16 @@ const mapWebhookTaskToApp = (item, employees = []) => {
   const assigned = formatDate(data["Assigned Date"] || data.assignedDate || data.assigned)
   const dueDate = formatDate(data["Due Date"] || data.dueDate)
 
-  let isOverdue = data["Days Overdue"] === 'Yes' || data.daysOverdue === 'Yes' || data.overdue === true
-  let daysOverdueStr = data["Days Overdue"] || data.daysOverdue || 'No'
+  const statusStr = String(data.Status || data.status || 'Pending').trim()
+  const isCompleted = statusStr.toLowerCase() === 'done' || statusStr.toLowerCase() === 'completed'
 
-  if (!isOverdue && dueDate) {
+  let isOverdue = false
+  let daysOverdueStr = 'No'
+
+  if (!isCompleted && dueDate) {
     const dueTime = new Date(dueDate).setHours(23, 59, 59, 999)
     const nowTime = new Date().getTime()
-    if (dueTime < nowTime) {
+    if (!isNaN(dueTime) && dueTime < nowTime) {
       isOverdue = true
       const diffTime = Math.abs(nowTime - dueTime)
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))

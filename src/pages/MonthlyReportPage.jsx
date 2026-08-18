@@ -77,11 +77,22 @@ export default function MonthlyReportPage() {
 
   // Compute metrics
   const totalTasks = filteredTasks.length
-  const completed = filteredTasks.filter((t) => t.status === 'Done').length
+  const completed = filteredTasks.filter((t) => t.status === 'Done' || t.status === 'Completed').length
   const inProgress = filteredTasks.filter((t) => t.status === 'In Progress' || t.status === 'Review').length
   const blocked = filteredTasks.filter((t) => t.status === 'Blocked').length
-  const overdue = filteredTasks.filter((t) => t.daysOverdue && t.daysOverdue !== 'No').length
   const pending = filteredTasks.filter((t) => t.status === 'Pending').length
+
+  const overdue = filteredTasks.filter((t) => {
+    if (t.status === 'Done' || t.status === 'Completed') return false
+    if (t.dueDate) {
+      const due = new Date(t.dueDate)
+      if (!isNaN(due.getTime())) {
+        due.setHours(23, 59, 59, 999)
+        return due.getTime() < Date.now()
+      }
+    }
+    return t.daysOverdue && t.daysOverdue !== 'No' && t.daysOverdue !== '0 days'
+  }).length
 
   const completedPct = totalTasks ? Math.round((completed / totalTasks) * 100) : 0
   const inProgressPct = totalTasks ? Math.round((inProgress / totalTasks) * 100) : 0
@@ -378,7 +389,7 @@ export default function MonthlyReportPage() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
               {/* Total Tasks */}
               <div className="bg-white rounded-xl p-5 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-900/10 cursor-default">
                 <div className="absolute top-0 left-0 w-full h-1 bg-[#ec008c]"></div>
@@ -423,6 +434,21 @@ export default function MonthlyReportPage() {
                   </div>
                 </div>
                 <p className="text-[11px] font-medium text-[#6B7280] m-0">Active now</p>
+              </div>
+
+              {/* Pending */}
+              <div className="bg-white rounded-xl p-5 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-900/10 cursor-default">
+                <div className="absolute top-0 left-0 w-full h-1 bg-[#3B82F6]"></div>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1">Pending</p>
+                    <h3 className="text-[32px] font-black text-[#3B82F6] leading-none m-0">{pending}</h3>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[#3B82F6]">schedule</span>
+                  </div>
+                </div>
+                <p className="text-[11px] font-medium text-[#6B7280] m-0">Awaiting action</p>
               </div>
 
               {/* Overdue */}
