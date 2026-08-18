@@ -509,9 +509,86 @@ async function updateClient(payload) {
   return { ok: true }
 }
 
+async function checkAndAutoCreateRecurringPayments() {
+  try {
+    const { data: clientsData } = await supabase.from('clients').select('*')
+    const { data: paymentsData } = await supabase.from('payments').select('*')
+    if (!clientsData || !paymentsData) return
+
+    const now = new Date()
+
+    for (const client of clientsData) {
+      const clientId = client.client_id
+      if (!clientId) continue
+
+      const clientPays = paymentsData.filter(p => String(p.client_id).trim() === String(clientId).trim())
+      if (clientPays.length === 0) continue
+
+      const latestPay = clientPays[clientPays.length - 1]
+      const isRecurring = String(latestPay.recurring || '').toLowerCase() === 'yes' || String(latestPay.recurring || '').toLowerCase() === 'true'
+      if (!isRecurring) continue
+
+      const startDateStr = client.project_start_date || latestPay.project_start_date
+      if (!startDateStr) continue
+      const start = new Date(startDateStr)
+      if (isNaN(start.getTime()) || start > now) continue
+
+      const monthsDiff = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth())
+      let requiredCycles = monthsDiff
+      if (now.getDate() >= start.getDate()) {
+        requiredCycles += 1
+      }
+      requiredCycles = Math.max(1, requiredCycles)
+
+      if (clientPays.length < requiredCycles) {
+        for (let cycle = clientPays.length + 1; cycle <= requiredCycles; cycle++) {
+          const cycleDate = new Date(start)
+          cycleDate.setMonth(start.getMonth() + (cycle - 1))
+          const dateStr = cycleDate.toISOString().split('T')[0]
+
+          const cost = parseFloat(latestPay.total_cost) || 0
+          const isGst = latestPay.gst_non_gst === 'GST'
+          const gstAmt = isGst ? (parseFloat(latestPay.gst_amount_new) || Math.round(cost * 0.18)) : 0
+          const totalPayable = cost + gstAmt
+
+          const newCycleRow = {
+            client_id: clientId,
+            project: latestPay.project || client.project_name || '',
+            client: latestPay.client || client.client_name || '',
+            emails: latestPay.emails || client.contact_email || '',
+            phone_no: latestPay.phone_no || client.phone || '',
+            project_start_date: startDateStr,
+            industry: latestPay.industry || client.industry || '',
+            is_active: latestPay.is_active || (client.is_active ? 'Yes' : 'No'),
+            services: latestPay.services || client.services || '',
+            project_end_date: latestPay.project_end_date || client.project_completion_date || '',
+            gst_non_gst: latestPay.gst_non_gst || '',
+            gst_amount_new: latestPay.gst_amount_new || '',
+            gst_pct: latestPay.gst_pct || '',
+            recurring: latestPay.recurring || 'Yes',
+            recurring_type: latestPay.recurring_type || 'Monthly',
+            total_cost: latestPay.total_cost || '',
+            payment_date: dateStr,
+            payment_amount: '',
+            payment_note: `Auto-generated Month ${cycle} recurring payment cycle`,
+            pending_amount: String(totalPayable),
+            data_entry_date_and_time: istNow(),
+            note: `Auto-generated Month ${cycle}`,
+          }
+
+          await supabase.from('payments').insert(newCycleRow)
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Error auto-creating recurring payment cycles:', err)
+  }
+}
+
 /* ─── Payments ───────────────────────────────────────────────────────────── */
 async function getPayments() {
-  const { data, error } = await supabase.from('payments').select('*').order('client_id')
+  await checkAndAutoCreateRecurringPayments()
+  const { data, error } = await supabase.from('payments').select('*').order('data_entry_date_and_time', { ascending: true })
   if (error) throw error
   return { payments: (data || []).map((r) => rowToSheet(r, PAYMENT_MAP)) }
 }
