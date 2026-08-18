@@ -2642,13 +2642,13 @@ export function AppProvider({ children }) {
 
   const recurringGenLastRunRef = useRef(0)
 
-  // Daily recurring-task engine (frontend safety net):
+  // Daily recurring-task engine:
   // scans is_recurring templates, computes the next cycle due date, and creates
   // the next task instance with a new task id. A conditional update on
-  // last_auto_generated_date makes it idempotent (safe alongside the server cron).
+  // last_auto_generated_date makes it idempotent.
   const generateDueRecurringTasks = async () => {
     const now = Date.now()
-    if (now - recurringGenLastRunRef.current < 6 * 60 * 60 * 1000) return
+    if (now - recurringGenLastRunRef.current < 10000) return
     recurringGenLastRunRef.current = now
     try {
       const { data: templates } = await supabase
@@ -2660,6 +2660,7 @@ export function AppProvider({ children }) {
       )
       const today = getISTDate()
 
+      let generatedAny = false
       for (const tpl of dueTemplates) {
         const baseStr = tpl.last_auto_generated_date ||
           (tpl.due_date || '') ||
@@ -2693,7 +2694,7 @@ export function AppProvider({ children }) {
           month: monthLabel,
           task_title: tpl.task_title,
           task_type: tpl.task_type || 'Main Task',
-          main_task_id: tpl.main_task_id || '',
+          main_task_id: tpl.task_id,
           description: tpl.description,
           assigned_by: tpl.assigned_by,
           assigned_to: tpl.assigned_to,
@@ -2716,7 +2717,11 @@ export function AppProvider({ children }) {
           recurring_months: tpl.recurring_months,
           last_auto_generated_date: nextDue
         })
+        generatedAny = true
+      }
 
+      if (generatedAny) {
+        fetchSyncedTasks()
         if (mqttClient && mqttClient.connected) {
           setTimeout(() => {
             mqttClient.publish('dd_task_engine_v1/sync', JSON.stringify({ action: 'sync' }))
