@@ -1,3 +1,24 @@
+// ─────────────────────────────────────────────────────────────
+// DAILY TASK SHEET GOOGLE APPS SCRIPT (SUPABASE DIRECT INTEGRATION)
+// ─────────────────────────────────────────────────────────────
+// Active Spreadsheet: Daily Task List
+// Backend Database: Supabase Postgres API
+// ─────────────────────────────────────────────────────────────
+
+var SUPABASE_URL = "https://balrgagdbbfagmgryrwv.supabase.co";
+var SUPABASE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhbHJnYWdkYmJmYWdtZ3J5cnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDYxNTQsImV4cCI6MjEwMjAyMjE1NH0.5R4abl_tx3jVX5Z98Pm5Mp0eePYsTFXThjYZA-_bapg";
+
+/**
+ * Creates custom menu in Google Sheets when opened
+ */
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu('DD Tasks Sync')
+    .addItem('Generate Daily Sheet from Database', 'generateTodaySheetFromDB')
+    .addToUi();
+}
+
 function makeHeaderText(date) {
   var parts = date.split("-");
   if (parts.length === 3) {
@@ -21,7 +42,11 @@ function findHeaderRow(sheet, date) {
 
 function formatTime(timeStr) {
   if (!timeStr) return "";
-  return timeStr.split(":").slice(0, 2).join(":");
+  var s = String(timeStr).trim();
+  if (s.indexOf(" ") !== -1) {
+    s = s.split(" ")[1] || s;
+  }
+  return s.split(":").slice(0, 2).join(":");
 }
 
 function formatSheetTime(val) {
@@ -33,6 +58,9 @@ function formatSheetTime(val) {
   }
   var s = String(val).trim();
   if (s === "") return "";
+  if (s.indexOf(" ") !== -1) {
+    s = s.split(" ")[1] || s;
+  }
   if (s.indexOf(":") !== -1) return s.split(":").slice(0, 2).join(":");
   return s;
 }
@@ -54,7 +82,6 @@ function formatSheetProject(val) {
 
 /**
  * Finds the 1-indexed row number where the data section of a block ends
- * (the first empty row, next header, or end of sheet after the headerRowNum block).
  */
 function findBlockDataEnd(sheet, headerRowNum) {
   var dataStartRow = headerRowNum + 2;
@@ -101,67 +128,72 @@ function getStatusColor(status) {
   return "#ffffff";
 }
 
-function getExistingStartTime(sheet, headerRowNum) {
-  var startRow = headerRowNum + 2;
-  var lastRow = sheet.getLastRow();
-  if (startRow > lastRow) return "";
-  // Start Time is now column 4 (Project, Title, Status, Start Time, End Time, Remark)
-  var col4 = sheet.getRange(startRow, 4, lastRow - startRow + 1, 1).getValues();
-  for (var i = 0; i < col4.length; i++) {
-    var formatted = formatSheetTime(col4[i][0]);
-    if (formatted !== "") return formatted;
-  }
-  return "";
-}
+/* ─────────────────────────────────────────────────────────────
+ * SUPABASE DATABASE FETCH HELPERS
+ * ───────────────────────────────────────────────────────────── */
 
-function fetchActivityTimes(employeeId, date) {
-  // Set this to the deployed main-backend URL (Apps Script / new database API).
-  var MAIN_BACKEND_URL = "";
+/**
+ * Fetches punch-in / punch-out activity times directly from Supabase `employee_activities` table
+ */
+function fetchActivityTimes(employeeId, email, date) {
   try {
-    var res = UrlFetchApp.fetch(MAIN_BACKEND_URL + "?action=get_activities&t=" + Date.now(), { muteHttpExceptions: true });
-    var json = JSON.parse(res.getContentText());
-    if (!Array.isArray(json)) return null;
-
-    var empIdStr = String(employeeId || "").trim();
-    if (!empIdStr) return null;
-
-    var earliest = null;
-    var latest = null;
-
-    // Convert DD-MM-YYYY to YYYY-MM-DD
     var searchDate = date;
     var parts = date.split("-");
     if (parts.length === 3) {
       searchDate = parts[2] + "-" + parts[1] + "-" + parts[0];
     }
 
+    var url = SUPABASE_URL + "/rest/v1/employee_activities?select=*";
+    var options = {
+      method: "get",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY
+      },
+      muteHttpExceptions: true
+    };
+
+    var res = UrlFetchApp.fetch(url, options);
+    var json = JSON.parse(res.getContentText());
+    if (!Array.isArray(json)) return null;
+
+    var empIdStr = String(employeeId || "").trim().toLowerCase();
+    var emailStr = String(email || "").trim().toLowerCase();
+
+    var earliest = null;
+    var latest = null;
+
     for (var i = 0; i < json.length; i++) {
       var r = json[i];
-      var rEmpId = String(r["Employee ID"] || "").trim();
-      var loginStr = String(r["Login Date and Time"] || "");
-      var logoutStr = String(r["Logout Date and Time"] || "");
+      var rEmpId = String(r["employee_id"] || r["Employee ID"] || "").trim().toLowerCase();
+      var rName = String(r["employee_name"] || r["Employee Name"] || "").trim().toLowerCase();
+      var loginStr = String(r["login_date_and_time"] || r["Login Date and Time"] || "");
+      var logoutStr = String(r["logout_date_and_time"] || r["Logout Date and Time"] || "");
 
-      if (rEmpId !== empIdStr) continue;
-      if (loginStr.indexOf(searchDate) !== 0) continue;
+      var match = false;
+      if (empIdStr && rEmpId === empIdStr) match = true;
+      if (!match && emailStr && rName.indexOf(emailStr.split('@')[0]) !== -1) match = true;
+      if (!match) continue;
 
-      var loginDate = new Date(loginStr.replace(" ", "T"));
-      if (!isNaN(loginDate.getTime())) {
-        if (!earliest || loginDate < earliest) earliest = loginDate;
-      }
-      if (logoutStr) {
-        var logoutDate = new Date(logoutStr.replace(" ", "T"));
-        if (!isNaN(logoutDate.getTime())) {
-          if (!latest || logoutDate > latest) latest = logoutDate;
+      if (loginStr.indexOf(searchDate) === 0) {
+        var loginDate = new Date(loginStr.replace(" ", "T"));
+        if (!isNaN(loginDate.getTime())) {
+          if (!earliest || loginDate < earliest) earliest = loginDate;
+        }
+        if (logoutStr) {
+          var logoutDate = new Date(logoutStr.replace(" ", "T"));
+          if (!isNaN(logoutDate.getTime())) {
+            if (!latest || logoutDate > latest) latest = logoutDate;
+          }
         }
       }
     }
-
-    if (!earliest && !latest) return null;
 
     var fmt = function (d) {
       var h = d.getHours(); var m = d.getMinutes(); var s = d.getSeconds();
       return (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
     };
+
     return {
       first: earliest ? fmt(earliest) : null,
       last: latest ? fmt(latest) : null
@@ -171,6 +203,298 @@ function fetchActivityTimes(employeeId, date) {
   }
 }
 
+/**
+ * Fetches tasks assigned to an employee for a given date directly from Supabase `tasks` table
+ */
+function fetchTasksFromDatabase(employeeId, email, name, date) {
+  try {
+    var searchDate = date;
+    var parts = date.split("-");
+    if (parts.length === 3) {
+      searchDate = parts[2] + "-" + parts[1] + "-" + parts[0];
+    }
+
+    var url = SUPABASE_URL + "/rest/v1/tasks?select=*";
+    var options = {
+      method: "get",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY
+      },
+      muteHttpExceptions: true
+    };
+
+    var res = UrlFetchApp.fetch(url, options);
+    var json = JSON.parse(res.getContentText());
+    if (!Array.isArray(json)) return [];
+
+    var empIdStr = String(employeeId || "").trim();
+    var emailStr = String(email || "").trim().toLowerCase();
+    var nameStr = String(name || "").trim().toLowerCase();
+    var firstName = nameStr.split(' ')[0];
+
+    var matchedTasks = [];
+    for (var i = 0; i < json.length; i++) {
+      var t = json[i];
+      var tEmpId = String(t["employee_ids"] || t["Employee IDs"] || "").trim();
+      var tAssignedTo = String(t["assigned_to"] || t["Assigned To"] || "").trim().toLowerCase();
+      var tAssignedEmail = String(t["assigned_emails"] || t["Assigned Emails"] || "").trim().toLowerCase();
+
+      var isMine = false;
+      if (empIdStr && tEmpId && tEmpId.indexOf(empIdStr) !== -1) isMine = true;
+      if (!isMine && emailStr && tAssignedEmail.indexOf(emailStr) !== -1) isMine = true;
+      if (!isMine && firstName && tAssignedTo.indexOf(firstName) !== -1) isMine = true;
+      if (!isMine) continue;
+
+      var statusUpdatedOn = String(t["status_updated_on"] || t["Status Updated On"] || t["assigned_date"] || t["Assigned Date"] || "");
+      if (statusUpdatedOn && statusUpdatedOn.indexOf(searchDate) !== 0) {
+        continue;
+      }
+
+      matchedTasks.push({
+        project: t["client"] || t["Client"] || "",
+        title: t["task_title"] || t["Task Title"] || "",
+        status: t["status"] || t["Status"] || "Pending",
+        startTime: formatTime(t["start_time"] || t["Start Time"] || ""),
+        endTime: formatTime(t["end_time"] || t["End Time"] || ""),
+        remark: t["remarks"] || t["Remarks"] || ""
+      });
+    }
+
+    return matchedTasks;
+  } catch (err) {
+    return [];
+  }
+}
+
+/**
+ * Custom trigger to generate today's sheet for all employees directly from Supabase DB
+ */
+function generateTodaySheetFromDB() {
+  var now = new Date();
+  var yyyy = now.getFullYear();
+  var mm = String(now.getMonth() + 1).padStart(2, '0');
+  var dd = String(now.getDate()).padStart(2, '0');
+  var dateStr = yyyy + "-" + mm + "-" + dd;
+
+  // Fetch employees list from Supabase
+  var url = SUPABASE_URL + "/rest/v1/employees?select=*";
+  var options = {
+    method: "get",
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": "Bearer " + SUPABASE_KEY
+    },
+    muteHttpExceptions: true
+  };
+
+  var res = UrlFetchApp.fetch(url, options);
+  var employees = JSON.parse(res.getContentText());
+  if (!Array.isArray(employees)) {
+    SpreadsheetApp.getUi().alert("Failed to fetch employees from database.");
+    return;
+  }
+
+  for (var i = 0; i < employees.length; i++) {
+    var emp = employees[i];
+    var fullName = emp["full_name"] || emp["Full Name"] || "";
+    var empId = emp["employee_id"] || emp["Employee ID"] || "";
+    var email = emp["email_address"] || emp["Email Address"] || "";
+
+    if (!fullName) continue;
+
+    var tasks = fetchTasksFromDatabase(empId, email, fullName, dateStr);
+    var actTimes = fetchActivityTimes(empId, email, dateStr);
+
+    var firstPunchIn = actTimes ? actTimes.first : "";
+    var lastPunchOut = actTimes ? actTimes.last : "";
+
+    writeDailyBlockToSheet({
+      name: fullName,
+      date: dateStr,
+      employeeId: empId,
+      email: email,
+      firstPunchIn: firstPunchIn,
+      lastPunchOut: lastPunchOut,
+      tasks: tasks
+    });
+  }
+
+  SpreadsheetApp.getUi().alert("Daily Task Sheet generated successfully from Database for " + dateStr + "!");
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * CORE SHEET WRITER
+ * ───────────────────────────────────────────────────────────── */
+
+function writeDailyBlockToSheet(data) {
+  var fullName = data.name || "Unknown";
+  var date = data.date || "";
+  var tasks = data.tasks || [];
+  var firstPunchIn = data.firstPunchIn || data.startTime || "";
+  var lastPunchOut = data.lastPunchOut || data.endTime || "";
+
+  var sheetName = fullName.split(" ")[0];
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+  }
+
+  var headerText = makeHeaderText(date);
+  var st = formatTime(firstPunchIn);
+  var et = formatTime(lastPunchOut);
+
+  // Construct rows: Punched In -> Tasks -> Punched Out
+  var rowsToInsert = [];
+
+  rowsToInsert.push({
+    project: "",
+    title: "Punched In",
+    status: "-",
+    startTime: st,
+    endTime: "",
+    remark: "",
+    isSpecial: true
+  });
+
+  for (var t = 0; t < tasks.length; t++) {
+    var tk = tasks[t];
+    rowsToInsert.push({
+      project: tk.project || "",
+      title: tk.title || "",
+      status: tk.status || "Pending",
+      startTime: formatTime(tk.startTime || "") || "-",
+      endTime: formatTime(tk.endTime || "") || "-",
+      remark: tk.remark || "",
+      isSpecial: false
+    });
+  }
+
+  if (et) {
+    rowsToInsert.push({
+      project: "",
+      title: "Punched Out",
+      status: "-",
+      startTime: "",
+      endTime: et,
+      remark: "",
+      isSpecial: true
+    });
+  }
+
+  var existingRow = findHeaderRow(sheet, date);
+  if (existingRow !== -1) {
+    // UPDATE existing block
+    var dataStartRow = existingRow + 2;
+    var blockEnd = findBlockDataEnd(sheet, existingRow);
+
+    // Preserve existing sheet start/end times if available
+    var existingTimes = {};
+    var allData = sheet.getDataRange().getValues();
+    for (var r = dataStartRow - 1; r < blockEnd - 1; r++) {
+      var rowTitle = String(allData[r][1] || "").trim();
+      var rowST = formatSheetTime(allData[r][3]);
+      var rowET = formatSheetTime(allData[r][4]);
+      if (rowTitle && rowTitle !== "Punched In" && rowTitle !== "Punched Out") {
+        existingTimes[rowTitle] = { startTime: rowST, endTime: rowET };
+      }
+    }
+
+    for (var k = 0; k < rowsToInsert.length; k++) {
+      var item = rowsToInsert[k];
+      if (!item.isSpecial) {
+        var ex = existingTimes[item.title] || {};
+        if (!item.startTime && ex.startTime && ex.startTime !== "-") item.startTime = ex.startTime;
+        if (!item.endTime && ex.endTime && ex.endTime !== "-") item.endTime = ex.endTime;
+        if (!item.startTime) item.startTime = "-";
+        if (!item.endTime) item.endTime = "-";
+      }
+    }
+
+    var deleteCount = blockEnd - dataStartRow;
+    if (deleteCount > 0) {
+      sheet.deleteRows(dataStartRow, deleteCount);
+    }
+
+    for (var i = 0; i < rowsToInsert.length; i++) {
+      var item = rowsToInsert[i];
+      var insertIdx = dataStartRow + i;
+      sheet.insertRowBefore(insertIdx);
+
+      sheet.getRange(insertIdx, 1).setValue(formatSheetProject(item.project));
+      sheet.getRange(insertIdx, 2).setValue(item.title);
+      sheet.getRange(insertIdx, 3).setValue(item.status);
+      sheet.getRange(insertIdx, 4).setValue(item.startTime);
+      sheet.getRange(insertIdx, 5).setValue(item.endTime);
+      sheet.getRange(insertIdx, 6).setValue(item.remark);
+
+      sheet.getRange(insertIdx, 1, 1, 6).setBackground("#ffffff").setFontWeight("normal").setFontColor("#000000");
+      sheet.getRange(insertIdx, 3).setHorizontalAlignment("center");
+      if (!item.isSpecial) {
+        sheet.getRange(insertIdx, 3).setBackground(getStatusColor(item.status));
+      }
+      sheet.getRange(insertIdx, 4).setHorizontalAlignment("center");
+      sheet.getRange(insertIdx, 5).setHorizontalAlignment("center");
+      sheet.getRange(insertIdx, 1, 1, 6).setBorder(true, true, true, true, true, true);
+    }
+
+    var rowAfter = dataStartRow + rowsToInsert.length;
+    var valAfter = sheet.getRange(rowAfter, 1).getValue();
+    if (String(valAfter).indexOf("Task :") === 0) {
+      sheet.insertRowBefore(rowAfter);
+    } else {
+      sheet.getRange(rowAfter, 1, 1, 6).clearContent();
+    }
+    return;
+  }
+
+  // CREATE new block
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 0) {
+    sheet.appendRow(["", "", "", "", "", ""]);
+  }
+
+  // Header row (Dark Blue)
+  sheet.appendRow([headerText, "", "", "", "", ""]);
+  var hdrRow = sheet.getLastRow();
+  var hdrRange = sheet.getRange(hdrRow, 1, 1, 6);
+  hdrRange.merge().setBackground("#0b5394").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true);
+
+  // Title row (Light Blue)
+  sheet.appendRow(["Project name", "Task Title", "Status", "Start Time", "End Time", "Remark"]);
+  var ttlRow = sheet.getLastRow();
+  var ttlRange = sheet.getRange(ttlRow, 1, 1, 6);
+  ttlRange.setBackground("#9fc5e8").setFontColor("#000000").setFontWeight("bold").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true);
+
+  for (var i = 0; i < rowsToInsert.length; i++) {
+    var item = rowsToInsert[i];
+    sheet.appendRow([
+      formatSheetProject(item.project),
+      item.title,
+      item.status,
+      item.startTime,
+      item.endTime,
+      item.remark
+    ]);
+    var currentRow = sheet.getLastRow();
+    sheet.getRange(currentRow, 1, 1, 6).setBackground("#ffffff").setFontWeight("normal").setFontColor("#000000");
+    sheet.getRange(currentRow, 3).setHorizontalAlignment("center");
+    if (!item.isSpecial) {
+      sheet.getRange(currentRow, 3).setBackground(getStatusColor(item.status));
+    }
+    sheet.getRange(currentRow, 4).setHorizontalAlignment("center");
+    sheet.getRange(currentRow, 5).setHorizontalAlignment("center");
+    sheet.getRange(currentRow, 1, 1, 6).setBorder(true, true, true, true, true, true);
+  }
+
+  sheet.appendRow(["", "", "", "", "", ""]);
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * WEBHOOK ENDPOINTS (doPost & doGet)
+ * ───────────────────────────────────────────────────────────── */
+
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
@@ -179,15 +503,20 @@ function doPost(e) {
     if (action === "log_punch_in") {
       var fullName = data.name || "Unknown";
       var date = data.date || "";
-      var startTime = data.startTime || "";
+      var startTime = data.startTime || data.firstPunchIn || "";
       var employeeId = data.employeeId || "";
-      var sheetName = fullName.split(" ")[0];
+      var email = data.email || "";
 
+      if ((!startTime) && (employeeId || email)) {
+        var actTimes = fetchActivityTimes(employeeId, email, date);
+        if (actTimes && actTimes.first) startTime = actTimes.first;
+      }
+
+      var st = formatTime(startTime);
+      var sheetName = fullName.split(" ")[0];
       var ss = SpreadsheetApp.getActiveSpreadsheet();
       var sheet = ss.getSheetByName(sheetName);
-      if (!sheet) {
-        sheet = ss.insertSheet(sheetName);
-      }
+      if (!sheet) { sheet = ss.insertSheet(sheetName); }
 
       var headerText = makeHeaderText(date);
       var existingRow = findHeaderRow(sheet, date);
@@ -195,57 +524,27 @@ function doPost(e) {
         return ContentService.createTextOutput(JSON.stringify({ status: "skipped", reason: "already exists" })).setMimeType(ContentService.MimeType.JSON);
       }
 
-      // Use client-sent firstPunchIn as primary (no race condition)
-      if (data.firstPunchIn) {
-        startTime = data.firstPunchIn;
-      } else if (employeeId) {
-        // Fallback: fetch from Activity Sheet
-        var activityTimes = fetchActivityTimes(employeeId, date);
-        if (activityTimes && activityTimes.first) {
-          startTime = activityTimes.first;
-        }
-      }
-
-      var st = formatTime(startTime);
-
       var lastRow = sheet.getLastRow();
-      if (lastRow > 0) {
-        sheet.appendRow(["", "", "", "", "", ""]);
-      }
+      if (lastRow > 0) sheet.appendRow(["", "", "", "", "", ""]);
 
-      // Dark green header
       sheet.appendRow([headerText, "", "", "", "", ""]);
       var hdrRow = sheet.getLastRow();
       var hdrRange = sheet.getRange(hdrRow, 1, 1, 6);
-      hdrRange.merge();
-      hdrRange.setBackground("#0b5394");
-      hdrRange.setFontColor("#FFFFFF");
-      hdrRange.setFontWeight("bold");
-      hdrRange.setHorizontalAlignment("center");
-      hdrRange.setBorder(true, true, true, true, true, true);
+      hdrRange.merge().setBackground("#0b5394").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true);
 
-      // Light green column titles
       sheet.appendRow(["Project name", "Task Title", "Status", "Start Time", "End Time", "Remark"]);
       var ttlRow = sheet.getLastRow();
       var ttlRange = sheet.getRange(ttlRow, 1, 1, 6);
-      ttlRange.setBackground("#9fc5e8");
-      ttlRange.setFontColor("#000000");
-      ttlRange.setFontWeight("bold");
-      ttlRange.setHorizontalAlignment("center");
-      ttlRange.setBorder(true, true, true, true, true, true);
+      ttlRange.setBackground("#9fc5e8").setFontColor("#000000").setFontWeight("bold").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true);
 
-      // One data row with start time, no tasks yet
       sheet.appendRow(["", "Punched In", "-", st, "", ""]);
       var taskRow = sheet.getLastRow();
-      var taskRange = sheet.getRange(taskRow, 1, 1, 6);
-      taskRange.setBorder(true, true, true, true, true, true);
-      sheet.getRange(taskRow, 3).setHorizontalAlignment("center"); // Status
-      sheet.getRange(taskRow, 4).setHorizontalAlignment("center"); // Start Time
-      sheet.getRange(taskRow, 5).setHorizontalAlignment("center"); // End Time
+      sheet.getRange(taskRow, 1, 1, 6).setBorder(true, true, true, true, true, true);
+      sheet.getRange(taskRow, 3).setHorizontalAlignment("center");
+      sheet.getRange(taskRow, 4).setHorizontalAlignment("center");
+      sheet.getRange(taskRow, 5).setHorizontalAlignment("center");
 
-      // Blank separator
       sheet.appendRow(["", "", "", "", "", ""]);
-
       return ContentService.createTextOutput(JSON.stringify({ status: "success", action: "punch_in_logged" })).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -265,28 +564,16 @@ function doPost(e) {
       var headerText = makeHeaderText(date);
       var existingRow = findHeaderRow(sheet, date);
       if (existingRow === -1) {
-        // No block for today — create one with a "Punched In" row
         var st = formatTime(startTime);
         var lastRow = sheet.getLastRow();
-        if (lastRow > 0) { sheet.appendRow(["", "", "", "", "", ""]); }
+        if (lastRow > 0) sheet.appendRow(["", "", "", "", "", ""]);
         sheet.appendRow([headerText, "", "", "", "", ""]);
         var hdrR = sheet.getLastRow();
-        var hdrRng = sheet.getRange(hdrR, 1, 1, 6);
-        hdrRng.merge();
-        hdrRng.setBackground("#0b5394");
-        hdrRng.setFontColor("#FFFFFF");
-        hdrRng.setFontWeight("bold");
-        hdrRng.setHorizontalAlignment("center");
-        hdrRng.setBorder(true, true, true, true, true, true);
+        sheet.getRange(hdrR, 1, 1, 6).merge().setBackground("#0b5394").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true);
 
         sheet.appendRow(["Project name", "Task Title", "Status", "Start Time", "End Time", "Remark"]);
         var ttlR = sheet.getLastRow();
-        var ttl = sheet.getRange(ttlR, 1, 1, 6);
-        ttl.setBackground("#9fc5e8");
-        ttl.setFontColor("#000000");
-        ttl.setFontWeight("bold");
-        ttl.setHorizontalAlignment("center");
-        ttl.setBorder(true, true, true, true, true, true);
+        sheet.getRange(ttlR, 1, 1, 6).setBackground("#9fc5e8").setFontColor("#000000").setFontWeight("bold").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true);
 
         sheet.appendRow(["", "Punched In", "-", st, "", ""]);
         var pr = sheet.getLastRow();
@@ -298,7 +585,6 @@ function doPost(e) {
         existingRow = findHeaderRow(sheet, date);
       }
 
-      // Check if a row for this task already exists with no end time — update it instead of duplicating
       var punchOutRow = findPunchedOutRow(sheet, existingRow);
       var blockEnd = findBlockDataEnd(sheet, existingRow);
       var dataStartRow = existingRow + 2;
@@ -310,7 +596,6 @@ function doPost(e) {
         var rowTitle = String(allData[r][1] || "").trim();
         var rowEnd = String(allData[r][4] || "").trim();
         if (rowTitle === title && rowEnd === "") {
-          // Update start time on existing row
           sheet.getRange(r + 1, 1).setValue(formatSheetProject(project));
           sheet.getRange(r + 1, 3).setValue(status);
           sheet.getRange(r + 1, 4).setValue(st);
@@ -323,9 +608,7 @@ function doPost(e) {
       }
 
       if (!updatedExisting) {
-        // Insert a new task row before the blank separator or next header
         var insertAt = punchOutRow !== -1 ? punchOutRow : blockEnd;
-
         sheet.insertRowBefore(insertAt);
         sheet.getRange(insertAt, 1).setValue(formatSheetProject(project));
         sheet.getRange(insertAt, 2).setValue(title);
@@ -368,7 +651,6 @@ function doPost(e) {
       var et = formatTime(endTime);
       var updated = false;
 
-      // Find the matching task row (by title) that has no end time yet
       for (var r = dataStartRow - 1; r < blockEnd - 1; r++) {
         var rowTitle = String(allData[r][1] || "").trim();
         var rowEnd = String(allData[r][4] || "").trim();
@@ -380,11 +662,7 @@ function doPost(e) {
         }
       }
 
-      return ContentService.createTextOutput(JSON.stringify({
-        status: updated ? "success" : "skipped",
-        action: "task_end_logged",
-        updated: updated
-      })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: updated ? "success" : "skipped", action: "task_end_logged" })).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (action === "log_task_status_update") {
@@ -429,11 +707,7 @@ function doPost(e) {
         }
       }
 
-      return ContentService.createTextOutput(JSON.stringify({
-        status: updated ? "success" : "skipped",
-        action: "task_status_updated",
-        updated: updated
-      })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: updated ? "success" : "skipped", action: "task_status_updated" })).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (action === "log_punch_out") {
@@ -457,11 +731,9 @@ function doPost(e) {
       var et = formatTime(endTime);
 
       if (punchOutRow !== -1) {
-        // Update existing punched out row's end time
         sheet.getRange(punchOutRow, 5).setValue(et);
         sheet.getRange(punchOutRow, 5).setHorizontalAlignment("center");
       } else {
-        // Insert a "Punched Out" row before the blank separator
         var insertAt = findBlockDataEnd(sheet, existingRow);
         sheet.insertRowBefore(insertAt);
         sheet.getRange(insertAt, 1).setValue("");
@@ -482,185 +754,33 @@ function doPost(e) {
     }
 
     if (action === "log_daily_tasks") {
-      var email = data.email;
-      var fullName = data.name || "Unknown";
-      var date = data.date || "";
-      var employeeId = data.employeeId || "";
-      var tasks = data.tasks || [];
+      writeDailyBlockToSheet(data);
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", action: "log_daily_tasks_logged" })).setMimeType(ContentService.MimeType.JSON);
+    }
 
-      var sheetName = fullName.split(" ")[0];
-      var ss = SpreadsheetApp.getActiveSpreadsheet();
-      var sheet = ss.getSheetByName(sheetName);
-      if (!sheet) {
-        sheet = ss.insertSheet(sheetName);
-      }
+    if (action === "generate_daily_sheet_from_db") {
+      var dateStr = data.date || new Date().toISOString().split('T')[0];
+      var empId = data.employeeId || "";
+      var email = data.email || "";
+      var fullName = data.name || "";
 
-      var firstPunchIn = data.firstPunchIn || data.startTime || "";
-      var lastPunchOut = data.lastPunchOut || data.endTime || "";
-
-      if ((!firstPunchIn || !lastPunchOut) && employeeId) {
-        var activityTimes = fetchActivityTimes(employeeId, date);
-        if (activityTimes) {
-          if (!firstPunchIn && activityTimes.first) firstPunchIn = activityTimes.first;
-          if (!lastPunchOut && activityTimes.last) lastPunchOut = activityTimes.last;
-        }
-      }
-
-      var headerText = makeHeaderText(date);
-      var st = formatTime(firstPunchIn);
-      var et = formatTime(lastPunchOut);
-
-      // Construct list of data rows: Punched In -> Tasks -> Punched Out
-      var rowsToInsert = [];
-      
-      // Punched In row at top
-      rowsToInsert.push({
-        project: "",
-        title: "Punched In",
-        status: "-",
-        startTime: st,
-        endTime: "",
-        remark: "",
-        isSpecial: true
-      });
-
-      // Task rows
-      for (var t = 0; t < tasks.length; t++) {
-        var tk = tasks[t];
-        rowsToInsert.push({
-          project: tk.project || "",
-          title: tk.title || "",
-          status: tk.status || "Pending",
-          startTime: formatTime(tk.startTime || "") || "-",
-          endTime: formatTime(tk.endTime || "") || "-",
-          remark: tk.remark || "",
-          isSpecial: false
+      if (fullName) {
+        var tasks = fetchTasksFromDatabase(empId, email, fullName, dateStr);
+        var actTimes = fetchActivityTimes(empId, email, dateStr);
+        writeDailyBlockToSheet({
+          name: fullName,
+          date: dateStr,
+          employeeId: empId,
+          email: email,
+          firstPunchIn: actTimes ? actTimes.first : "",
+          lastPunchOut: actTimes ? actTimes.last : "",
+          tasks: tasks
         });
+      } else {
+        generateTodaySheetFromDB();
       }
 
-      // Punched Out row at bottom
-      if (et) {
-        rowsToInsert.push({
-          project: "",
-          title: "Punched Out",
-          status: "-",
-          startTime: "",
-          endTime: et,
-          remark: "",
-          isSpecial: true
-        });
-      }
-
-      var existingRow = findHeaderRow(sheet, date);
-      if (existingRow !== -1) {
-        // UPDATE existing block
-        var dataStartRow = existingRow + 2;
-        var blockEnd = findBlockDataEnd(sheet, existingRow);
-
-        // Preserve logged start and end times for tasks in the sheet
-        var existingTimes = {};
-        var allData = sheet.getDataRange().getValues();
-        for (var r = dataStartRow - 1; r < blockEnd - 1; r++) {
-          var rowTitle = String(allData[r][1] || "").trim();
-          var rowST = formatSheetTime(allData[r][3]);
-          var rowET = formatSheetTime(allData[r][4]);
-          if (rowTitle && rowTitle !== "Punched In" && rowTitle !== "Punched Out") {
-            existingTimes[rowTitle] = { startTime: rowST, endTime: rowET };
-          }
-        }
-
-        // Fill in missing start/end times from sheet, or set '-' if no timer was run
-        for (var k = 0; k < rowsToInsert.length; k++) {
-          var item = rowsToInsert[k];
-          if (!item.isSpecial) {
-            var ex = existingTimes[item.title] || {};
-            if (!item.startTime && ex.startTime && ex.startTime !== "-") item.startTime = ex.startTime;
-            if (!item.endTime && ex.endTime && ex.endTime !== "-") item.endTime = ex.endTime;
-
-            if (!item.startTime) item.startTime = "-";
-            if (!item.endTime) item.endTime = "-";
-          }
-        }
-
-        var deleteCount = blockEnd - dataStartRow;
-        if (deleteCount > 0) {
-          sheet.deleteRows(dataStartRow, deleteCount);
-        }
-
-        for (var i = 0; i < rowsToInsert.length; i++) {
-          var item = rowsToInsert[i];
-          var insertIdx = dataStartRow + i;
-          sheet.insertRowBefore(insertIdx);
-
-          sheet.getRange(insertIdx, 1).setValue(formatSheetProject(item.project));
-          sheet.getRange(insertIdx, 2).setValue(item.title);
-          sheet.getRange(insertIdx, 3).setValue(item.status);
-          sheet.getRange(insertIdx, 4).setValue(item.startTime);
-          sheet.getRange(insertIdx, 5).setValue(item.endTime);
-          sheet.getRange(insertIdx, 6).setValue(item.remark);
-
-          sheet.getRange(insertIdx, 1, 1, 6).setBackground("#ffffff").setFontWeight("normal").setFontColor("#000000");
-          sheet.getRange(insertIdx, 3).setHorizontalAlignment("center");
-          if (!item.isSpecial) {
-            sheet.getRange(insertIdx, 3).setBackground(getStatusColor(item.status));
-          }
-          sheet.getRange(insertIdx, 4).setHorizontalAlignment("center");
-          sheet.getRange(insertIdx, 5).setHorizontalAlignment("center");
-          sheet.getRange(insertIdx, 1, 1, 6).setBorder(true, true, true, true, true, true);
-        }
-
-        var rowAfter = dataStartRow + rowsToInsert.length;
-        var valAfter = sheet.getRange(rowAfter, 1).getValue();
-        if (String(valAfter).indexOf("Task :") === 0) {
-          sheet.insertRowBefore(rowAfter);
-        } else {
-          sheet.getRange(rowAfter, 1, 1, 6).clearContent();
-        }
-
-        return ContentService.createTextOutput(JSON.stringify({ status: "success", action: "updated" })).setMimeType(ContentService.MimeType.JSON);
-      }
-
-      // CREATE new block if no header exists
-      var lastRow = sheet.getLastRow();
-      if (lastRow > 0) {
-        sheet.appendRow(["", "", "", "", "", ""]);
-      }
-
-      // Header row (Dark Blue)
-      sheet.appendRow([headerText, "", "", "", "", ""]);
-      var hdrRow = sheet.getLastRow();
-      var hdrRange = sheet.getRange(hdrRow, 1, 1, 6);
-      hdrRange.merge().setBackground("#0b5394").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true);
-
-      // Title row (Light Blue)
-      sheet.appendRow(["Project name", "Task Title", "Status", "Start Time", "End Time", "Remark"]);
-      var ttlRow = sheet.getLastRow();
-      var ttlRange = sheet.getRange(ttlRow, 1, 1, 6);
-      ttlRange.setBackground("#9fc5e8").setFontColor("#000000").setFontWeight("bold").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true);
-
-      for (var i = 0; i < rowsToInsert.length; i++) {
-        var item = rowsToInsert[i];
-        sheet.appendRow([
-          formatSheetProject(item.project),
-          item.title,
-          item.status,
-          item.startTime,
-          item.endTime,
-          item.remark
-        ]);
-        var currentRow = sheet.getLastRow();
-        sheet.getRange(currentRow, 1, 1, 6).setBackground("#ffffff").setFontWeight("normal").setFontColor("#000000");
-        sheet.getRange(currentRow, 3).setHorizontalAlignment("center");
-        if (!item.isSpecial) {
-          sheet.getRange(currentRow, 3).setBackground(getStatusColor(item.status));
-        }
-        sheet.getRange(currentRow, 4).setHorizontalAlignment("center");
-        sheet.getRange(currentRow, 5).setHorizontalAlignment("center");
-        sheet.getRange(currentRow, 1, 1, 6).setBorder(true, true, true, true, true, true);
-      }
-
-      sheet.appendRow(["", "", "", "", "", ""]);
-      return ContentService.createTextOutput(JSON.stringify({ status: "success", action: "created" })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", action: "generated_from_db" })).setMimeType(ContentService.MimeType.JSON);
     }
 
     return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Unknown action" })).setMimeType(ContentService.MimeType.JSON);
@@ -668,6 +788,10 @@ function doPost(e) {
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ status: "error", error: error.toString() })).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput("Daily Task Sheet Supabase Sync API active.").setMimeType(ContentService.MimeType.TEXT);
 }
 
 function doOptions(e) {
