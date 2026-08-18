@@ -121,6 +121,7 @@ export default function AccountClientsPage() {
   const { clients, payments, profile, updatePayment, deletePayment, addToast } = useApp()
   const [searchQuery, setSearchQuery] = useState('')
   const [viewingClient, setViewingClient] = useState(null)
+  const [viewingRowItem, setViewingRowItem] = useState(null)
   const [showPaymentForm, setShowPaymentForm] = useState(false)
   const [showRecordForm, setShowRecordForm] = useState(false)
   const [paymentForm, setPaymentForm] = useState({ ...emptyPaymentForm })
@@ -157,9 +158,11 @@ export default function AccountClientsPage() {
     return !!(payment['GST/NON GST'] && cost > 0)
   }
 
-  const openPaymentFormForClient = (clientObj) => {
+  const openPaymentFormForClient = (clientObj, rowItem = null) => {
     const targetClient = clientObj || viewingClient
     if (!targetClient) return
+    setViewingClient(targetClient)
+    if (rowItem) setViewingRowItem(rowItem)
     const existing = getPayment(targetClient['Client ID'])
     setPaymentForm({
       gstType: existing?.['GST/NON GST'] || '',
@@ -170,13 +173,15 @@ export default function AccountClientsPage() {
     setShowPaymentForm(true)
   }
 
-  const openRecordFormForClient = (clientObj) => {
+  const openRecordFormForClient = (clientObj, rowItem = null) => {
     const targetClient = clientObj || viewingClient
     if (!targetClient) return
+    setViewingClient(targetClient)
+    if (rowItem) setViewingRowItem(rowItem)
     const existing = getPayment(targetClient['Client ID'])
     if (!hasPaymentDetails(existing)) {
       addToast?.('Please set payment details (GST & Project Cost) first', 'warning')
-      openPaymentFormForClient(targetClient)
+      openPaymentFormForClient(targetClient, rowItem)
       return
     }
     setRecordForm({
@@ -442,7 +447,7 @@ export default function AccountClientsPage() {
                         return (
                           <tr
                             key={rowItem.rowKey || idx}
-                            onClick={() => { setViewingClient(client); setShowPaymentForm(false); setShowRecordForm(false) }}
+                            onClick={() => { setViewingClient(client); setViewingRowItem(rowItem); setShowPaymentForm(false); setShowRecordForm(false) }}
                             className={`block lg:table-row bg-white border-b border-[#E5E7EB] lg:hover:bg-white lg:hover:scale-[1.005] lg:hover:shadow-[0_4px_20px_rgba(91,33,182,0.06)] transition-all duration-200 cursor-pointer ${!clientIsActive ? 'opacity-60 filter blur-[0.3px]' : ''} ${idx === clientRows.length - 1 ? 'border-b-0' : ''}`}
                           >
                             <td className="block lg:table-cell py-3 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#1E1B2E]">
@@ -515,7 +520,7 @@ export default function AccountClientsPage() {
                                     </button>
                                   ) : (
                                     <button
-                                      onClick={(e) => { e.stopPropagation(); setViewingClient(client); openRecordFormForClient(client) }}
+                                      onClick={(e) => { e.stopPropagation(); setViewingClient(client); setViewingRowItem(rowItem); openRecordFormForClient(client, rowItem) }}
                                       className="h-[32px] px-3 rounded-lg bg-[#702c91] hover:bg-[#5c2280] text-white text-[11px] font-bold cursor-pointer transition-all border-none inline-flex items-center gap-1 shadow-sm"
                                     >
                                       <span className="material-symbols-outlined text-[14px]">payments</span>
@@ -524,7 +529,7 @@ export default function AccountClientsPage() {
                                   )
                                 ) : (
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); setViewingClient(client); openPaymentFormForClient(client) }}
+                                    onClick={(e) => { e.stopPropagation(); setViewingClient(client); setViewingRowItem(rowItem); openPaymentFormForClient(client, rowItem) }}
                                     className="h-[32px] px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold cursor-pointer transition-all border-none inline-flex items-center gap-1 shadow-sm"
                                   >
                                     <span className="material-symbols-outlined text-[14px]">edit_note</span>
@@ -564,9 +569,14 @@ export default function AccountClientsPage() {
               <h2 className="text-[18px] font-bold text-[#702c91] flex items-center gap-2 m-0">
                 <span className="material-symbols-outlined text-[20px]">business</span>
                 {viewingClient['Project Name'] || 'Client'}
+                {viewingRowItem?.billingCycleLabel && (
+                  <span className="text-[12px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-0.5 rounded-full ml-1">
+                    {viewingRowItem.billingCycleLabel}
+                  </span>
+                )}
               </h2>
               <button
-                onClick={() => setViewingClient(null)}
+                onClick={() => { setViewingClient(null); setViewingRowItem(null) }}
                 className="text-gray-400 hover:text-gray-700 transition-colors bg-transparent border-none cursor-pointer p-1 flex items-center justify-center rounded-full hover:bg-gray-100"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
@@ -631,9 +641,10 @@ export default function AccountClientsPage() {
                   const totalCost = parseFloat(viewingPayment['TOTAL COST']) || 0
                   const isGst = viewingPayment['GST/NON GST'] === 'GST'
                   const gstAmt = isGst ? (parseFloat(viewingPayment['GST AMOUNT (NEW)']) || Math.round(totalCost * 0.18)) : 0
-                  const totalWithGst = statusInfo.totalWithGst || (totalCost + gstAmt)
-                  const totalPaid = statusInfo.totalPaid
-                  const pendingAmt = statusInfo.pending
+
+                  const totalWithGst = viewingRowItem ? viewingRowItem.totalPayable : (statusInfo.totalWithGst || (totalCost + gstAmt))
+                  const totalPaid = viewingRowItem ? viewingRowItem.totalPaid : statusInfo.totalPaid
+                  const pendingAmt = viewingRowItem ? viewingRowItem.pendingAmt : statusInfo.pending
 
                   return (
                     <div className="border-t border-gray-200 pt-4 mt-1">
@@ -736,7 +747,7 @@ export default function AccountClientsPage() {
             {canEditPayment && (
               <div className="border-t border-gray-200 px-6 py-4 shrink-0 flex gap-3">
                 <button
-                  onClick={() => openPaymentFormForClient(viewingClient)}
+                  onClick={() => openPaymentFormForClient(viewingClient, viewingRowItem)}
                   className="flex-1 h-[42px] rounded-xl bg-white border border-[#702c91] text-[#702c91] text-[13px] font-bold cursor-pointer hover:bg-purple-50 transition-all flex items-center justify-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[18px]">edit_note</span>
@@ -745,7 +756,7 @@ export default function AccountClientsPage() {
                 {(() => {
                   const allClientPayments = getAllPayments(viewingClient['Client ID'])
                   const statusInfo = getPaymentStatusInfo(viewingClient, viewingPayment, allClientPayments)
-                  const isFullyPaid = statusInfo.pending === 0 && (statusInfo.totalWithGst > 0 || statusInfo.totalPaid > 0)
+                  const isFullyPaid = viewingRowItem ? viewingRowItem.pendingAmt === 0 : (statusInfo.pending === 0 && (statusInfo.totalWithGst > 0 || statusInfo.totalPaid > 0))
 
                   if (isFullyPaid) {
                     return (
@@ -762,7 +773,7 @@ export default function AccountClientsPage() {
 
                   return (
                     <button
-                      onClick={() => openRecordFormForClient(viewingClient)}
+                      onClick={() => openRecordFormForClient(viewingClient, viewingRowItem)}
                       className="flex-1 h-[42px] rounded-xl bg-[#702c91] hover:bg-[#5c2280] text-white text-[13px] font-bold cursor-pointer transition-all border-none flex items-center justify-center gap-2"
                     >
                       <span className="material-symbols-outlined text-[18px]">payments</span>
