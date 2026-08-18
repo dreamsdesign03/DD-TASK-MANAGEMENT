@@ -2,12 +2,62 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 import { useApp } from '../context/AppContext'
-
-
+import { api } from '../api'
 import { renderAvatar } from '../utils/avatar'
 
 export default function ProfilePage() {
-  const { profile, setProfile } = useApp()
+  const { profile, setProfile, addToast, fetchTeam } = useApp()
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [fullName, setFullName] = useState(profile?.name || '')
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    if (profile?.name) {
+      setFullName(profile.name)
+    }
+  }, [profile?.name])
+
+  const handleSaveName = async () => {
+    const trimmed = fullName.trim()
+    if (!trimmed) {
+      addToast?.('Full Name cannot be empty', 'error')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      await api.post({
+        action: 'update_user_profile',
+        email: profile.email,
+        fullName: trimmed,
+      })
+
+      // Update local profile state
+      const updatedProfile = { ...profile, name: trimmed }
+      setProfile(updatedProfile)
+      try {
+        localStorage.setItem('dd_user', JSON.stringify(updatedProfile))
+      } catch (err) {
+        console.warn('Failed to save user to localStorage:', err)
+      }
+
+      // Refresh team state globally
+      if (fetchTeam) fetchTeam()
+
+      addToast?.('Full Name updated successfully!', 'success')
+      setIsEditingName(false)
+    } catch (err) {
+      console.error('Failed to update profile name:', err)
+      addToast?.('Failed to update Full Name: ' + (err.message || err), 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleCancelName = () => {
+    setFullName(profile?.name || '')
+    setIsEditingName(false)
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-background, #F0EDF8)', display: 'flex' }}>
@@ -64,21 +114,69 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="relative floating-label-group">
-                        <input
-                          className="w-full p-3 bg-surface border border-outline rounded-md text-secondary cursor-not-allowed text-[14px] peer text-ellipsis overflow-hidden whitespace-nowrap"
-                          id="full_name"
-                          placeholder=" "
-                          readOnly
-                          type="text"
-                          value={profile.name}
-                        />
-                        <label
-                          className="absolute left-3 top-3.5 z-10 origin-[0] -translate-y-6 scale-75 transform bg-surface-container-lowest px-1 text-label-sm text-outline"
-                          htmlFor="full_name"
-                        >
-                          Full Name
-                        </label>
+                      <div className="relative floating-label-group flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            className={`w-full p-3 bg-surface border rounded-md text-[14px] peer text-ellipsis overflow-hidden whitespace-nowrap transition-colors ${
+                              isEditingName
+                                ? 'border-[#702c91] bg-white text-[#151c27] shadow-sm ring-1 ring-[#702c91]/30 font-medium'
+                                : 'border-outline text-secondary cursor-not-allowed'
+                            }`}
+                            id="full_name"
+                            placeholder=" "
+                            readOnly={!isEditingName}
+                            type="text"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && isEditingName) handleSaveName()
+                              if (e.key === 'Escape' && isEditingName) handleCancelName()
+                            }}
+                          />
+                          <label
+                            className="absolute left-3 top-3.5 z-10 origin-[0] -translate-y-6 scale-75 transform bg-surface-container-lowest px-1 text-label-sm text-outline"
+                            htmlFor="full_name"
+                          >
+                            Full Name
+                          </label>
+                        </div>
+
+                        {!isEditingName ? (
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingName(true)}
+                            className="px-3.5 py-2.5 rounded-lg border border-[#702c91]/30 bg-purple-50 hover:bg-[#702c91] hover:text-white text-[#702c91] font-semibold text-[13px] flex items-center gap-1.5 transition-all shadow-sm shrink-0 cursor-pointer"
+                            title="Edit Full Name"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">edit</span>
+                            <span>Edit</span>
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              disabled={isSaving}
+                              onClick={handleSaveName}
+                              className="px-3.5 py-2.5 rounded-lg bg-gradient-to-r from-[#702c91] to-[#ec008c] hover:opacity-95 text-white font-semibold text-[13px] flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                            >
+                              {isSaving ? (
+                                <span className="material-symbols-outlined text-[17px] animate-spin">progress_activity</span>
+                              ) : (
+                                <span className="material-symbols-outlined text-[17px]">check</span>
+                              )}
+                              <span>Save</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isSaving}
+                              onClick={handleCancelName}
+                              className="px-3 py-2.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-[13px] flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <span className="material-symbols-outlined text-[17px]">close</span>
+                              <span>Cancel</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div className="relative floating-label-group">
                         <input

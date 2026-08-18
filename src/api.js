@@ -751,6 +751,21 @@ async function getProjectFiles(projectName) {
   return { ok: true, files }
 }
 
+async function updateUserProfile(payload) {
+  const email = (payload.email || '').trim().toLowerCase()
+  const fullName = (payload.fullName || payload.name || '').trim()
+  if (!email || !fullName) throw new Error('Email and Full Name are required')
+
+  const { data, error } = await supabase
+    .from('team')
+    .update({ full_name: fullName })
+    .eq('email_address', email)
+    .select('*')
+
+  if (error) throw error
+  return { ok: true, data }
+}
+
 /* ─── Dispatch ───────────────────────────────────────────────────────────── */
 const POST_HANDLERS = {
   register,
@@ -776,6 +791,7 @@ const POST_HANDLERS = {
   read_receipt: receipt,
   delivery_receipt: receipt,
   upload_task_file: uploadTaskFile,
+  update_user_profile: updateUserProfile,
 }
 
 export const api = {
