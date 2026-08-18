@@ -6,6 +6,12 @@ import { formatDateShort } from '../utils/dateFormat'
 
 const safeDate = (val) => val ? formatDateShort(val) : '-'
 
+const formatCurrency = (val) => {
+  const num = parseFloat(val)
+  if (isNaN(num) || num === null || num === undefined) return '0'
+  return num.toLocaleString('en-IN')
+}
+
 const RECURRING_OPTIONS = ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly']
 
 const GST_FIXED_PCT = 18
@@ -77,7 +83,7 @@ const getPaymentStatusInfo = (client, existingPay, allPays) => {
     }
   } else if (totalPaid > 0) {
     return {
-      status: `Pending: ₹${pendingAmt.toLocaleString('en-IN')}`,
+      status: `Pending: ₹${formatCurrency(pendingAmt)}`,
       badgeClass: 'bg-purple-50 text-[#702c91] border border-purple-200',
       icon: 'schedule'
     }
@@ -483,29 +489,29 @@ export default function AccountClientsPage() {
 
                         <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                           <p className="text-[10px] text-gray-400 m-0 mb-1">Base Project Cost</p>
-                          <p className="text-[13px] font-bold text-[#702c91] m-0">{totalCost ? `₹${totalCost.toLocaleString('en-IN')}` : '-'}</p>
+                          <p className="text-[13px] font-bold text-[#702c91] m-0">{totalCost ? `₹${formatCurrency(totalCost)}` : '-'}</p>
                         </div>
 
                         {isGst && (
                           <div className="bg-purple-50 rounded-xl p-3 border border-purple-100">
                             <p className="text-[10px] text-[#702c91] m-0 mb-1">GST (18%)</p>
-                            <p className="text-[13px] font-bold text-[#702c91] m-0">₹{gstAmt.toLocaleString('en-IN')}</p>
+                            <p className="text-[13px] font-bold text-[#702c91] m-0">₹{formatCurrency(gstAmt)}</p>
                           </div>
                         )}
 
                         <div className="bg-purple-50 rounded-xl p-3 border border-purple-100">
                           <p className="text-[10px] text-[#702c91] m-0 mb-1">Total Payable (Inc GST)</p>
-                          <p className="text-[13px] font-bold text-[#702c91] m-0">₹{totalWithGst.toLocaleString('en-IN')}</p>
+                          <p className="text-[13px] font-bold text-[#702c91] m-0">₹{formatCurrency(totalWithGst)}</p>
                         </div>
 
                         <div className="bg-green-50 rounded-xl p-3 border border-green-100">
                           <p className="text-[10px] text-green-600 m-0 mb-1">Total Paid</p>
-                          <p className="text-[13px] font-bold text-green-700 m-0">₹{totalPaid.toLocaleString('en-IN')}</p>
+                          <p className="text-[13px] font-bold text-green-700 m-0">₹{formatCurrency(totalPaid)}</p>
                         </div>
 
                         <div className={pendingAmt === 0 ? "bg-green-50 rounded-xl p-3 border border-green-100" : "bg-red-50 rounded-xl p-3 border border-red-100"}>
                           <p className={pendingAmt === 0 ? "text-[10px] text-green-600 m-0 mb-1 font-bold" : "text-[10px] text-red-500 m-0 mb-1"}>Pending Amount</p>
-                          <p className={pendingAmt === 0 ? "text-[13px] font-bold text-green-700 m-0" : "text-[13px] font-bold text-[#ef4444] m-0"}>₹{pendingAmt.toLocaleString('en-IN')}</p>
+                          <p className={pendingAmt === 0 ? "text-[13px] font-bold text-green-700 m-0" : "text-[13px] font-bold text-[#ef4444] m-0"}>₹{formatCurrency(pendingAmt)}</p>
                         </div>
                       </div>
 
@@ -530,9 +536,9 @@ export default function AccountClientsPage() {
                                       <span className="text-[11px] text-gray-500">{p['PAYMENT DATE'] ? formatDateShort(p['PAYMENT DATE']) : '-'}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                      <span className="text-[14px] font-bold text-[#16a34a]">₹{payAmt.toLocaleString('en-IN')}</span>
+                                      <span className="text-[14px] font-bold text-[#16a34a]">₹{formatCurrency(payAmt)}</span>
                                       <span className={`text-[11px] font-medium ${installmentPending === 0 ? 'text-green-700 font-bold' : 'text-[#ef4444]'}`}>
-                                        Pending Amount: ₹{installmentPending.toLocaleString('en-IN')}
+                                        Pending Amount: ₹{formatCurrency(installmentPending)}
                                       </span>
                                     </div>
                                     {p['PAYMENT NOTE'] && (
@@ -677,12 +683,12 @@ export default function AccountClientsPage() {
                       {paymentForm.gstType === 'GST' && (
                         <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 flex justify-between items-center">
                           <span className="text-[12px] text-[#702c91] font-medium">GST Amount (18%)</span>
-                          <span className="text-[14px] font-bold text-[#702c91]">₹{calcGstAmount().toLocaleString('en-IN')}</span>
+                          <span className="text-[14px] font-bold text-[#702c91]">₹{formatCurrency(calcGstAmount())}</span>
                         </div>
                       )}
                       <div className="bg-[#702c91] border border-[#5c2280] rounded-xl p-3 flex justify-between items-center text-white shadow-sm">
                         <span className="text-[12px] font-bold">Total Amount Payable</span>
-                        <span className="text-[16px] font-extrabold">₹{calcTotalWithGst().toLocaleString('en-IN')}</span>
+                        <span className="text-[16px] font-extrabold">₹{formatCurrency(calcTotalWithGst())}</span>
                       </div>
                     </div>
                   )}
@@ -749,7 +755,7 @@ export default function AccountClientsPage() {
                       <div className={isZeroPending ? "mt-2 bg-green-50 border border-green-200 rounded-xl p-3 flex justify-between items-center shadow-xs" : "mt-2 bg-orange-50 border border-orange-200 rounded-xl p-3 flex justify-between items-center shadow-xs"}>
                         <span className={isZeroPending ? "text-[12px] text-green-700 font-bold" : "text-[12px] text-orange-700 font-bold"}>Pending Amount After Payment</span>
                         <span className={isZeroPending ? "text-[15px] font-extrabold text-green-700" : "text-[15px] font-extrabold text-orange-700"}>
-                          ₹{pendingAfter.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          ₹{formatCurrency(pendingAfter)}
                         </span>
                       </div>
                     )
@@ -765,12 +771,12 @@ export default function AccountClientsPage() {
                       <div className="mt-3 flex gap-2">
                         <div className="flex-1 bg-purple-50 border border-purple-100 rounded-lg p-2 text-center">
                           <p className="text-[9px] text-[#702c91] m-0 uppercase font-bold">Total Payable</p>
-                          <p className="text-[12px] font-bold text-[#702c91] m-0">₹{totalWithGst.toLocaleString('en-IN')}</p>
+                          <p className="text-[12px] font-bold text-[#702c91] m-0">₹{formatCurrency(totalWithGst)}</p>
                         </div>
                         {totalPaid > 0 && (
                           <div className="flex-1 bg-green-50 border border-green-100 rounded-lg p-2 text-center">
                             <p className="text-[9px] text-green-600 m-0 uppercase font-bold">Already Paid</p>
-                            <p className="text-[12px] font-bold text-green-700 m-0">₹{totalPaid.toLocaleString('en-IN')}</p>
+                            <p className="text-[12px] font-bold text-green-700 m-0">₹{formatCurrency(totalPaid)}</p>
                           </div>
                         )}
                       </div>
