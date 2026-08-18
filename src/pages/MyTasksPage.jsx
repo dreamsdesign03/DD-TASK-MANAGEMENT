@@ -48,7 +48,28 @@ export default function MyTasksPage() {
 
   // Form states
   const [title, setTitle] = useState('')
-  const [client, setClient] = useState(() => companyList[0] || '')
+  const [selectedClients, setSelectedClients] = useState([])
+  const [isClientOpen, setIsClientOpen] = useState(false)
+  const [clientSearchQuery, setClientSearchQuery] = useState('')
+  const clientRef = useRef(null)
+
+  useEffect(() => {
+    if (showNewTaskModal && selectedClients.length === 0 && companyList.length > 0) {
+      setSelectedClients([companyList[0]])
+    }
+  }, [showNewTaskModal, companyList])
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (clientRef.current && !clientRef.current.contains(e.target)) {
+        setIsClientOpen(false)
+        setClientSearchQuery('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const defaultDept = profile?.systemRole === 'HR' ? 'HR' : profile?.systemRole === 'Accountant' ? 'ACCOUNT' : profile?.systemRole === 'Sales' ? 'SALES' : 'COMMON'
   const [department, setDepartment] = useState(defaultDept)
 
@@ -97,6 +118,10 @@ export default function MyTasksPage() {
       addToast('Please fill out all required fields', 'error')
       return
     }
+    if (!selectedClients || selectedClients.length === 0) {
+      addToast('Please select at least one client', 'error')
+      return
+    }
     if (!assignedTo.filter(Boolean).length) {
       addToast('Please add at least one assignee', 'error')
       return
@@ -122,52 +147,60 @@ export default function MyTasksPage() {
         }
       }
     })
-    const nextIdNum = maxIdNum > 0 ? maxIdNum + 1 : 1
-    // Timestamp suffix keeps IDs unique even when two users create a task at the same time
-    const nextIdStr = `T-${String(nextIdNum).padStart(4, '0')}${Date.now().toString().slice(-6)}`
 
     const assignedEmps = employees?.filter(e => assignedTo.includes(e.name)) || []
     const assigneeIds = assignedEmps.map(e => e.id).filter(Boolean).join(', ')
     const assigneeEmails = assignedEmps.map(e => e.email).filter(Boolean).join(', ')
 
-    const newTask = {
-      id: nextIdStr,
-      title: title.trim(),
-      client: client || companyList[0] || 'General',
-      project: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }),
-      assigned: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }),
-      assignedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }),
-      dueDate: formattedDate,
-      priority,
-      status: 'Pending',
-      statusUpdatedOn: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }),
-      overdue: false,
-      done: false,
-      department,
-      assignedTo: assignedTo.join(', '),
-      assignedToIds: assigneeIds || (profile?.employeeId || profile?.id || ''),
-      assignedBy,
-      assignedById: profile?.employeeId || profile?.id || '',
-      employeeIds: assigneeIds || (profile?.employeeId || profile?.id || ''),
-      employeeId: assigneeIds || (profile?.employeeId || profile?.id || ''),
-      assignedEmails: assigneeEmails || (profile?.email || ''),
-      assignedEmail: assigneeEmails || (profile?.email || ''),
-      description: {
-        intro: description.trim() || 'No description provided.',
-        bullets: [],
-        outro: '',
-      },
-      comments: [],
-      attachments: [],
-      remarks,
-      post,
-      isRecurring,
-      recurringSchedule: isRecurring ? recurringSchedule : '',
-      recurringDay: isRecurring && recurringSchedule === 'Weekly' ? recurringDay : '',
-      recurringMonths: isRecurring && recurringSchedule === 'Monthly' ? recurringMonths.join(', ') : '',
+    // Create a task for EACH selected client
+    selectedClients.forEach((clientName, index) => {
+      const nextIdNum = (maxIdNum > 0 ? maxIdNum + 1 : 1) + index
+      const nextIdStr = `T-${String(nextIdNum).padStart(4, '0')}${(Date.now() + index).toString().slice(-6)}`
+
+      const newTask = {
+        id: nextIdStr,
+        title: title.trim(),
+        client: clientName,
+        project: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }),
+        assigned: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }),
+        assignedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }),
+        dueDate: formattedDate,
+        priority,
+        status: 'Pending',
+        statusUpdatedOn: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }),
+        overdue: false,
+        done: false,
+        department,
+        assignedTo: assignedTo.join(', '),
+        assignedToIds: assigneeIds || (profile?.employeeId || profile?.id || ''),
+        assignedBy,
+        assignedById: profile?.employeeId || profile?.id || '',
+        employeeIds: assigneeIds || (profile?.employeeId || profile?.id || ''),
+        employeeId: assigneeIds || (profile?.employeeId || profile?.id || ''),
+        assignedEmails: assigneeEmails || (profile?.email || ''),
+        assignedEmail: assigneeEmails || (profile?.email || ''),
+        description: {
+          intro: description.trim() || 'No description provided.',
+          bullets: [],
+          outro: '',
+        },
+        comments: [],
+        attachments: [],
+        remarks,
+        post,
+        isRecurring,
+        recurringSchedule: isRecurring ? recurringSchedule : '',
+        recurringDay: isRecurring && recurringSchedule === 'Weekly' ? recurringDay : '',
+        recurringMonths: isRecurring && recurringSchedule === 'Monthly' ? recurringMonths.join(', ') : '',
+      }
+
+      addTask(newTask)
+    })
+
+    if (selectedClients.length > 1) {
+      addToast(`${selectedClients.length} tasks created successfully for selected clients!`, 'success')
     }
 
-    addTask(newTask)
     setShowNewTaskModal(false)
 
     // Clear form
@@ -177,6 +210,7 @@ export default function MyTasksPage() {
     setPost('YES')
     setDepartment('COMMON')
     setAssignedTo([profile?.name])
+    setSelectedClients([])
     setIsRecurring(false)
     setRecurringSchedule('Weekly')
     setRecurringDay('Monday')
@@ -250,8 +284,92 @@ export default function MyTasksPage() {
               {/* Company (Client) and Department Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-black text-gray-500 uppercase tracking-wider mb-1.5">COMPANY (CLIENT)</label>
-                  <SelectDropdown value={client} onChange={setClient} options={companyList} />
+                  <label className="block text-[11px] font-black text-gray-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                    <span>COMPANY / CLIENT(S)</span>
+                    {selectedClients.length > 1 && <span className="text-[#702c91] font-bold">({selectedClients.length} Selected)</span>}
+                  </label>
+                  <div className="relative" ref={clientRef}>
+                    <div
+                      onClick={() => setIsClientOpen(!isClientOpen)}
+                      className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-[14px] text-gray-700 cursor-pointer flex justify-between items-center hover:border-[#702c91] transition-colors shadow-sm"
+                    >
+                      <span className="truncate text-[13px] font-medium">
+                        {selectedClients.length === 0
+                          ? 'Select Client(s)'
+                          : selectedClients.length === 1
+                          ? selectedClients[0]
+                          : `${selectedClients.length} Clients (${selectedClients.slice(0, 2).join(', ')}${selectedClients.length > 2 ? '...' : ''})`}
+                      </span>
+                      <span className="material-symbols-outlined text-gray-400 text-[18px]">{isClientOpen ? 'expand_less' : 'expand_more'}</span>
+                    </div>
+
+                    {isClientOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden border border-gray-100 flex flex-col max-h-[250px]">
+                        {/* Search Input Bar & Select All */}
+                        <div className="p-2 border-b border-gray-100 bg-white sticky top-0 z-10 flex flex-col gap-2">
+                          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-md px-2.5 py-1.5">
+                            <span className="material-symbols-outlined text-[16px] text-gray-400">search</span>
+                            <input
+                              type="text"
+                              value={clientSearchQuery}
+                              onChange={(e) => setClientSearchQuery(e.target.value)}
+                              placeholder="Search clients..."
+                              className="w-full bg-transparent text-[12px] font-bold text-gray-700 outline-none placeholder:text-gray-400"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            {clientSearchQuery && (
+                              <span
+                                onClick={(e) => { e.stopPropagation(); setClientSearchQuery('') }}
+                                className="material-symbols-outlined text-[14px] text-gray-400 cursor-pointer hover:text-gray-600"
+                              >
+                                close
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between px-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (selectedClients.length === companyList.length) setSelectedClients([])
+                                else setSelectedClients([...companyList])
+                              }}
+                              className="text-[11px] font-bold text-[#702c91] hover:underline bg-transparent border-none cursor-pointer p-0"
+                            >
+                              {selectedClients.length === companyList.length ? 'Deselect All' : 'Select All Clients'}
+                            </button>
+                            <span className="text-[11px] text-gray-400 font-semibold">{selectedClients.length} of {companyList.length}</span>
+                          </div>
+                        </div>
+
+                        {/* List */}
+                        <div className="overflow-y-auto custom-scrollbar p-1 flex flex-col gap-0.5">
+                          {(() => {
+                            const filtered = companyList.filter(c =>
+                              c.toLowerCase().includes(clientSearchQuery.trim().toLowerCase())
+                            )
+                            if (filtered.length === 0) {
+                              return <div className="p-3 text-[12px] text-gray-400 text-center font-semibold">No clients match "{clientSearchQuery}"</div>
+                            }
+                            return filtered.map((c) => (
+                              <label key={c} className="flex items-center gap-2 px-3 py-2 hover:bg-purple-50/60 rounded-md cursor-pointer transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedClients.includes(c)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setSelectedClients([...selectedClients, c])
+                                    else setSelectedClients(selectedClients.filter(name => name !== c))
+                                  }}
+                                  className="accent-[#702c91] w-4 h-4 cursor-pointer"
+                                />
+                                <span className="text-[13px] text-gray-700 font-semibold">{c}</span>
+                              </label>
+                            ))
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[11px] font-black text-gray-500 uppercase tracking-wider mb-1.5">DEPARTMENT</label>
