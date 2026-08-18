@@ -281,113 +281,238 @@ export default function AccountClientsPage() {
             </div>
           </div>
 
-          {/* Client Table */}
-          <div className="bg-white rounded-[12px] border border-[#E5E7EB] shadow-sm overflow-hidden">
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="block lg:table w-full text-left border-collapse min-w-full lg:min-w-[950px]">
-                <thead className="hidden lg:table-header-group">
-                  <tr className="bg-[#F3F4F6] border-b border-[#E5E7EB]">
-                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Client ID</th>
-                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Project Name</th>
-                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Client Name</th>
-                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Payment Status</th>
-                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Services</th>
-                    <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Start Date</th>
-                    {canEditPayment && <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">Action</th>}
-                  </tr>
-                </thead>
-                <tbody className="block lg:table-row-group divide-y lg:divide-none divide-[#E5E7EB]">
-                  {filteredClients.map((client, idx) => {
-                    const existingPay = getPayment(client['Client ID'])
-                    const isConfigured = hasPaymentDetails(existingPay)
-                    return (
-                      <tr
-                        key={client['Client ID'] || idx}
-                        onClick={() => { setViewingClient(client); setShowPaymentForm(false); setShowRecordForm(false) }}
-                        className={`block lg:table-row bg-white border-b border-[#E5E7EB] lg:hover:bg-white lg:hover:scale-[1.005] lg:hover:shadow-[0_4px_20px_rgba(91,33,182,0.06)] transition-all duration-200 cursor-pointer ${idx === filteredClients.length - 1 ? 'border-b-0' : ''}`}
-                      >
-                        <td className="block lg:table-cell py-3 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#1E1B2E]">
-                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">ID:</span>
-                          {client['Client ID']}
-                        </td>
-                        <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#702c91]">
-                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Project:</span>
-                          {client['Project Name'] || '-'}
-                        </td>
-                        <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#4B5563]">
-                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Client:</span>
-                          {client['Client Name'] || client['Company Name'] || '-'}
-                        </td>
-                        <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px]">
-                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Status:</span>
-                          {(() => {
-                            const allPays = getAllPayments(client['Client ID'])
-                            const info = getPaymentStatusInfo(client, existingPay, allPays)
-                            return (
-                              <span className={`inline-flex items-center gap-1 ${info.badgeClass} text-[11px] font-bold px-2.5 py-0.5 rounded-full`}>
-                                <span className="material-symbols-outlined text-[14px]">{info.icon}</span>
-                                {info.status}
-                              </span>
-                            )
-                          })()}
-                        </td>
-                        <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#6B7280]">
-                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Services:</span>
-                          {client['Services'] ? (
-                            <div className="flex flex-wrap gap-1">
-                              {String(client['Services']).split(',').slice(0, 2).map((s, i) => (
-                                <span key={i} className="bg-purple-50 text-purple-700 border border-purple-100 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                  {s.trim()}
-                                </span>
-                              ))}
-                              {String(client['Services']).split(',').length > 2 && (
-                                <span className="text-[10px] text-gray-400">+{String(client['Services']).split(',').length - 2}</span>
-                              )}
-                            </div>
-                          ) : '-'}
-                        </td>
-                        <td className="block lg:table-cell py-2 px-4 pb-4 lg:py-4 lg:px-6 text-[13px] text-[#4B5563]">
-                          <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Start:</span>
-                          {safeDate(client['Project start Date'])}
-                        </td>
-                        {canEditPayment && (
-                          <td className="block lg:table-cell py-2 px-4 pb-4 lg:py-4 lg:px-6 text-[13px] text-right">
-                            {isConfigured ? (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setViewingClient(client); openRecordFormForClient(client) }}
-                                className="h-[32px] px-3 rounded-lg bg-[#702c91] hover:bg-[#5c2280] text-white text-[11px] font-bold cursor-pointer transition-all border-none inline-flex items-center gap-1"
-                              >
-                                <span className="material-symbols-outlined text-[14px]">payments</span>
-                                Add Payment
-                              </button>
-                            ) : (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setViewingClient(client); openPaymentFormForClient(client) }}
-                                className="h-[32px] px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold cursor-pointer transition-all border-none inline-flex items-center gap-1 shadow-sm"
-                              >
-                                <span className="material-symbols-outlined text-[14px]">edit_note</span>
-                                Set Payment Details
-                              </button>
-                            )}
-                          </td>
-                        )}
+          {/* Client Table - Line Item View for Accountants */}
+          {(() => {
+            const clientRows = []
+            filteredClients.forEach((client) => {
+              const allPays = getAllPayments(client['Client ID'])
+              const existingPay = getPayment(client['Client ID'])
+              const isConfigured = hasPaymentDetails(existingPay)
+
+              if (!isConfigured) {
+                clientRows.push({
+                  rowKey: `${client['Client ID']}_unconfigured`,
+                  client,
+                  existingPay,
+                  allPays,
+                  billingCycleLabel: 'Details Needed',
+                  totalPayable: 0,
+                  totalPaid: 0,
+                  pendingAmt: 0,
+                  isConfigured: false,
+                  statusInfo: {
+                    status: 'Details Needed',
+                    badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+                    icon: 'warning'
+                  }
+                })
+                return
+              }
+
+              const cost = parseFloat(existingPay['TOTAL COST']) || 0
+              const isGst = existingPay['GST/NON GST'] === 'GST'
+              const gstAmt = isGst ? (parseFloat(existingPay['GST AMOUNT (NEW)']) || Math.round(cost * 0.18)) : 0
+              const basePayable = cost + gstAmt
+
+              const isRecurring = String(existingPay['RECURRING'] || '').toLowerCase() === 'yes' || String(existingPay['RECURRING'] || '').toLowerCase() === 'true'
+              const recurringType = String(existingPay['RECURRING TYPE'] || 'monthly').toLowerCase()
+
+              if (!isRecurring) {
+                const totalPaid = allPays.reduce((sum, p) => sum + (parseFloat(p['PAYMENT AMOUNT']) || 0), 0)
+                const pendingAmt = Math.max(0, basePayable - totalPaid)
+                let statusInfo
+                if (pendingAmt === 0 && basePayable > 0) {
+                  statusInfo = { status: 'Paid', badgeClass: 'bg-green-50 text-green-700 border border-green-200 shadow-xs', icon: 'check_circle' }
+                } else if (totalPaid > 0) {
+                  statusInfo = { status: `Pending: ₹${formatCurrency(pendingAmt)}`, badgeClass: 'bg-purple-50 text-[#702c91] border border-purple-200', icon: 'schedule' }
+                } else {
+                  statusInfo = { status: 'Payment Due', badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200', icon: 'account_balance_wallet' }
+                }
+
+                clientRows.push({
+                  rowKey: `${client['Client ID']}_onetime`,
+                  client,
+                  existingPay,
+                  allPays,
+                  billingCycleLabel: 'One-Time Project',
+                  totalPayable: basePayable,
+                  totalPaid,
+                  pendingAmt,
+                  isConfigured: true,
+                  statusInfo
+                })
+                return
+              }
+
+              // Handle Monthly Recurring Projects: Generate separate row for each monthly installment cycle
+              const startDateStr = client['Project start Date'] || existingPay['PROJECT START DATE']
+              const start = new Date(startDateStr || new Date())
+              const now = new Date()
+
+              let cycleCount = 1
+              if (!isNaN(start.getTime()) && now >= start) {
+                if (recurringType.includes('month')) {
+                  const monthsDiff = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth())
+                  cycleCount = Math.max(1, monthsDiff + (now.getDate() >= start.getDate() ? 1 : 0))
+                } else if (recurringType.includes('year')) {
+                  const yearsDiff = now.getFullYear() - start.getFullYear()
+                  cycleCount = Math.max(1, yearsDiff + 1)
+                }
+              }
+
+              const validInstallments = allPays.filter(p => parseFloat(p['PAYMENT AMOUNT']) > 0)
+              let remainingPaidPool = validInstallments.reduce((sum, p) => sum + (parseFloat(p['PAYMENT AMOUNT']) || 0), 0)
+
+              for (let c = 1; c <= cycleCount; c++) {
+                const cycleDate = new Date(start)
+                if (!isNaN(start.getTime())) {
+                  cycleDate.setMonth(start.getMonth() + (c - 1))
+                }
+                const cycleDateStr = !isNaN(cycleDate.getTime()) ? formatDateShort(cycleDate.toISOString().split('T')[0]) : '-'
+
+                const cyclePaid = Math.min(basePayable, remainingPaidPool)
+                remainingPaidPool = Math.max(0, remainingPaidPool - cyclePaid)
+                const cyclePending = Math.max(0, basePayable - cyclePaid)
+
+                let statusInfo
+                if (basePayable > 0 && cyclePending === 0) {
+                  statusInfo = { status: `Month ${c} Paid`, badgeClass: 'bg-green-50 text-green-700 border border-green-200 shadow-xs', icon: 'check_circle' }
+                } else if (cyclePaid > 0) {
+                  statusInfo = { status: `Pending: ₹${formatCurrency(cyclePending)}`, badgeClass: 'bg-purple-50 text-[#702c91] border border-purple-200', icon: 'schedule' }
+                } else {
+                  statusInfo = { status: `Month ${c} Due`, badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200', icon: 'account_balance_wallet' }
+                }
+
+                clientRows.push({
+                  rowKey: `${client['Client ID']}_month_${c}`,
+                  client,
+                  existingPay,
+                  allPays,
+                  cycleIndex: c,
+                  billingCycleLabel: `Month ${c} (${cycleDateStr})`,
+                  cycleDateStr,
+                  totalPayable: basePayable,
+                  totalPaid: cyclePaid,
+                  pendingAmt: cyclePending,
+                  isConfigured: true,
+                  statusInfo
+                })
+              }
+            })
+
+            return (
+              <div className="bg-white rounded-[12px] border border-[#E5E7EB] shadow-sm overflow-hidden">
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="block lg:table w-full text-left border-collapse min-w-full lg:min-w-[1050px]">
+                    <thead className="hidden lg:table-header-group">
+                      <tr className="bg-[#F3F4F6] border-b border-[#E5E7EB]">
+                        <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Client ID</th>
+                        <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Project & Client</th>
+                        <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Billing Cycle</th>
+                        <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Services</th>
+                        <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Total Payable</th>
+                        <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Paid Amount</th>
+                        <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Payment Status</th>
+                        {canEditPayment && <th className="py-4 px-6 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">Action</th>}
                       </tr>
-                    )
-                  })}
-                  {filteredClients.length === 0 && (
-                    <tr className="block lg:table-row">
-                      <td colSpan={canEditPayment ? 7 : 6} className="block lg:table-cell py-12 text-center text-[#6B7280]">
-                        <div className="flex flex-col items-center justify-center">
-                          <span className="material-symbols-outlined text-[48px] text-gray-300 mb-3">search_off</span>
-                          <p className="text-[14px] font-medium m-0">No active clients found.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                    </thead>
+                    <tbody className="block lg:table-row-group divide-y lg:divide-none divide-[#E5E7EB]">
+                      {clientRows.map((rowItem, idx) => {
+                        const { client, billingCycleLabel, totalPayable, totalPaid, isConfigured, statusInfo } = rowItem
+                        return (
+                          <tr
+                            key={rowItem.rowKey || idx}
+                            onClick={() => { setViewingClient(client); setShowPaymentForm(false); setShowRecordForm(false) }}
+                            className={`block lg:table-row bg-white border-b border-[#E5E7EB] lg:hover:bg-white lg:hover:scale-[1.005] lg:hover:shadow-[0_4px_20px_rgba(91,33,182,0.06)] transition-all duration-200 cursor-pointer ${idx === clientRows.length - 1 ? 'border-b-0' : ''}`}
+                          >
+                            <td className="block lg:table-cell py-3 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#1E1B2E]">
+                              <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">ID:</span>
+                              {client['Client ID']}
+                            </td>
+                            <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px]">
+                              <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Project:</span>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-[#702c91]">{client['Project Name'] || '-'}</span>
+                                <span className="text-[11px] text-[#6B7280]">{client['Client Name'] || client['Company Name'] || '-'}</span>
+                              </div>
+                            </td>
+                            <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#1E1B2E]">
+                              <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Cycle:</span>
+                              <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[11px] font-bold px-2.5 py-1 rounded-lg inline-block">
+                                {billingCycleLabel}
+                              </span>
+                            </td>
+                            <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#6B7280]">
+                              <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Services:</span>
+                              {client['Services'] ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {String(client['Services']).split(',').slice(0, 2).map((s, i) => (
+                                    <span key={i} className="bg-purple-50 text-purple-700 border border-purple-100 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                      {s.trim()}
+                                    </span>
+                                  ))}
+                                  {String(client['Services']).split(',').length > 2 && (
+                                    <span className="text-[10px] text-gray-400">+{String(client['Services']).split(',').length - 2}</span>
+                                  )}
+                                </div>
+                              ) : '-'}
+                            </td>
+                            <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-[#702c91]">
+                              <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Payable:</span>
+                              {totalPayable > 0 ? `₹${formatCurrency(totalPayable)}` : '-'}
+                            </td>
+                            <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] font-bold text-green-700">
+                              <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Paid:</span>
+                              ₹{formatCurrency(totalPaid)}
+                            </td>
+                            <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px]">
+                              <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Status:</span>
+                              <span className={`inline-flex items-center gap-1 ${statusInfo.badgeClass} text-[11px] font-bold px-2.5 py-0.5 rounded-full`}>
+                                <span className="material-symbols-outlined text-[14px]">{statusInfo.icon}</span>
+                                {statusInfo.status}
+                              </span>
+                            </td>
+                            {canEditPayment && (
+                              <td className="block lg:table-cell py-2 px-4 pb-4 lg:py-4 lg:px-6 text-[13px] text-right">
+                                {isConfigured ? (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setViewingClient(client); openRecordFormForClient(client) }}
+                                    className="h-[32px] px-3 rounded-lg bg-[#702c91] hover:bg-[#5c2280] text-white text-[11px] font-bold cursor-pointer transition-all border-none inline-flex items-center gap-1"
+                                  >
+                                    <span className="material-symbols-outlined text-[14px]">payments</span>
+                                    Add Payment
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setViewingClient(client); openPaymentFormForClient(client) }}
+                                    className="h-[32px] px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold cursor-pointer transition-all border-none inline-flex items-center gap-1 shadow-sm"
+                                  >
+                                    <span className="material-symbols-outlined text-[14px]">edit_note</span>
+                                    Set Payment Details
+                                  </button>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })}
+                      {clientRows.length === 0 && (
+                        <tr className="block lg:table-row">
+                          <td colSpan={canEditPayment ? 8 : 7} className="block lg:table-cell py-12 text-center text-[#6B7280]">
+                            <div className="flex flex-col items-center justify-center">
+                              <span className="material-symbols-outlined text-[48px] text-gray-300 mb-2">account_balance_wallet</span>
+                              <p className="text-[15px] font-bold text-gray-600 m-0">No active client rows found</p>
+                              <p className="text-[13px] text-gray-400 m-0 mt-1">Try adjusting your search criteria.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       </main>
 
