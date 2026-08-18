@@ -456,12 +456,13 @@ export default function AccountClientsPage() {
                 {/* Financial Summary Card */}
                 {viewingPayment ? (() => {
                   const allClientPayments = getAllPayments(viewingClient['Client ID'])
+                  const statusInfo = getPaymentStatusInfo(viewingClient, viewingPayment, allClientPayments)
                   const totalCost = parseFloat(viewingPayment['TOTAL COST']) || 0
                   const isGst = viewingPayment['GST/NON GST'] === 'GST'
                   const gstAmt = isGst ? (parseFloat(viewingPayment['GST AMOUNT (NEW)']) || Math.round(totalCost * 0.18)) : 0
-                  const totalWithGst = totalCost + gstAmt
-                  const totalPaid = allClientPayments.reduce((sum, p) => sum + (parseFloat(p['PAYMENT AMOUNT']) || 0), 0)
-                  const pendingAmt = Math.max(0, totalWithGst - totalPaid)
+                  const totalWithGst = statusInfo.totalWithGst || (totalCost + gstAmt)
+                  const totalPaid = statusInfo.totalPaid
+                  const pendingAmt = statusInfo.pending
 
                   return (
                     <div className="border-t border-gray-200 pt-4 mt-1">
