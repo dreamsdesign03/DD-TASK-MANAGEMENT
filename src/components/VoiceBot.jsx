@@ -47,14 +47,15 @@ function VoiceBotInner({ onTaskAdd }) {
     latestData.current = { profile, tasks, employees, clients, addTask, updateTask, companyList };
   }, [profile, tasks, employees, clients, addTask, updateTask]);
 
-  const executeQueryTasks = (params) => {
+  const executeQueryTasks = (params = {}) => {
       console.log("[VoiceBot] executeQueryTasks called with:", params);
       const { tasks, employees, companyList, profile } = latestData.current;
       let filteredTasks = tasks;
       
       // Filter by Task Query (ID or Title)
-      if (params.task_query) {
-          const taskQuery = params.task_query.trim().toLowerCase();
+      const rawTaskQuery = params.task_query || params.task_name || params.query || params.task_id || params.task || params.title;
+      if (rawTaskQuery) {
+          const taskQuery = String(rawTaskQuery).trim().toLowerCase();
           let match = tasks.find(t => String(t.id).toLowerCase() === taskQuery);
           if (!match) {
              let bestMatch = null;
@@ -69,13 +70,14 @@ function VoiceBotInner({ onTaskAdd }) {
           if (match) {
               filteredTasks = [match];
           } else {
-              return `Here is the data from Dreamsdesk: Could not find any task matching '${params.task_query}'. Please ask the user to clarify the task title or ID.`;
+              return `Here is the data from Dreamsdesk: Could not find any task matching '${rawTaskQuery}'. Please ask the user to clarify the task title or ID.`;
           }
       }
 
       // Filter by Assignee
-      if (params.assignee && filteredTasks.length > 0) {
-          const assigneeQuery = params.assignee.trim().toLowerCase();
+      const rawAssignee = params.assignee || params.employee_name || params.name || params.employee || params.user || params.assigned_to;
+      if (rawAssignee && filteredTasks.length > 0) {
+          const assigneeQuery = String(rawAssignee).trim().toLowerCase();
           let matchEmp = null;
           if (assigneeQuery === 'me' || assigneeQuery === 'myself' || assigneeQuery === 'my') {
               matchEmp = { name: profile?.name || 'User' };
@@ -262,10 +264,11 @@ function VoiceBotInner({ onTaskAdd }) {
       }
   };
 
-  const executeUpdateTask = (params) => {
+  const executeUpdateTask = (params = {}) => {
       console.log("[VoiceBot] executeUpdateTask called with:", params);
       const { tasks, updateTask, profile } = latestData.current;
-      const taskQuery = (params.task_query || params.task_name || params.title || '').trim().toLowerCase();
+      const rawQuery = params.task_query || params.task_name || params.task_id || params.task || params.title || params.query;
+      const taskQuery = rawQuery ? String(rawQuery).trim().toLowerCase() : '';
       
       if (!taskQuery) {
           return `Here is the data from Dreamsdesk: No task was specified. Please tell me which task you want to update.`;
@@ -284,7 +287,7 @@ function VoiceBotInner({ onTaskAdd }) {
       }
 
       if (!match) {
-          return `Here is the data from Dreamsdesk: I could not find an active task matching '${params.task_query || taskQuery}'. Please ask the user to clarify the task title or ID.`;
+          return `Here is the data from Dreamsdesk: I could not find an active task matching '${rawQuery}'. Please ask the user to clarify the task title or ID.`;
       }
 
       let updates = {};
@@ -388,10 +391,11 @@ function VoiceBotInner({ onTaskAdd }) {
       }
   };
 
-  const executeAddSubtask = (params) => {
+  const executeAddSubtask = (params = {}) => {
       console.log("[VoiceBot] executeAddSubtask called with:", params);
       const { profile, tasks, employees, addTask } = latestData.current;
-      const parentQuery = (params.parent_task_id || params.parent_task || params.task_query || '').trim().toLowerCase();
+      const rawParent = params.parent_task_id || params.parent_task || params.parent_task_name || params.main_task_id || params.task_query || params.task_id || params.task || params.title;
+      const parentQuery = rawParent ? String(rawParent).trim().toLowerCase() : '';
 
       if (!parentQuery) {
           return `Here is the data from Dreamsdesk: No parent task was specified. Please tell me which task to add the subtask to.`;
@@ -518,42 +522,49 @@ function VoiceBotInner({ onTaskAdd }) {
       }
     },
     clientTools: {
-      get_team_status: async () => {
+      get_team_status: async (params = {}) => {
+        console.log("[VoiceBot] get_team_status called with:", params);
         const { employees } = latestData.current;
-        const online = employees.filter(e => e.status === 'Online').map(e => e.name);
-        const result = `Currently Online Team Members: ${online.join(', ') || 'No one'}. Offline Members: ${employees.filter(e => e.status !== 'Online').map(e => e.name).join(', ') || 'No one'}.`;
+        const online = (employees || []).filter(e => e.status === 'Online').map(e => e.name);
+        const offline = (employees || []).filter(e => e.status !== 'Online').map(e => e.name);
+        const result = `Currently Online Team Members: ${online.join(', ') || 'No one'}. Offline Members: ${offline.join(', ') || 'No one'}.`;
         try { conversation.sendContextualUpdate(result); } catch { /* ignore */ }
         return result;
       },
 
-      get_employee_tasks: async (params) => {
+      get_employee_tasks: async (params = {}) => {
+        console.log("[VoiceBot] get_employee_tasks called with:", params);
         const result = executeQueryTasks({
           ...params,
-          assignee: params.employee_name || params.assignee,
+          assignee: params.employee_name || params.assignee || params.name || params.employee || params.user || params.employee_id,
         });
         try { conversation.sendContextualUpdate(result); } catch { /* ignore */ }
         return result;
       },
 
-      task_query: async (params) => {
+      task_query: async (params = {}) => {
+        console.log("[VoiceBot] task_query called with:", params);
         const result = executeQueryTasks(params);
         try { conversation.sendContextualUpdate(result); } catch { /* ignore */ }
         return result;
       },
 
-      query_tasks: async (params) => {
+      query_tasks: async (params = {}) => {
+        console.log("[VoiceBot] query_tasks called with:", params);
         const result = executeQueryTasks(params);
         try { conversation.sendContextualUpdate(result); } catch { /* ignore */ }
         return result;
       },
 
-      update_task: async (params) => {
+      update_task: async (params = {}) => {
+        console.log("[VoiceBot] update_task called with:", params);
         const result = executeUpdateTask(params);
         try { conversation.sendContextualUpdate(result); } catch { /* ignore */ }
         return result;
       },
 
-      update_task_status: async (params) => {
+      update_task_status: async (params = {}) => {
+        console.log("[VoiceBot] update_task_status called with:", params);
         const result = executeUpdateTask(params);
         try { conversation.sendContextualUpdate(result); } catch { /* ignore */ }
         return result;
