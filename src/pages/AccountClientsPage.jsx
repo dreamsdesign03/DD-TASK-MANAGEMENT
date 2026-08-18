@@ -23,6 +23,73 @@ const emptyRecordForm = {
   note: '',
 }
 
+const getPaymentStatusInfo = (client, existingPay, allPays) => {
+  if (!existingPay) {
+    return {
+      status: 'Details Needed',
+      badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+      icon: 'warning'
+    }
+  }
+
+  const cost = parseFloat(existingPay['TOTAL COST']) || 0
+  const hasDetails = !!(existingPay['GST/NON GST'] && cost > 0)
+  if (!hasDetails) {
+    return {
+      status: 'Details Needed',
+      badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+      icon: 'warning'
+    }
+  }
+
+  const isGst = existingPay['GST/NON GST'] === 'GST'
+  const gstAmt = isGst ? (parseFloat(existingPay['GST AMOUNT (NEW)']) || Math.round(cost * 0.18)) : 0
+  const basePayable = cost + gstAmt
+
+  const isRecurring = String(existingPay['RECURRING'] || '').toLowerCase() === 'yes' || String(existingPay['RECURRING'] || '').toLowerCase() === 'true'
+  const recurringType = String(existingPay['RECURRING TYPE'] || 'monthly').toLowerCase()
+
+  let cycleCount = 1
+  const startDateStr = client['Project start Date'] || existingPay['PROJECT START DATE']
+  if (isRecurring && startDateStr) {
+    const start = new Date(startDateStr)
+    const now = new Date()
+    if (!isNaN(start.getTime()) && now >= start) {
+      if (recurringType.includes('month')) {
+        const monthsDiff = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth())
+        cycleCount = Math.max(1, monthsDiff + 1)
+      } else if (recurringType.includes('year')) {
+        const yearsDiff = now.getFullYear() - start.getFullYear()
+        cycleCount = Math.max(1, yearsDiff + 1)
+      }
+    }
+  }
+
+  const totalPayableToDate = isRecurring ? basePayable * cycleCount : basePayable
+  const totalPaid = allPays.reduce((sum, p) => sum + (parseFloat(p['PAYMENT AMOUNT']) || 0), 0)
+  const pendingAmt = Math.max(0, totalPayableToDate - totalPaid)
+
+  if (basePayable > 0 && pendingAmt === 0) {
+    return {
+      status: isRecurring ? `Month ${cycleCount} Paid` : 'Paid',
+      badgeClass: 'bg-green-50 text-green-700 border border-green-200 shadow-xs',
+      icon: 'check_circle'
+    }
+  } else if (totalPaid > 0) {
+    return {
+      status: `Pending: ₹${pendingAmt.toLocaleString('en-IN')}`,
+      badgeClass: 'bg-purple-50 text-[#702c91] border border-purple-200',
+      icon: 'schedule'
+    }
+  } else {
+    return {
+      status: 'Payment Due',
+      badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+      icon: 'account_balance_wallet'
+    }
+  }
+}
+
 export default function AccountClientsPage() {
   const { clients, payments, profile, updatePayment, deletePayment, addToast } = useApp()
   const [searchQuery, setSearchQuery] = useState('')
@@ -247,17 +314,16 @@ export default function AccountClientsPage() {
                         </td>
                         <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px]">
                           <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Status:</span>
-                          {isConfigured ? (
-                            <span className="inline-flex items-center gap-1 bg-purple-50 text-[#702c91] border border-purple-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                              Configured
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                              <span className="material-symbols-outlined text-[14px]">warning</span>
-                              Details Needed
-                            </span>
-                          )}
+                          {(() => {
+                            const allPays = getAllPayments(client['Client ID'])
+                            const info = getPaymentStatusInfo(client, existingPay, allPays)
+                            return (
+                              <span className={`inline-flex items-center gap-1 ${info.badgeClass} text-[11px] font-bold px-2.5 py-0.5 rounded-full`}>
+                                <span className="material-symbols-outlined text-[14px]">{info.icon}</span>
+                                {info.status}
+                              </span>
+                            )
+                          })()}
                         </td>
                         <td className="block lg:table-cell py-2 px-4 lg:py-4 lg:px-6 text-[13px] text-[#6B7280]">
                           <span className="lg:hidden text-[10px] uppercase text-[#6B7280] mr-2">Services:</span>
@@ -460,28 +526,7 @@ export default function AccountClientsPage() {
                                   <div key={idx} className="bg-white border border-gray-200 rounded-xl p-3 shadow-xs hover:border-purple-200 transition-colors">
                                     <div className="flex justify-between items-center mb-1">
                                       <span className="text-[11px] font-bold text-purple-700">Installment #{idx + 1}</span>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-[11px] text-gray-500">{p['PAYMENT DATE'] ? formatDateShort(p['PAYMENT DATE']) : '-'}</span>
-                                        {canEditPayment && (
-                                          <button
-                                            type="button"
-                                            onClick={async (e) => {
-                                              e.stopPropagation()
-                                              if (window.confirm(`Are you sure you want to remove Installment #${idx + 1} (₹${payAmt.toLocaleString('en-IN')})?`)) {
-                                                await deletePayment({
-                                                  id: p.id,
-                                                  clientId: viewingClient['Client ID'],
-                                                  dataEntryTime: p['DATA ENTRY DATE AND TIME']
-                                                })
-                                              }
-                                            }}
-                                            className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-full border-none cursor-pointer flex items-center justify-center transition-colors"
-                                            title="Remove installment"
-                                          >
-                                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                                          </button>
-                                        )}
-                                      </div>
+                                      <span className="text-[11px] text-gray-500">{p['PAYMENT DATE'] ? formatDateShort(p['PAYMENT DATE']) : '-'}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                       <span className="text-[14px] font-bold text-[#16a34a]">₹{payAmt.toLocaleString('en-IN')}</span>
