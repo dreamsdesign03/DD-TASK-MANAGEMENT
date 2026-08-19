@@ -2313,6 +2313,9 @@ export function AppProvider({ children }) {
       if (res && res.ok) {
         addToast('Task added successfully!', 'success')
       }
+      if (newTask.isRecurring) {
+        setTimeout(() => { generateDueRecurringTasks() }, 500)
+      }
       if (mqttClient && mqttClient.connected) {
         setTimeout(() => {
           mqttClient.publish('dd_task_engine_v1/sync', JSON.stringify({ action: 'sync' }))
@@ -2663,6 +2666,7 @@ export function AppProvider({ children }) {
 
       let generatedAny = false
       for (const tpl of dueTemplates) {
+        const hasNeverGenerated = !tpl.last_auto_generated_date
         const baseStr = tpl.last_auto_generated_date ||
           (tpl.due_date || '') ||
           (tpl.created_at ? String(tpl.created_at).slice(0, 10) : '') ||
@@ -2672,13 +2676,16 @@ export function AppProvider({ children }) {
         const base = new Date(baseStr + 'T12:00:00')
         if (isNaN(base.getTime())) continue
         const months = String(tpl.recurring_months || '').split(',').map(s => s.trim()).filter(Boolean)
-        const nextDue = computeRecurringDueDate(tpl.recurring_schedule, tpl.recurring_day, months, base, false)
+        const nextDue = computeRecurringDueDate(tpl.recurring_schedule, tpl.recurring_day, months, base, hasNeverGenerated)
         if (!nextDue || nextDue > today) continue
 
         // Atomic claim of this cycle — only one runner proceeds
+        const updatePayload = { last_auto_generated_date: nextDue }
+        if (!tpl.due_date) updatePayload.due_date = nextDue
+
         const { data: claimed, error: claimErr } = await supabase
           .from('tasks')
-          .update({ last_auto_generated_date: nextDue })
+          .update(updatePayload)
           .eq('task_id', tpl.task_id)
           .or(`last_auto_generated_date.is.null,last_auto_generated_date.lt.${nextDue}`)
           .select('task_id')

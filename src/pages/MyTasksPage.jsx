@@ -135,6 +135,16 @@ export default function MyTasksPage() {
         year: 'numeric',
         timeZone: 'Asia/Kolkata',
       })
+    } else if (isRecurring) {
+      const recDue = computeRecurringDueDate(recurringSchedule, recurringDay, recurringMonths, new Date(), true)
+      if (recDue) {
+        formattedDate = new Date(recDue + 'T12:00:00').toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          timeZone: 'Asia/Kolkata',
+        })
+      }
     }
 
     let maxIdNum = 0
