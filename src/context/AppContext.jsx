@@ -898,6 +898,7 @@ export function AppProvider({ children }) {
 
 
   // Chat channels state
+  const [pendingUsers, setPendingUsers] = useState([])
   const [employees, setEmployees] = useState(() => {
     return STATIC_EMPLOYEES.map(staticEmp => ({
       id: staticEmp.id,
@@ -2746,8 +2747,19 @@ export function AppProvider({ children }) {
   const updateTeamAndChats = useCallback((fetchedTeam) => {
     const combined = fetchedTeam && fetchedTeam.length > 0 ? fetchedTeam : STATIC_EMPLOYEES
 
+    // Separate pending approval users vs approved users
+    const isPendingUser = (e) => {
+      const s = String(e.status || '').toLowerCase()
+      return s.includes('pending') || s === 'pending approval'
+    }
+
+    const pendingList = combined.filter(isPendingUser)
+    const approvedList = combined.filter(e => !isPendingUser(e))
+
+    setPendingUsers(pendingList)
+
     // User is only Online when punched in; login alone does not make them active
-    const withStatus = combined.map(e =>
+    const withStatus = approvedList.map(e =>
       e.email === profile?.email ? { ...e, status: isPunchedIn ? 'Online' : 'Offline' } : e
     )
 
@@ -2759,7 +2771,7 @@ export function AppProvider({ children }) {
     })
 
     setPersonalChats(prev => {
-      const chatList = combined
+      const chatList = approvedList
         .filter(m => m.name.toLowerCase() !== (profile?.name || '').toLowerCase())
         .map((m, idx) => {
           const roomId = getPersonalChatRoomId(profile, m)
@@ -3135,6 +3147,7 @@ export function AppProvider({ children }) {
         setIsSidebarOpen,
         fetchSyncedTasks,
         employees,
+        pendingUsers,
         clients,
         fetchClients,
         payments,

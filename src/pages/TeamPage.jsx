@@ -10,7 +10,7 @@ import { renderAvatar } from '../utils/avatar'
 const INITIAL_EMPLOYEES = []
 
 export default function TeamPage() {
-  const { setSearchQuery, profile, employees: dynamicEmployees, tasks, addToast, fetchTeam } = useApp()
+  const { setSearchQuery, profile, employees: dynamicEmployees, pendingUsers, tasks, addToast, fetchTeam } = useApp()
   const navigate = useNavigate()
   const [localEmployees, setLocalEmployees] = useState([])
   const [search, setSearch] = useState('')
@@ -60,11 +60,10 @@ export default function TeamPage() {
     return { ...emp, taskCount }
   })
 
-  const isPending = (e) => (String(e.status).toLowerCase() === 'pending' || String(e.status).toLowerCase() === 'pending approval') && String(e.isActive).toLowerCase() === 'no'
-  const isInactive = (e) => String(e.status).toLowerCase() === 'inactive' || (String(e.isActive).toLowerCase() === 'no' && !isPending(e))
-  const pendingMembers = employees.filter(isPending)
+  const pendingMembers = (pendingUsers || []).map(emp => ({ ...emp, taskCount: 0 }))
+  const isInactive = (e) => String(e.status).toLowerCase() === 'inactive' || String(e.isActive).toLowerCase() === 'no'
   const inactiveMembers = employees.filter(isInactive)
-  const approvedMembers = employees.filter(e => !isPending(e) && !isInactive(e))
+  const approvedMembers = employees.filter(e => !isInactive(e))
 
   // Filter Employees (search only) — include inactive in search
   const allVisible = [...approvedMembers, ...inactiveMembers]

@@ -190,10 +190,13 @@ function isUserActive(row) {
   const active = row.is_active
   const status = String(row.status || '').trim().toLowerCase()
 
+  if (status.includes('pending')) {
+    return false
+  }
   if (active === true || active === 'true' || active === 'Yes' || active === 'yes' || active === 1 || active === '1') {
     return true
   }
-  if (status === 'approved' || status === 'active') {
+  if (status === 'approved' || status === 'active' || status === 'online' || status === 'offline') {
     return true
   }
   return false
