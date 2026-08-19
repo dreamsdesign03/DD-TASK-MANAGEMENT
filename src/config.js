@@ -22,4 +22,5 @@ export const DAILY_SHEET_WEB_APP_URL =
 // Pending task daily email backend (Google Apps Script).
 // Deploy pending_task_email_script.js and paste the URL here.
 export const PENDING_EMAIL_WEB_APP_URL =
-  import.meta.env.VITE_PENDING_EMAIL_WEB_APP_URL || ''
+  import.meta.env.VITE_PENDING_EMAIL_WEB_APP_URL ||
+  'https://script.google.com/macros/s/AKfycbxPjHXObDTl9z1kvbEOy8qktbGA7dLoFLj5z8sRs_h0F6R7mZg-yQnB9grftusdz-EV/exec'
