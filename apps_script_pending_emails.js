@@ -67,7 +67,7 @@ function getPendingTasks(assigneeName, idToName) {
   return (allTasks || []).filter(function (t) {
     if (t.main_task_id && String(t.main_task_id).trim() !== "") return false;
     var s = String(t.status || "").trim().toLowerCase();
-    if (s !== "pending" && s !== "in progress") return false;
+    if (s !== "pending") return false;
     var assigned = String(t.assigned_to || "");
     if (assigned.toLowerCase().indexOf(assigneeName.toLowerCase()) !== -1) return true;
     var ids = assigned.split(",").map(function (x) { return x.trim(); });
@@ -150,7 +150,7 @@ function sendTestPendingEmail() {
   var pending = (allTasks || []).filter(function (t) {
     if (t.main_task_id && String(t.main_task_id).trim() !== "") return false;
     var s = String(t.status || "").trim().toLowerCase();
-    return s === "pending" || s === "in progress";
+    return s === "pending";
   });
   var html = buildPendingEmailHTML("Mansi Shah", pending);
   GmailApp.sendEmail(ADMIN_EMAIL, "Test: Pending Tasks (" + pending.length + ")", "", {
