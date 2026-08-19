@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import mqtt from 'mqtt'
 import { useToast } from './ToastContext'
-import { updateHeartbeat, logShutdown, getActiveUsers, getAllUsersMonthlyActivity, formatDuration, getAllLoggedUsers, getISTDate, getISTTime, getISTTimeAt } from '../utils/activityLog'
+import { updateHeartbeat, logShutdown, getActiveUsers, getAllUsersMonthlyActivity, formatDuration, getAllLoggedUsers, getISTDate, getISTTime, getISTTimeAt, getISTNow } from '../utils/activityLog'
 import { formatDateShort, formatDateTime, computeRecurringDueDate } from '../utils/dateFormat'
 import { isElectron } from '../utils/isElectron'
 import { DAILY_SHEET_WEB_APP_URL } from '../config'
@@ -835,6 +835,24 @@ export function AppProvider({ children }) {
     setPendingAutoPunchOut(null)
     handleAutoPunchOut(pendingAutoPunchOut)
   }, [pendingAutoPunchOut, profile, handleAutoPunchOut])
+
+  // Auto punch-out at end of day (23:55 IST) if user forgot to punch out
+  useEffect(() => {
+    if (!isPunchedIn || !profile?.email) return
+    const checkEndOfDay = () => {
+      const now = getISTNow()
+      const h = now.getUTCHours()
+      const m = now.getUTCMinutes()
+      if (h === 23 && m >= 55) {
+        const sessionDate = getISTDate()
+        const firstIn = (todaysSessions.length > 0 && todaysSessions[0].in) ? todaysSessions[0].in : getISTTime()
+        handleAutoPunchOut({ date: sessionDate, in: firstIn })
+      }
+    }
+    checkEndOfDay()
+    const intervalId = setInterval(checkEndOfDay, 60000)
+    return () => clearInterval(intervalId)
+  }, [isPunchedIn, profile, handleAutoPunchOut, todaysSessions])
 
   // Activity tracking: log punch in, heartbeat every 30s
   const heartbeatRef = useRef(null)
