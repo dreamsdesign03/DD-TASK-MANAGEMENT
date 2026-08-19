@@ -2644,6 +2644,32 @@ export function AppProvider({ children }) {
     tasksLoadedRef.current = true
   }
 
+  // Parse dates in any format: ISO (2026-08-19), locale ("Aug 19, 2026"), etc.
+  // Returns a Date at noon UTC or null if unparseable.
+  const parseAnyDate = (str) => {
+    if (!str) return null
+    // Try ISO parse first (YYYY-MM-DD)
+    const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+    if (isoMatch) {
+      const d = new Date(Date.UTC(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3]), 12, 0, 0))
+      if (!isNaN(d.getTime())) return d
+    }
+    // Try locale format: "Aug 19, 2026"
+    const m = str.match(/([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/)
+    if (m) {
+      const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 }
+      const mi = months[m[1].slice(0,3)]
+      if (mi !== undefined) {
+        const d = new Date(Date.UTC(parseInt(m[3]), mi, parseInt(m[2]), 12, 0, 0))
+        if (!isNaN(d.getTime())) return d
+      }
+    }
+    // Last resort: try JS Date
+    const d = new Date(str)
+    if (!isNaN(d.getTime())) return d
+    return null
+  }
+
   const recurringGenLastRunRef = useRef(0)
 
   // Daily recurring-task engine:
@@ -2673,8 +2699,8 @@ export function AppProvider({ children }) {
           tpl.assigned_date ||
           today
         if (!baseStr) continue
-        const base = new Date(baseStr + 'T12:00:00')
-        if (isNaN(base.getTime())) continue
+        const base = parseAnyDate(baseStr)
+        if (!base) continue
         const months = String(tpl.recurring_months || '').split(',').map(s => s.trim()).filter(Boolean)
         const nextDue = computeRecurringDueDate(tpl.recurring_schedule, tpl.recurring_day, months, base, hasNeverGenerated)
         if (!nextDue || nextDue > today) continue

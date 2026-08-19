@@ -129,21 +129,11 @@ export default function MyTasksPage() {
 
     let formattedDate = ''
     if (dueDate) {
-      formattedDate = new Date(dueDate).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        timeZone: 'Asia/Kolkata',
-      })
+      formattedDate = new Date(dueDate + 'T12:00:00').toISOString().split('T')[0]
     } else if (isRecurring) {
       const recDue = computeRecurringDueDate(recurringSchedule, recurringDay, recurringMonths, new Date(), true)
       if (recDue) {
-        formattedDate = new Date(recDue + 'T12:00:00').toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-          timeZone: 'Asia/Kolkata',
-        })
+        formattedDate = recDue
       }
     }
 
@@ -172,12 +162,12 @@ export default function MyTasksPage() {
         title: title.trim(),
         client: clientName,
         project: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }),
-        assigned: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }),
-        assignedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }),
+        assigned: new Date().toISOString().split('T')[0],
+        assignedDate: new Date().toISOString().split('T')[0],
         dueDate: formattedDate,
         priority,
         status: 'Pending',
-        statusUpdatedOn: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }),
+        statusUpdatedOn: new Date().toISOString().split('T')[0],
         overdue: false,
         done: false,
         department,
