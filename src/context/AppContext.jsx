@@ -2847,8 +2847,12 @@ export function AppProvider({ children }) {
           const rawStatus = item.Status || item.status || ''
 
           let status = rawStatus
-          const isPendingReg = String(rawStatus).toLowerCase().includes('pending')
-          if (String(rawStatus).toLowerCase() === 'inactive' || (isActive === 'No' && !isPendingReg)) {
+          const lowerRawStatus = String(rawStatus).toLowerCase()
+          const isPendingReg = lowerRawStatus.includes('pending') || (isActive === 'No' && lowerRawStatus !== 'inactive')
+
+          if (isPendingReg) {
+            status = 'Pending approval'
+          } else if (lowerRawStatus === 'inactive' || isActive === 'No') {
             status = 'Inactive'
           } else if (!status) {
             status = 'Online'

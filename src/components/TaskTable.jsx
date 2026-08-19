@@ -373,8 +373,9 @@ export default function TaskTable() {
     setQuickAddPriority('')
   }
 
-  // Extract unique users
-  const uniqueUsers = ['All Users', ...new Set(tasks.flatMap((t) => (t.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean)))]
+  // Extract unique users: ONLY approved team members from employees array!
+  const approvedEmpNames = (employees || []).map(e => e.name).filter(Boolean)
+  const uniqueUsers = ['All Users', ...new Set(approvedEmpNames)]
 
   // Extract unique departments
   const allDepts = ['All Departments', 'COMMON', 'SOCIAL MEDIA', 'WEBSITE', 'SEO', 'GRAPHIC', 'HR', 'ACCOUNT', 'AMC', 'SALES', 'APPLICATION', ...new Set(tasks.map(t => (t.department || 'COMMON').toUpperCase()))]
@@ -391,14 +392,19 @@ export default function TaskTable() {
 
       const matchesStatus = activeFilter === 'All' || t.status === activeFilter
       const matchesClient = selectedClient === 'All Clients' || t.client === selectedClient
-      let matchesUser = selectedUser === 'All Users' || (t.assignedTo || '').includes(selectedUser)
-      
-      // Strict disambiguation: If looking specifically at my tasks, ensure my exact email is assigned (if emails exist on task)
-      if (matchesUser && selectedUser !== 'All Users' && selectedUser === profile?.name && profile?.email) {
-        const taskEmails = (t.assignedEmail || '').trim().toLowerCase()
-        if (taskEmails) {
-          matchesUser = taskEmails.includes(profile.email.toLowerCase())
-        }
+
+      let matchesUser = selectedUser === 'All Users'
+      if (!matchesUser) {
+        const targetEmp = employees?.find(e => e.name === selectedUser)
+        const targetId = targetEmp?.id
+        const targetEmail = targetEmp?.email
+        const assignees = (t.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean)
+        const assigneeIds = (t.assignedToIds || t.employeeId || t.employeeIds || '').split(',').map(s => s.trim()).filter(Boolean)
+        const assigneeEmails = (t.assignedEmails || t.assignedEmail || '').split(',').map(s => s.trim()).filter(Boolean)
+
+        matchesUser = assignees.includes(selectedUser) ||
+                      (targetId && assigneeIds.includes(targetId)) ||
+                      (targetEmail && assigneeEmails.includes(targetEmail))
       }
 
       const matchesDepartment = selectedDepartment === 'All Departments' || (t.department || 'COMMON').toUpperCase() === selectedDepartment
