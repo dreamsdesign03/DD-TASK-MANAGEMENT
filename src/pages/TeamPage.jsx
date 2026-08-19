@@ -60,6 +60,7 @@ export default function TeamPage() {
     return { ...emp, taskCount }
   })
 
+  const isAdmin = profile?.systemRole === 'Admin' || profile?.role === 'Admin' || String(profile?.systemRole || profile?.role || '').toLowerCase() === 'admin'
   const pendingMembers = (pendingUsers || []).map(emp => ({ ...emp, taskCount: 0 }))
   const isInactive = (e) => String(e.status).toLowerCase() === 'inactive' || String(e.isActive).toLowerCase() === 'no'
   const inactiveMembers = employees.filter(isInactive)
@@ -192,7 +193,7 @@ export default function TeamPage() {
             </div>
 
             {/* Pending Approvals (Admin only) */}
-            {profile?.systemRole === 'Admin' && pendingMembers.length > 0 && (
+            {isAdmin && pendingMembers.length > 0 && (
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-4">
                   <span className="material-symbols-outlined text-[#F59E0B] text-[22px]">pending_actions</span>
