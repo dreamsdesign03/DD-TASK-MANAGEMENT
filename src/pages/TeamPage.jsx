@@ -6,7 +6,6 @@ import TopNav from '../components/TopNav'
 import { useApp } from '../context/AppContext'
 import { api } from '../api'
 import { renderAvatar } from '../utils/avatar'
-import { PENDING_EMAIL_WEB_APP_URL } from '../config'
 
 const INITIAL_EMPLOYEES = []
 
@@ -148,29 +147,6 @@ export default function TeamPage() {
     }
   }
 
-  const [sendingEmails, setSendingEmails] = useState(false)
-
-  const handleSendPendingEmails = async () => {
-    if (!PENDING_EMAIL_WEB_APP_URL) {
-      addToast('Pending email Apps Script not deployed yet. Deploy pending_task_email_script.js first.', 'error')
-      return
-    }
-    setSendingEmails(true)
-    try {
-      const res = await fetch(PENDING_EMAIL_WEB_APP_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'send_pending_emails' })
-      })
-      addToast('Pending task emails sent to all team members!', 'success')
-    } catch (err) {
-      addToast('Failed to send emails: ' + err.message, 'error')
-    } finally {
-      setSendingEmails(false)
-    }
-  }
-
   return (
     <>
     <div className="bg-[#F0EDF8] font-['Inter',sans-serif] text-[#151c27] overflow-hidden h-screen flex">
@@ -201,16 +177,6 @@ export default function TeamPage() {
 
             {/* Filter and Search controls */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-              {isAdmin && (
-                <button
-                  onClick={handleSendPendingEmails}
-                  disabled={sendingEmails}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#702c91] text-white text-[13px] font-semibold rounded-full hover:bg-[#5c2478] active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[16px]">{sendingEmails ? 'hourglass_empty' : 'mail'}</span>
-                  {sendingEmails ? 'Sending...' : 'Send Pending Task Emails'}
-                </button>
-              )}
               <div></div>
               <div className="relative w-full md:w-80">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] text-[20px]">
