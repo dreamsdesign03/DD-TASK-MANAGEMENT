@@ -470,7 +470,7 @@ function doPost(e) {
         var paymentSheet = ss.getSheetByName("Payment");
         if (!paymentSheet) {
           paymentSheet = ss.insertSheet("Payment");
-          paymentSheet.appendRow(["CLIENT ID", "PROJECT", "CLIENT", "EMAILS", "PHONE NO", "PROJECT START DATE", "INDUSTRY", "IS ACTIVE", "SERVICES", "PROJECT END DATE", "GST/NON GST", "GST AMOUNT (NEW)", "GST (%)", "RECURRING", "RECURRING TYPE", "TOTAL COST", "PAYMENT DATE", "PAYMENT AMOUNT", "PAYMENT NOTE", "PENDING AMOUNT", "DATA ENTRY DATE AND TIME", "NOTE"]);
+          paymentSheet.appendRow(["CLIENT ID", "PROJECT", "CLIENT", "EMAILS", "PHONE NO", "PROJECT START DATE", "INDUSTRY", "IS ACTIVE", "SERVICES", "PROJECT END DATE", "GST/NON GST", "GST AMOUNT (NEW)", "GST (%)", "TDS APPLIED", "TDS AMOUNT", "RECURRING", "RECURRING TYPE", "TOTAL COST", "PAYMENT DATE", "PAYMENT AMOUNT", "PAYMENT NOTE", "PENDING AMOUNT", "DATA ENTRY DATE AND TIME", "NOTE"]);
         }
         var entryTime = Utilities.formatDate(new Date(), "GMT+5:30", "yyyy-MM-dd HH:mm:ss");
         paymentSheet.appendRow([
@@ -483,6 +483,8 @@ function doPost(e) {
           payload.industry || "",
           "Yes",
           payload.services || "",
+          "",
+          "",
           "",
           "",
           "",
@@ -673,7 +675,7 @@ function doPost(e) {
     }
     try {
       var sheet = ss.getSheetByName("Payment");
-      var expectedHeaders = ["CLIENT ID", "PROJECT", "CLIENT", "EMAILS", "PHONE NO", "PROJECT START DATE", "INDUSTRY", "IS ACTIVE", "SERVICES", "PROJECT END DATE", "GST/NON GST", "GST AMOUNT (NEW)", "GST (%)", "RECURRING", "RECURRING TYPE", "TOTAL COST", "PAYMENT DATE", "PAYMENT AMOUNT", "PAYMENT NOTE", "PENDING AMOUNT", "DATA ENTRY DATE AND TIME", "NOTE"];
+      var expectedHeaders = ["CLIENT ID", "PROJECT", "CLIENT", "EMAILS", "PHONE NO", "PROJECT START DATE", "INDUSTRY", "IS ACTIVE", "SERVICES", "PROJECT END DATE", "GST/NON GST", "GST AMOUNT (NEW)", "GST (%)", "TDS APPLIED", "TDS AMOUNT", "RECURRING", "RECURRING TYPE", "TOTAL COST", "PAYMENT DATE", "PAYMENT AMOUNT", "PAYMENT NOTE", "PENDING AMOUNT", "DATA ENTRY DATE AND TIME", "NOTE"];
       if (!sheet) {
         sheet = ss.insertSheet("Payment");
         sheet.appendRow(expectedHeaders);
@@ -689,16 +691,20 @@ function doPost(e) {
       var gstType = payload['GST/NON GST'] || '';
       var gstPct = gstType === 'GST' ? 18 : 0;
       var totalCost = parseFloat(payload['TOTAL COST']) || 0;
+      var tdsApplied = payload['TDS APPLIED'] || 'No';
+      var tdsAmount = tdsApplied === 'Yes' ? Math.round(totalCost * 1 / 100) : 0;
       var recurring = payload['RECURRING'] || '';
       var recurringType = payload['RECURRING TYPE'] || '';
       var gstAmount = gstType === 'GST' ? Math.round(totalCost * gstPct / 100) : 0;
-      var totalWithGst = totalCost + gstAmount;
+      var totalWithGst = totalCost + gstAmount - tdsAmount;
       var entryTime = Utilities.formatDate(new Date(), "GMT+5:30", "yyyy-MM-dd HH:mm:ss");
 
       var updateIdx = {
         gstType: findHeaderIndex(headers, "GST/NON GST"),
         gstAmt: findHeaderIndex(headers, "GST AMOUNT (NEW)"),
         gstPct: findHeaderIndex(headers, "GST (%)"),
+        tdsApplied: findHeaderIndex(headers, "TDS APPLIED"),
+        tdsAmount: findHeaderIndex(headers, "TDS AMOUNT"),
         totalCost: findHeaderIndex(headers, "TOTAL COST"),
         recurring: findHeaderIndex(headers, "RECURRING"),
         recurringType: findHeaderIndex(headers, "RECURRING TYPE"),
@@ -748,6 +754,8 @@ function doPost(e) {
           else if (hName === "GST/NON GST") newRow.push(gstType);
           else if (hName === "GST AMOUNT (NEW)") newRow.push(gstAmount);
           else if (hName === "GST (%)") newRow.push(gstType === 'GST' ? 18 : "");
+          else if (hName === "TDS APPLIED") newRow.push(tdsApplied);
+          else if (hName === "TDS AMOUNT") newRow.push(tdsAmount || "");
           else if (hName === "RECURRING") newRow.push(recurring);
           else if (hName === "RECURRING TYPE") newRow.push(recurring === 'Yes' ? recurringType : "");
           else if (hName === "TOTAL COST") newRow.push(totalCost);
@@ -779,6 +787,8 @@ function doPost(e) {
         if (updateIdx.gstType >= 0) sheet.getRange(r + 1, updateIdx.gstType + 1).setValue(gstType);
         if (updateIdx.gstAmt >= 0) sheet.getRange(r + 1, updateIdx.gstAmt + 1).setValue(gstAmount);
         if (updateIdx.gstPct >= 0) sheet.getRange(r + 1, updateIdx.gstPct + 1).setValue(gstType === 'GST' ? gstPct : '');
+        if (updateIdx.tdsApplied >= 0) sheet.getRange(r + 1, updateIdx.tdsApplied + 1).setValue(tdsApplied);
+        if (updateIdx.tdsAmount >= 0) sheet.getRange(r + 1, updateIdx.tdsAmount + 1).setValue(tdsAmount || '');
         if (updateIdx.totalCost >= 0) sheet.getRange(r + 1, updateIdx.totalCost + 1).setValue(totalCost);
         if (updateIdx.recurring >= 0) sheet.getRange(r + 1, updateIdx.recurring + 1).setValue(recurring);
         if (updateIdx.recurringType >= 0) sheet.getRange(r + 1, updateIdx.recurringType + 1).setValue(recurring === 'Yes' ? recurringType : '');
@@ -804,7 +814,7 @@ function doPost(e) {
     }
     try {
       var sheet = ss.getSheetByName("Payment");
-      var expectedHeaders = ["CLIENT ID", "PROJECT", "CLIENT", "EMAILS", "PHONE NO", "PROJECT START DATE", "INDUSTRY", "IS ACTIVE", "SERVICES", "PROJECT END DATE", "GST/NON GST", "GST AMOUNT (NEW)", "GST (%)", "RECURRING", "RECURRING TYPE", "TOTAL COST", "PAYMENT DATE", "PAYMENT AMOUNT", "PAYMENT NOTE", "PENDING AMOUNT", "DATA ENTRY DATE AND TIME", "NOTE"];
+      var expectedHeaders = ["CLIENT ID", "PROJECT", "CLIENT", "EMAILS", "PHONE NO", "PROJECT START DATE", "INDUSTRY", "IS ACTIVE", "SERVICES", "PROJECT END DATE", "GST/NON GST", "GST AMOUNT (NEW)", "GST (%)", "TDS APPLIED", "TDS AMOUNT", "RECURRING", "RECURRING TYPE", "TOTAL COST", "PAYMENT DATE", "PAYMENT AMOUNT", "PAYMENT NOTE", "PENDING AMOUNT", "DATA ENTRY DATE AND TIME", "NOTE"];
       if (!sheet) {
         sheet = ss.insertSheet("Payment");
         sheet.appendRow(expectedHeaders);
@@ -830,12 +840,14 @@ function doPost(e) {
       var tpIdx = findHeaderIndex(headers, "PAYMENT AMOUNT");
       var twgCostIdx = findHeaderIndex(headers, "TOTAL COST");
       var twgGstAmtIdx = findHeaderIndex(headers, "GST AMOUNT (NEW)");
+      var twgTdsAmtIdx = findHeaderIndex(headers, "TDS AMOUNT");
       for (var m = 0; m < matchedRows.length; m++) {
         totalPaidBefore += tpIdx >= 0 ? (parseFloat(matchedRows[m].rowData[tpIdx]) || 0) : 0;
         if (twgCostIdx >= 0 && matchedRows[m].rowData[twgCostIdx]) {
           var rowCost = parseFloat(matchedRows[m].rowData[twgCostIdx]) || 0;
           var rowGstAmt = twgGstAmtIdx >= 0 ? (parseFloat(matchedRows[m].rowData[twgGstAmtIdx]) || 0) : 0;
-          totalWithGst = rowCost + rowGstAmt;
+          var rowTdsAmt = twgTdsAmtIdx >= 0 ? (parseFloat(matchedRows[m].rowData[twgTdsAmtIdx]) || 0) : 0;
+          totalWithGst = rowCost + rowGstAmt - rowTdsAmt;
         }
       }
       var totalPaidAfter = totalPaidBefore + payAmount;

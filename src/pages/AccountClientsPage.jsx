@@ -15,9 +15,11 @@ const formatCurrency = (val) => {
 const RECURRING_OPTIONS = ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly']
 
 const GST_FIXED_PCT = 18
+const TDS_FIXED_PCT = 1
 
 const emptyPaymentForm = {
   gstType: '',
+  tdsApplied: '',
   recurring: '',
   recurringType: '',
   totalCost: '',
@@ -58,7 +60,9 @@ const getPaymentStatusInfo = (client, existingPay, allPays) => {
 
   const isGst = existingPay['GST/NON GST'] === 'GST'
   const gstAmt = isGst ? (parseFloat(existingPay['GST AMOUNT (NEW)']) || Math.round(cost * 0.18)) : 0
-  const basePayable = cost + gstAmt
+  const tdsApplied = existingPay['TDS APPLIED'] === 'Yes'
+  const tdsAmt = tdsApplied ? (parseFloat(existingPay['TDS AMOUNT']) || Math.round(cost * 0.01)) : 0
+  const basePayable = cost + gstAmt - tdsAmt
 
   const isRecurring = String(existingPay['RECURRING'] || '').toLowerCase() === 'yes' || String(existingPay['RECURRING'] || '').toLowerCase() === 'true'
   const recurringType = String(existingPay['RECURRING TYPE'] || 'monthly').toLowerCase()
@@ -166,6 +170,7 @@ export default function AccountClientsPage() {
     const existing = getPayment(targetClient['Client ID'])
     setPaymentForm({
       gstType: existing?.['GST/NON GST'] || '',
+      tdsApplied: existing?.['TDS APPLIED'] || '',
       recurring: existing?.['RECURRING'] || '',
       recurringType: existing?.['RECURRING TYPE'] || '',
       totalCost: existing?.['TOTAL COST'] || '',
@@ -195,12 +200,18 @@ export default function AccountClientsPage() {
   const calcTotalWithGst = () => {
     const cost = parseFloat(paymentForm.totalCost) || 0
     const gstAmt = paymentForm.gstType === 'GST' ? Math.round(cost * GST_FIXED_PCT / 100) : 0
-    return cost + gstAmt
+    const tdsAmt = paymentForm.tdsApplied === 'Yes' ? Math.round(cost * TDS_FIXED_PCT / 100) : 0
+    return cost + gstAmt - tdsAmt
   }
 
   const calcGstAmount = () => {
     const cost = parseFloat(paymentForm.totalCost) || 0
     return paymentForm.gstType === 'GST' ? Math.round(cost * GST_FIXED_PCT / 100) : 0
+  }
+
+  const calcTdsAmount = () => {
+    const cost = parseFloat(paymentForm.totalCost) || 0
+    return paymentForm.tdsApplied === 'Yes' ? Math.round(cost * TDS_FIXED_PCT / 100) : 0
   }
 
   const handleSavePayment = async () => {
@@ -224,6 +235,8 @@ export default function AccountClientsPage() {
       'GST/NON GST': paymentForm.gstType || 'Non-GST',
       'GST AMOUNT (NEW)': calcGstAmount() || '',
       'GST (%)': paymentForm.gstType === 'GST' ? GST_FIXED_PCT : '',
+      'TDS APPLIED': paymentForm.tdsApplied || 'No',
+      'TDS AMOUNT': calcTdsAmount() || '',
       'RECURRING': paymentForm.recurring || 'No',
       'RECURRING TYPE': paymentForm.recurring === 'Yes' ? paymentForm.recurringType : '',
       'TOTAL COST': paymentForm.totalCost,
@@ -248,7 +261,8 @@ export default function AccountClientsPage() {
     const allPays = getAllPayments(viewingClient['Client ID'])
     const totalCost = parseFloat(existing?.['TOTAL COST']) || 0
     const gstAmt = existing?.['GST/NON GST'] === 'GST' ? (parseFloat(existing?.['GST AMOUNT (NEW)']) || Math.round(totalCost * 0.18)) : 0
-    const totalWithGst = totalCost + gstAmt
+    const tdsAmt = existing?.['TDS APPLIED'] === 'Yes' ? (parseFloat(existing?.['TDS AMOUNT']) || Math.round(totalCost * 0.01)) : 0
+    const totalWithGst = totalCost + gstAmt - tdsAmt
     const totalPaidBefore = allPays.reduce((sum, p) => sum + (parseFloat(p['PAYMENT AMOUNT']) || 0), 0)
     const payAmount = parseFloat(recordForm.amount) || 0
     const newPending = Math.max(0, totalWithGst - totalPaidBefore - payAmount)
@@ -833,6 +847,32 @@ export default function AccountClientsPage() {
                 )}
 
                 <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">TDS (Tax Deducted at Source)</label>
+                  <div className="flex gap-3">
+                    {['Yes', 'No'].map(opt => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setPaymentForm(f => ({ ...f, tdsApplied: f.tdsApplied === opt ? '' : opt }))}
+                        className={`flex-1 h-[42px] rounded-xl text-[13px] font-bold cursor-pointer transition-all border ${paymentForm.tdsApplied === opt ? 'bg-[#702c91] text-white border-[#702c91]' : 'bg-white text-[#4B5563] border-[#E5E7EB] hover:border-[#702c91]'}`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {paymentForm.tdsApplied === 'Yes' && (
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 flex justify-between items-center shadow-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-amber-600 text-[18px]">info</span>
+                      <span className="text-[13px] font-bold text-amber-700">TDS Rate</span>
+                    </div>
+                    <span className="text-[15px] font-extrabold text-amber-700 bg-white px-3 py-1 rounded-lg border border-amber-200">1% Deducted</span>
+                  </div>
+                )}
+
+                <div>
                   <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Recurring Payment</label>
                   <div className="flex gap-3">
                     {['Yes', 'No'].map(opt => (
@@ -881,6 +921,12 @@ export default function AccountClientsPage() {
                         <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 flex justify-between items-center">
                           <span className="text-[12px] text-[#702c91] font-medium">GST Amount (18%)</span>
                           <span className="text-[14px] font-bold text-[#702c91]">₹{formatCurrency(calcGstAmount())}</span>
+                        </div>
+                      )}
+                      {paymentForm.tdsApplied === 'Yes' && (
+                        <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex justify-between items-center">
+                          <span className="text-[12px] text-amber-700 font-medium">TDS Deduction (1%)</span>
+                          <span className="text-[14px] font-bold text-amber-700">-₹{formatCurrency(calcTdsAmount())}</span>
                         </div>
                       )}
                       <div className="bg-[#702c91] border border-[#5c2280] rounded-xl p-3 flex justify-between items-center text-white shadow-sm">
@@ -943,7 +989,8 @@ export default function AccountClientsPage() {
                   {viewingPayment && recordForm.amount && parseFloat(recordForm.amount) > 0 && (() => {
                     const totalCost = parseFloat(viewingPayment['TOTAL COST']) || 0
                     const gstAmt = viewingPayment['GST/NON GST'] === 'GST' ? (parseFloat(viewingPayment['GST AMOUNT (NEW)']) || Math.round(totalCost * 0.18)) : 0
-                    const totalWithGst = totalCost + gstAmt
+                    const tdsAmt = viewingPayment['TDS APPLIED'] === 'Yes' ? (parseFloat(viewingPayment['TDS AMOUNT']) || Math.round(totalCost * 0.01)) : 0
+                    const totalWithGst = totalCost + gstAmt - tdsAmt
                     const allPays = getAllPayments(viewingClient['Client ID'])
                     const totalPaid = allPays.reduce((sum, p) => sum + (parseFloat(p['PAYMENT AMOUNT']) || 0), 0)
                     const pendingAfter = Math.max(0, totalWithGst - totalPaid - (parseFloat(recordForm.amount) || 0))
@@ -960,7 +1007,8 @@ export default function AccountClientsPage() {
                   {viewingPayment && (() => {
                     const totalCost = parseFloat(viewingPayment['TOTAL COST']) || 0
                     const gstAmt = viewingPayment['GST/NON GST'] === 'GST' ? (parseFloat(viewingPayment['GST AMOUNT (NEW)']) || Math.round(totalCost * 0.18)) : 0
-                    const totalWithGst = totalCost + gstAmt
+                    const tdsAmt = viewingPayment['TDS APPLIED'] === 'Yes' ? (parseFloat(viewingPayment['TDS AMOUNT']) || Math.round(totalCost * 0.01)) : 0
+                    const totalWithGst = totalCost + gstAmt - tdsAmt
                     const allPays = getAllPayments(viewingClient['Client ID'])
                     const totalPaid = allPays.reduce((sum, p) => sum + (parseFloat(p['PAYMENT AMOUNT']) || 0), 0)
                     if (totalWithGst <= 0) return null

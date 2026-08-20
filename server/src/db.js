@@ -113,6 +113,8 @@ export const PAYMENT_MAP = {
   gst_non_gst: 'GST/NON GST',
   gst_amount_new: 'GST AMOUNT (NEW)',
   gst_pct: 'GST (%)',
+  tds_applied: 'TDS APPLIED',
+  tds_amount: 'TDS AMOUNT',
   recurring: 'RECURRING',
   recurring_type: 'RECURRING TYPE',
   total_cost: 'TOTAL COST',

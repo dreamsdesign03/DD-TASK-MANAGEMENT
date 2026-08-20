@@ -80,6 +80,8 @@ create table if not exists payments (
   gst_non_gst             text,
   gst_amount_new          text,
   gst_pct                 text,
+  tds_applied             text,
+  tds_amount              text,
   recurring               text,
   recurring_type          text,
   total_cost              text,

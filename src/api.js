@@ -554,7 +554,9 @@ async function checkAndAutoCreateRecurringPayments() {
           const cost = parseFloat(latestPay?.total_cost || client?.total_cost) || 0
           const isGst = (latestPay?.gst_non_gst || client?.gst_non_gst) === 'GST'
           const gstAmt = isGst ? (parseFloat(latestPay?.gst_amount_new || client?.gst_amount_new) || Math.round(cost * 0.18)) : 0
-          const totalPayable = cost + gstAmt
+          const tdsApplied = (latestPay?.tds_applied || client?.tds_applied) === 'Yes'
+          const tdsAmt = tdsApplied ? (parseFloat(latestPay?.tds_amount || client?.tds_amount) || Math.round(cost * 0.01)) : 0
+          const totalPayable = cost + gstAmt - tdsAmt
 
           const newCycleRow = {
             client_id: clientId,
@@ -570,6 +572,8 @@ async function checkAndAutoCreateRecurringPayments() {
             gst_non_gst: latestPay?.gst_non_gst || client?.gst_non_gst || '',
             gst_amount_new: latestPay?.gst_amount_new || client?.gst_amount_new || '',
             gst_pct: latestPay?.gst_pct || client?.gst_pct || '',
+            tds_applied: latestPay?.tds_applied || client?.tds_applied || 'No',
+            tds_amount: latestPay?.tds_amount || client?.tds_amount || '',
             recurring: latestPay?.recurring || client?.recurring || 'Yes',
             recurring_type: latestPay?.recurring_type || client?.recurring_type || 'Monthly',
             total_cost: latestPay?.total_cost || client?.total_cost || '',
@@ -659,6 +663,8 @@ async function recordPayment(payload) {
     gst_non_gst: existing?.gst_non_gst || '',
     gst_amount_new: existing?.gst_amount_new || '',
     gst_pct: existing?.gst_pct || '',
+    tds_applied: existing?.tds_applied || 'No',
+    tds_amount: existing?.tds_amount || '',
     recurring: existing?.recurring || '',
     recurring_type: existing?.recurring_type || '',
     total_cost: existing?.total_cost || '',
