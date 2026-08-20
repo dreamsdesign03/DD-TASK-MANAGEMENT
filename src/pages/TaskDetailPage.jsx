@@ -903,7 +903,7 @@ export default function TaskDetailPage() {
                 </button>
 
                 <div className="flex items-center gap-3 mb-4 flex-wrap">
-                  <span className="bg-[#E5E7EB] text-[#4B5563] text-[11px] font-bold px-3 py-1 rounded-full">{task.id}</span>
+                  {role === 'Admin' && <span className="bg-[#E5E7EB] text-[#4B5563] text-[11px] font-bold px-3 py-1 rounded-full">{task.id}</span>}
                   <h1 className="text-[28px] font-black text-[#1E1B2E] m-0 flex items-center gap-2">
                     {isEditingTitle ? (
                       <input
@@ -962,12 +962,14 @@ export default function TaskDetailPage() {
                       </button>
                     )}
                   </h1>
-                  <button onClick={() => {
-                    navigator.clipboard.writeText(`Task: ${task.id} - ${task.title}\nLink: ${window.location.href}`);
-                    addToast("Task details copied!", "success");
-                  }} className="bg-transparent border-none cursor-pointer text-[#702c91] hover:text-[#702c91]/80 p-0 flex items-center justify-center transition-colors">
-                    <span className="material-symbols-outlined text-[20px]">content_copy</span>
-                  </button>
+                  {role === 'Admin' && (
+                    <button onClick={() => {
+                      navigator.clipboard.writeText(`Task: ${task.id} - ${task.title}\nLink: ${window.location.href}`);
+                      addToast("Task details copied!", "success");
+                    }} className="bg-transparent border-none cursor-pointer text-[#702c91] hover:text-[#702c91]/80 p-0 flex items-center justify-center transition-colors">
+                      <span className="material-symbols-outlined text-[20px]">content_copy</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 mb-4">

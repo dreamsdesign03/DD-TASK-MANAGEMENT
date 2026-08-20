@@ -866,7 +866,7 @@ export default function TaskTable() {
               <table className="block md:table w-full text-left border-collapse">
                 <thead className="hidden md:table-header-group bg-[#F9FAFB] border-b border-[#E5E7EB]">
                   <tr>
-                    {['Task ID', 'Task Title', 'Client', 'Assigned To', 'Assigned By', 'Due Date', 'Priority', 'Status', 'Action'].map(
+                    {[...(profile?.systemRole === 'Admin' ? ['Task ID'] : []), 'Task Title', 'Client', 'Assigned To', 'Assigned By', 'Due Date', 'Priority', 'Status', 'Action'].map(
                       (h) => (
                         <th
                           key={h}
@@ -1000,7 +1000,8 @@ export default function TaskTable() {
                                     >
                                       <div className="p-4 space-y-3">
                                         <div className="flex justify-between items-start">
-                                          <div className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded font-bold">{task.id.replace('#DD-', 'T-00')}</div>
+                                          {profile?.systemRole === 'Admin' && <div className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded font-bold">{task.id.replace('#DD-', 'T-00')}</div>}
+                                          {profile?.systemRole !== 'Admin' && <div />}
                                           <div className="flex gap-2">
                                             <span className={`${PRIORITY_STYLES[task.priority] || 'bg-gray-400 text-white'} text-[10px] font-bold px-3 py-1 rounded-full uppercase`}>{task.priority}</span>
                                             <span className={`${STATUS_STYLES[task.status] || 'bg-gray-100 text-gray-700'} text-[10px] font-bold px-3 py-1 rounded-full uppercase flex items-center gap-1`}>
@@ -1104,11 +1105,13 @@ export default function TaskTable() {
                                 >
                                   {/* ID & Unread Badge */}
                                   <td className={`flex md:table-cell items-center justify-between px-4 py-5 border-b border-outline-variant/30 md:border-none md:border-l-4 ${firstTdClass}`}>
-                                    <span className="md:hidden text-[10px] font-bold text-outline uppercase tracking-wider">Task ID</span>
+                                    {profile?.systemRole === 'Admin' && <span className="md:hidden text-[10px] font-bold text-outline uppercase tracking-wider">Task ID</span>}
                                     <div className="flex items-center gap-2">
-                                      <span className="bg-[#F3F4F6] px-2 py-1 rounded-md text-[12px] font-bold text-[#6B7280] whitespace-nowrap inline-block">
-                                        {task.id.replace('#DD-', 'T-00')}
-                                      </span>
+                                      {profile?.systemRole === 'Admin' && (
+                                        <span className="bg-[#F3F4F6] px-2 py-1 rounded-md text-[12px] font-bold text-[#6B7280] whitespace-nowrap inline-block">
+                                          {task.id.replace('#DD-', 'T-00')}
+                                        </span>
+                                      )}
                                       {(() => {
                                         const msgs = messagesByChatId?.[task.id]
                                         if (!msgs || msgs.length === 0) return null
