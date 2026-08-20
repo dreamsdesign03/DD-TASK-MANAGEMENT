@@ -655,8 +655,10 @@ export default function AccountClientsPage() {
                   const totalCost = parseFloat(viewingPayment['TOTAL COST']) || 0
                   const isGst = viewingPayment['GST/NON GST'] === 'GST'
                   const gstAmt = isGst ? (parseFloat(viewingPayment['GST AMOUNT (NEW)']) || Math.round(totalCost * 0.18)) : 0
+                  const tdsApplied = viewingPayment['TDS APPLIED'] === 'Yes'
+                  const tdsAmt = tdsApplied ? (parseFloat(viewingPayment['TDS AMOUNT']) || Math.round(totalCost * 0.01)) : 0
 
-                  const totalWithGst = viewingRowItem ? viewingRowItem.totalPayable : (statusInfo.totalWithGst || (totalCost + gstAmt))
+                  const totalWithGst = viewingRowItem ? viewingRowItem.totalPayable : (statusInfo.totalWithGst || (totalCost + gstAmt - tdsAmt))
                   const totalPaid = viewingRowItem ? viewingRowItem.totalPaid : statusInfo.totalPaid
                   const pendingAmt = viewingRowItem ? viewingRowItem.pendingAmt : statusInfo.pending
 
@@ -689,8 +691,15 @@ export default function AccountClientsPage() {
                           </div>
                         )}
 
+                        {tdsApplied && (
+                          <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
+                            <p className="text-[10px] text-amber-600 m-0 mb-1">TDS (1%)</p>
+                            <p className="text-[13px] font-bold text-amber-700 m-0">-₹{formatCurrency(tdsAmt)}</p>
+                          </div>
+                        )}
+
                         <div className="bg-purple-50 rounded-xl p-3 border border-purple-100">
-                          <p className="text-[10px] text-[#702c91] m-0 mb-1">Total Payable (Inc GST)</p>
+                          <p className="text-[10px] text-[#702c91] m-0 mb-1">{tdsApplied ? 'Total Payable (Inc GST, Less TDS)' : 'Total Payable (Inc GST)'}</p>
                           <p className="text-[13px] font-bold text-[#702c91] m-0">₹{formatCurrency(totalWithGst)}</p>
                         </div>
 
