@@ -2037,6 +2037,23 @@ export function AppProvider({ children }) {
     if (hasStatusChange) {
       initialTaskStatuses.current[id] = fields.status
       updateTitle = `Task ${id} status updated to ${fields.status}`
+
+      if (fields.status === 'Done' || fields.status === 'Completed') {
+        const isRec = mergedTask.isRecurring || String(mergedTask.isRecurring || '').toLowerCase() === 'true' || String(mergedTask.isRecurring || '').toLowerCase() === 'yes'
+        if (isRec) {
+          const months = String(mergedTask.recurringMonths || '').split(',').map(s => s.trim()).filter(Boolean)
+          const baseDate = mergedTask.dueDate ? parseAnyDate(mergedTask.dueDate) : new Date()
+          const nextDue = computeRecurringDueDate(mergedTask.recurringSchedule, mergedTask.recurringDay, months, baseDate || new Date(), false)
+          if (nextDue) {
+            mergedTask.dueDate = nextDue
+            mergedTask.status = 'Pending'
+            fields.dueDate = nextDue
+            fields.status = 'Pending'
+            fields.daysOverdue = 'No'
+            addToast?.(`Recurring task completed! Applied next cycle due date: ${nextDue}`, 'success')
+          }
+        }
+      }
     } else if (fields.comments && (!currentTask.comments || fields.comments.length > currentTask.comments.length)) {
       // New comment added locally — if the author is the current user, don't self-notify
       const latestComment = fields.comments[fields.comments.length - 1]
@@ -2330,9 +2347,6 @@ export function AppProvider({ children }) {
         })
       if (res && res.ok) {
         addToast('Task added successfully!', 'success')
-      }
-      if (newTask.isRecurring) {
-        setTimeout(() => { generateDueRecurringTasks() }, 500)
       }
       if (mqttClient && mqttClient.connected) {
         setTimeout(() => {
@@ -2704,74 +2718,34 @@ export function AppProvider({ children }) {
         .select('*')
         .not('is_recurring', 'eq', 'AUTO_GENERATED')
       const dueTemplates = (templates || []).filter(t =>
-        ['true', 'yes', '1'].includes(String(t.is_recurring || '').toLowerCase())
+        ['true', 'yes', '1'].includes(String(t.is_recurring || '').toLowerCase()) &&
+        (t.status === 'Done' || t.status === 'Completed')
       )
       const today = getISTDate()
 
-      let generatedAny = false
+      let updatedAny = false
       for (const tpl of dueTemplates) {
-        const baseStr = tpl.last_auto_generated_date ||
-          (tpl.due_date || '') ||
-          (tpl.created_at ? String(tpl.created_at).slice(0, 10) : '') ||
-          tpl.assigned_date ||
-          today
-        if (!baseStr) continue
-        const base = parseAnyDate(baseStr)
-        if (!base) continue
+        const baseStr = tpl.due_date || tpl.assigned_date || today
+        const base = parseAnyDate(baseStr) || new Date()
         const months = String(tpl.recurring_months || '').split(',').map(s => s.trim()).filter(Boolean)
         const nextDue = computeRecurringDueDate(tpl.recurring_schedule, tpl.recurring_day, months, base, false)
         if (!nextDue) continue
-        if (tpl.last_auto_generated_date && tpl.last_auto_generated_date >= nextDue) continue
 
-        // Atomic claim of this cycle — only one runner proceeds
-        const updatePayload = { last_auto_generated_date: nextDue }
-        if (!tpl.due_date) updatePayload.due_date = nextDue
-
-        const { data: claimed, error: claimErr } = await supabase
+        const { error: updateErr } = await supabase
           .from('tasks')
-          .update(updatePayload)
+          .update({
+            due_date: nextDue,
+            status: 'Pending',
+            days_overdue: 'No',
+            last_auto_generated_date: nextDue,
+            status_updated_on: today
+          })
           .eq('task_id', tpl.task_id)
-          .or(`last_auto_generated_date.is.null,last_auto_generated_date.lt.${nextDue}`)
-          .select('task_id')
-        if (claimErr || !claimed || claimed.length === 0) continue
 
-        const newId = await nextTaskId()
-        const dueDateObj = new Date(nextDue + 'T12:00:00')
-        const monthLabel = dueDateObj.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })
-
-        await supabase.from('tasks').insert({
-          task_id: newId,
-          client: tpl.client,
-          month: monthLabel,
-          task_title: tpl.task_title,
-          task_type: tpl.task_type || 'Main Task',
-          main_task_id: tpl.task_id,
-          description: tpl.description,
-          assigned_by: tpl.assigned_by,
-          assigned_to: tpl.assigned_to,
-          employee_ids: tpl.employee_ids,
-          assigned_emails: tpl.assigned_emails,
-          department: tpl.department || 'COMMON',
-          assigned_date: today,
-          due_date: nextDue,
-          priority: tpl.priority || 'Medium',
-          status: 'Pending',
-          status_updated_on: today,
-          time_taken: '0h 0m',
-          days_overdue: 'No',
-          remarks: tpl.remarks || '',
-          post: tpl.post || 'YES',
-          attachment: tpl.attachment || '',
-          is_recurring: 'AUTO_GENERATED',
-          recurring_schedule: tpl.recurring_schedule,
-          recurring_day: tpl.recurring_day,
-          recurring_months: tpl.recurring_months,
-          last_auto_generated_date: nextDue
-        })
-        generatedAny = true
+        if (!updateErr) updatedAny = true
       }
 
-      if (generatedAny) {
+      if (updatedAny) {
         fetchSyncedTasks()
         if (mqttClient && mqttClient.connected) {
           setTimeout(() => {
@@ -2780,7 +2754,7 @@ export function AppProvider({ children }) {
         }
       }
     } catch (err) {
-      console.warn('Recurring task generation failed:', err)
+      console.warn('Recurring task update failed:', err)
     }
   }
 
