@@ -2765,6 +2765,21 @@ export function AppProvider({ children }) {
         generatedAny = true
       }
 
+      // Fix existing AUTO_GENERATED tasks with past due dates
+      const { data: autoTasks } = await supabase
+        .from('tasks')
+        .select('task_id, recurring_schedule, recurring_day, recurring_months, due_date')
+        .eq('is_recurring', 'AUTO_GENERATED')
+      for (const at of (autoTasks || [])) {
+        if (!at.due_date || at.due_date >= today) continue
+        const months = String(at.recurring_months || '').split(',').map(s => s.trim()).filter(Boolean)
+        const fixedDue = computeRecurringDueDate(at.recurring_schedule, at.recurring_day, months, parseAnyDate(today), true)
+        if (fixedDue && fixedDue !== at.due_date) {
+          await supabase.from('tasks').update({ due_date: fixedDue }).eq('task_id', at.task_id)
+          generatedAny = true
+        }
+      }
+
       if (generatedAny) {
         fetchSyncedTasks()
         if (mqttClient && mqttClient.connected) {
