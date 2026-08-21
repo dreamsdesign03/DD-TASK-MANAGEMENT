@@ -381,6 +381,9 @@ async function addTask(payload) {
   row.time_taken = row.time_taken || '0h 0m'
   row.post = row.post || 'NO'
   row.status = row.status || 'Pending'
+  if (row.is_recurring && row.due_date && !row.last_auto_generated_date) {
+    row.last_auto_generated_date = row.due_date
+  }
   const { error } = await supabase.from('tasks').insert(row)
   if (error) throw error
   return { ok: true }

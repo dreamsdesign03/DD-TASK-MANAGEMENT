@@ -1109,7 +1109,7 @@ export default function TaskTable() {
                                     <div className="flex items-center gap-2">
                                       {profile?.systemRole === 'Admin' && (
                                         <span className="bg-[#F3F4F6] px-2 py-1 rounded-md text-[12px] font-bold text-[#6B7280] whitespace-nowrap inline-block">
-                                          {task.id.replace('#DD-', 'T-00')}
+                                          {String(task?.id || '').replace('#DD-', 'T-00')}
                                         </span>
                                       )}
                                       {(() => {

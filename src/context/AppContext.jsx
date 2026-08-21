@@ -2710,11 +2710,18 @@ export function AppProvider({ children }) {
 
       let generatedAny = false
       for (const tpl of dueTemplates) {
-        const base = parseAnyDate(today)
+        const baseStr = tpl.last_auto_generated_date ||
+          (tpl.due_date || '') ||
+          (tpl.created_at ? String(tpl.created_at).slice(0, 10) : '') ||
+          tpl.assigned_date ||
+          today
+        if (!baseStr) continue
+        const base = parseAnyDate(baseStr)
         if (!base) continue
         const months = String(tpl.recurring_months || '').split(',').map(s => s.trim()).filter(Boolean)
-        const nextDue = computeRecurringDueDate(tpl.recurring_schedule, tpl.recurring_day, months, base, true)
-        if (!nextDue || nextDue > today) continue
+        const nextDue = computeRecurringDueDate(tpl.recurring_schedule, tpl.recurring_day, months, base, false)
+        if (!nextDue) continue
+        if (tpl.last_auto_generated_date && tpl.last_auto_generated_date >= nextDue) continue
 
         // Atomic claim of this cycle — only one runner proceeds
         const updatePayload = { last_auto_generated_date: nextDue }
@@ -2728,8 +2735,7 @@ export function AppProvider({ children }) {
           .select('task_id')
         if (claimErr || !claimed || claimed.length === 0) continue
 
-        const { data: allIds } = await supabase.from('tasks').select('task_id')
-        const newId = nextTaskId((allIds || []).map(r => r.task_id))
+        const newId = await nextTaskId()
         const dueDateObj = new Date(nextDue + 'T12:00:00')
         const monthLabel = dueDateObj.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })
 
@@ -2763,21 +2769,6 @@ export function AppProvider({ children }) {
           last_auto_generated_date: nextDue
         })
         generatedAny = true
-      }
-
-      // Fix existing AUTO_GENERATED tasks with past due dates
-      const { data: autoTasks } = await supabase
-        .from('tasks')
-        .select('task_id, recurring_schedule, recurring_day, recurring_months, due_date')
-        .eq('is_recurring', 'AUTO_GENERATED')
-      for (const at of (autoTasks || [])) {
-        if (!at.due_date || at.due_date >= today) continue
-        const months = String(at.recurring_months || '').split(',').map(s => s.trim()).filter(Boolean)
-        const fixedDue = computeRecurringDueDate(at.recurring_schedule, at.recurring_day, months, parseAnyDate(today), true)
-        if (fixedDue && fixedDue !== at.due_date) {
-          await supabase.from('tasks').update({ due_date: fixedDue }).eq('task_id', at.task_id)
-          generatedAny = true
-        }
       }
 
       if (generatedAny) {

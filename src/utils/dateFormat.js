@@ -50,25 +50,43 @@ export function computeRecurringDueDate(schedule, day, months, now = new Date(),
   const today = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate(), 12, 0, 0))
   const iso = (d) => d.toISOString().split('T')[0]
 
+  if (schedule === 'Daily') {
+    let diff = includeToday ? 0 : 1
+    today.setUTCDate(today.getUTCDate() + diff)
+    return iso(shiftSunday(today))
+  }
+
   if (schedule === 'Weekly') {
     const target = WEEKDAY_ORDER[day] || WEEKDAY_ORDER.Monday
     const todayIso = (today.getUTCDay() + 6) % 7 + 1 // Monday=1 .. Sunday=7
     let diff = (target - todayIso + 7) % 7
     if (diff === 0) diff = includeToday ? 0 : 7
     today.setUTCDate(today.getUTCDate() + diff)
-    return iso(today)
+    return iso(shiftSunday(today))
   }
 
   if (schedule === 'Monthly') {
-    const selected = (months || []).map(m => MONTH_MAP[m]).filter(Boolean).sort((a, b) => a - b)
-    if (selected.length === 0) return ''
+    const selected = (months || [])
+      .map(m => MONTH_MAP[m] || (parseInt(m, 10) || null))
+      .filter(Boolean)
+      .sort((a, b) => a - b)
+
     const currentMonth = today.getUTCMonth() + 1
     const currentYear = today.getUTCFullYear()
     let year = currentYear
-    let month = selected.find(m => m > currentMonth)
-    if (!month && includeToday && selected.includes(currentMonth)) {
-      month = currentMonth
-    } else if (!month) {
+
+    if (selected.length === 0) {
+      let nextMonth = currentMonth + (includeToday ? 0 : 1)
+      if (nextMonth > 12) {
+        nextMonth = 1
+        year += 1
+      }
+      const due = new Date(Date.UTC(year, nextMonth - 1, 1, 12, 0, 0))
+      return iso(shiftSunday(due))
+    }
+
+    let month = selected.find(m => includeToday ? m >= currentMonth : m > currentMonth)
+    if (!month) {
       month = selected[0]
       year += 1
     }
