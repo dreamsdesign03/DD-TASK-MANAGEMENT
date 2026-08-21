@@ -104,3 +104,104 @@ export function computeRecurringDueDate(schedule, day, months, now = new Date(),
 
   return ''
 }
+
+const WEEKDAY_NAME_MAP = { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday', 7: 'Sunday' }
+
+/**
+ * Checks if TODAY is the trigger day for an active recurring template.
+ * - Weekly: today's day-of-week === selected day (e.g. Monday)
+ * - Monthly: today is the 1st of a selected month (or Monday 2nd/3rd if 1st was Sunday)
+ * - Yearly: today's month + day === template creation date's month + day
+ */
+export function isTodayRecurrenceTriggerDay(schedule, day, months, tplDateStr, now = new Date()) {
+  const base = new Date(now)
+  const today = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate(), 12, 0, 0))
+  const todayDayIso = (today.getUTCDay() + 6) % 7 + 1 // Monday=1 .. Sunday=7
+  const todayDayName = WEEKDAY_NAME_MAP[todayDayIso]
+
+  if (schedule === 'Daily') {
+    return true
+  }
+
+  if (schedule === 'Weekly') {
+    const target = day || 'Monday'
+    return todayDayName.toLowerCase() === target.toLowerCase()
+  }
+
+  if (schedule === 'Monthly') {
+    const selected = (months || [])
+      .map(m => MONTH_MAP[m] || (parseInt(m, 10) || null))
+      .filter(Boolean)
+
+    const currentMonth = today.getUTCMonth() + 1
+    const isMonthMatch = selected.length === 0 || selected.includes(currentMonth)
+    if (!isMonthMatch) return false
+
+    const currentDate = today.getUTCDate()
+    if (currentDate === 1 && today.getUTCDay() !== 0) return true
+    if (currentDate === 2 && today.getUTCDay() === 1) return true // 1st fell on Sunday, shifted to Monday 2nd
+    return false
+  }
+
+  if (schedule === 'Yearly') {
+    if (!tplDateStr) return false
+    const tplDate = new Date(tplDateStr)
+    if (isNaN(tplDate.getTime())) return false
+    return today.getUTCMonth() === tplDate.getUTCMonth() && today.getUTCDate() === tplDate.getUTCDate()
+  }
+
+  return false
+}
+
+/**
+ * Computes the due date for the single new instance created on trigger day:
+ * - Weekly  -> today + 7 days (Sunday shifted)
+ * - Monthly -> 1st of NEXT selected month (Sunday shifted)
+ * - Yearly  -> same month/day, next year (Sunday shifted)
+ */
+export function computeNextCycleDueDate(schedule, day, months, tplDateStr, now = new Date()) {
+  const base = new Date(now)
+  const today = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate(), 12, 0, 0))
+  const iso = (d) => d.toISOString().split('T')[0]
+
+  if (schedule === 'Daily') {
+    today.setUTCDate(today.getUTCDate() + 1)
+    return iso(shiftSunday(today))
+  }
+
+  if (schedule === 'Weekly') {
+    today.setUTCDate(today.getUTCDate() + 7)
+    return iso(shiftSunday(today))
+  }
+
+  if (schedule === 'Monthly') {
+    const selected = (months || [])
+      .map(m => MONTH_MAP[m] || (parseInt(m, 10) || null))
+      .filter(Boolean)
+      .sort((a, b) => a - b)
+
+    const currentMonth = today.getUTCMonth() + 1
+    const currentYear = today.getUTCFullYear()
+
+    let nextMonth = selected.find(m => m > currentMonth)
+    let nextYear = currentYear
+    if (!nextMonth) {
+      nextMonth = selected.length > 0 ? selected[0] : (currentMonth === 12 ? 1 : currentMonth + 1)
+      if (nextMonth <= currentMonth) nextYear += 1
+    }
+    const due = new Date(Date.UTC(nextYear, nextMonth - 1, 1, 12, 0, 0))
+    return iso(shiftSunday(due))
+  }
+
+  if (schedule === 'Yearly') {
+    let year = today.getUTCFullYear() + 1
+    const tplDate = tplDateStr ? new Date(tplDateStr) : today
+    const month = !isNaN(tplDate.getTime()) ? tplDate.getUTCMonth() : today.getUTCMonth()
+    const date = !isNaN(tplDate.getTime()) ? tplDate.getUTCDate() : today.getUTCDate()
+    const due = new Date(Date.UTC(year, month, date, 12, 0, 0))
+    return iso(shiftSunday(due))
+  }
+
+  today.setUTCDate(today.getUTCDate() + 7)
+  return iso(shiftSunday(today))
+}

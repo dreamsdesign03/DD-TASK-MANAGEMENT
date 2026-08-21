@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, us
 import mqtt from 'mqtt'
 import { useToast } from './ToastContext'
 import { updateHeartbeat, logShutdown, getActiveUsers, getAllUsersMonthlyActivity, formatDuration, getAllLoggedUsers, getISTDate, getISTTime, getISTTimeAt, getISTNow } from '../utils/activityLog'
-import { formatDateShort, formatDateTime, computeRecurringDueDate } from '../utils/dateFormat'
+import { formatDateShort, formatDateTime, computeRecurringDueDate, isTodayRecurrenceTriggerDay, computeNextCycleDueDate } from '../utils/dateFormat'
 import { isElectron } from '../utils/isElectron'
 import { DAILY_SHEET_WEB_APP_URL } from '../config'
 import { api } from '../api'
@@ -2708,44 +2708,102 @@ export function AppProvider({ children }) {
   // scans is_recurring templates, computes the next cycle due date, and creates
   // the next task instance with a new task id. A conditional update on
   // last_auto_generated_date makes it idempotent.
+  const cleanupBulkRecurringTasks = async () => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .or('is_recurring.eq.AUTO_GENERATED,task_id.eq.{},task_id.is.null')
+      if (!error) {
+        console.log('Cleaned up bulk auto-generated recurring tasks.')
+      }
+    } catch (err) {
+      console.warn('Failed to cleanup bulk recurring tasks:', err)
+    }
+  }
+
+  // Scheduled check for active recurring task templates:
+  // Runs once per day (on trigger day), generating EXACTLY ONE instance for the current cycle.
   const generateDueRecurringTasks = async () => {
     const now = Date.now()
     if (now - recurringGenLastRunRef.current < 10000) return
     recurringGenLastRunRef.current = now
     try {
+      await cleanupBulkRecurringTasks()
+
       const { data: templates } = await supabase
         .from('tasks')
         .select('*')
         .not('is_recurring', 'eq', 'AUTO_GENERATED')
       const dueTemplates = (templates || []).filter(t =>
-        ['true', 'yes', '1'].includes(String(t.is_recurring || '').toLowerCase()) &&
-        (t.status === 'Done' || t.status === 'Completed')
+        ['true', 'yes', '1'].includes(String(t.is_recurring || '').toLowerCase())
       )
-      const today = getISTDate()
+      const todayIso = getISTDate()
+      const todayDate = new Date()
 
-      let updatedAny = false
+      let generatedAny = false
       for (const tpl of dueTemplates) {
-        const baseStr = tpl.due_date || tpl.assigned_date || today
-        const base = parseAnyDate(baseStr) || new Date()
         const months = String(tpl.recurring_months || '').split(',').map(s => s.trim()).filter(Boolean)
-        const nextDue = computeRecurringDueDate(tpl.recurring_schedule, tpl.recurring_day, months, base, false)
-        if (!nextDue) continue
+        const tplDateStr = tpl.assigned_date || tpl.created_at || tpl.due_date
 
-        const { error: updateErr } = await supabase
+        // 1. Check if TODAY matches this template's recurrence pattern
+        const isTrigger = isTodayRecurrenceTriggerDay(tpl.recurring_schedule, tpl.recurring_day, months, tplDateStr, todayDate)
+        if (!isTrigger) continue
+
+        // 2. Check if an instance was already generated for today
+        if (tpl.last_auto_generated_date === todayIso) continue
+
+        // 3. Atomic claim for today's run
+        const { data: claimed, error: claimErr } = await supabase
           .from('tasks')
-          .update({
-            due_date: nextDue,
-            status: 'Pending',
-            days_overdue: 'No',
-            last_auto_generated_date: nextDue,
-            status_updated_on: today
-          })
+          .update({ last_auto_generated_date: todayIso })
           .eq('task_id', tpl.task_id)
+          .or(`last_auto_generated_date.is.null,last_auto_generated_date.neq.${todayIso}`)
+          .select('task_id')
 
-        if (!updateErr) updatedAny = true
+        if (claimErr || !claimed || claimed.length === 0) continue
+
+        // 4. Compute due date for the single new instance
+        const nextDueDate = computeNextCycleDueDate(tpl.recurring_schedule, tpl.recurring_day, months, tplDateStr, todayDate)
+        const newId = await nextTaskId()
+        const dueDateObj = new Date(nextDueDate + 'T12:00:00')
+        const monthLabel = dueDateObj.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })
+
+        // 5. Insert EXACTLY ONE task row for this cycle
+        await supabase.from('tasks').insert({
+          task_id: newId,
+          client: tpl.client,
+          month: monthLabel,
+          task_title: tpl.task_title,
+          task_type: tpl.task_type || 'Main Task',
+          main_task_id: tpl.task_id,
+          description: tpl.description,
+          assigned_by: tpl.assigned_by,
+          assigned_to: tpl.assigned_to,
+          employee_ids: tpl.employee_ids,
+          assigned_emails: tpl.assigned_emails,
+          department: tpl.department || 'COMMON',
+          assigned_date: todayIso,
+          due_date: nextDueDate,
+          priority: tpl.priority || 'Medium',
+          status: 'Pending',
+          status_updated_on: todayIso,
+          time_taken: '0h 0m',
+          days_overdue: 'No',
+          remarks: tpl.remarks || '',
+          post: tpl.post || 'YES',
+          attachment: tpl.attachment || '',
+          is_recurring: 'AUTO_GENERATED',
+          recurring_schedule: tpl.recurring_schedule,
+          recurring_day: tpl.recurring_day,
+          recurring_months: tpl.recurring_months,
+          last_auto_generated_date: todayIso
+        })
+
+        generatedAny = true
       }
 
-      if (updatedAny) {
+      if (generatedAny) {
         fetchSyncedTasks()
         if (mqttClient && mqttClient.connected) {
           setTimeout(() => {
@@ -2754,7 +2812,7 @@ export function AppProvider({ children }) {
         }
       }
     } catch (err) {
-      console.warn('Recurring task update failed:', err)
+      console.warn('Recurring task daily check failed:', err)
     }
   }
 
