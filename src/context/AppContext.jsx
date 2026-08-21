@@ -2710,17 +2710,10 @@ export function AppProvider({ children }) {
 
       let generatedAny = false
       for (const tpl of dueTemplates) {
-        const hasNeverGenerated = !tpl.last_auto_generated_date
-        const baseStr = tpl.last_auto_generated_date ||
-          (tpl.due_date || '') ||
-          (tpl.created_at ? String(tpl.created_at).slice(0, 10) : '') ||
-          tpl.assigned_date ||
-          today
-        if (!baseStr) continue
-        const base = parseAnyDate(baseStr)
+        const base = parseAnyDate(today)
         if (!base) continue
         const months = String(tpl.recurring_months || '').split(',').map(s => s.trim()).filter(Boolean)
-        const nextDue = computeRecurringDueDate(tpl.recurring_schedule, tpl.recurring_day, months, base, hasNeverGenerated)
+        const nextDue = computeRecurringDueDate(tpl.recurring_schedule, tpl.recurring_day, months, base, true)
         if (!nextDue || nextDue > today) continue
 
         // Atomic claim of this cycle — only one runner proceeds
