@@ -30,6 +30,31 @@ export function formatMonthYearShort(date) {
   return toDate(date).toLocaleString('en-US', { month: 'short', year: '2-digit', timeZone: TZ })
 }
 
+export function parseAnyDate(str) {
+  if (!str) return null
+  if (str instanceof Date) return isNaN(str.getTime()) ? null : str
+  const s = String(str).trim()
+  if (!s) return null
+
+  const isoMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (isoMatch) {
+    const d = new Date(Date.UTC(parseInt(isoMatch[1], 10), parseInt(isoMatch[2], 10) - 1, parseInt(isoMatch[3], 10), 12, 0, 0))
+    if (!isNaN(d.getTime())) return d
+  }
+  const m = s.match(/([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/)
+  if (m) {
+    const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 }
+    const mi = months[m[1].slice(0,3)]
+    if (mi !== undefined) {
+      const d = new Date(Date.UTC(parseInt(m[3], 10), mi, parseInt(m[2], 10), 12, 0, 0))
+      if (!isNaN(d.getTime())) return d
+    }
+  }
+  const d = new Date(s)
+  if (!isNaN(d.getTime())) return d
+  return null
+}
+
 const WEEKDAY_ORDER = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 7 }
 const MONTH_MAP = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 }
 
