@@ -2714,23 +2714,19 @@ export function AppProvider({ children }) {
         .from('tasks')
         .delete()
         .or('is_recurring.eq.AUTO_GENERATED,task_id.eq.{},task_id.is.null')
-      if (!error) {
-        console.log('Cleaned up bulk auto-generated recurring tasks.')
-      }
     } catch (err) {
-      console.warn('Failed to cleanup bulk recurring tasks:', err)
+      // silent
     }
   }
 
   // Scheduled check for active recurring task templates:
-  // Automatically generates the NEXT upcoming cycle instance when the current cycle's due date has arrived or passed.
+  // ONLY AFTER the current cycle's due date has completed/passed (today > currentDueDate) or status is Done,
+  // generate EXACTLY ONE task instance for the upcoming cycle (next week, month, or year).
   const generateDueRecurringTasks = async () => {
     const now = Date.now()
     if (now - recurringGenLastRunRef.current < 10000) return
     recurringGenLastRunRef.current = now
     try {
-      await cleanupBulkRecurringTasks()
-
       const { data: templates } = await supabase
         .from('tasks')
         .select('*')
@@ -2742,22 +2738,23 @@ export function AppProvider({ children }) {
 
       let generatedAny = false
       for (const tpl of dueTemplates) {
-        const baseStr = tpl.last_auto_generated_date || (tpl.due_date ? tpl.due_date.slice(0, 10) : '') || tpl.assigned_date || todayIso
-        const baseDate = parseAnyDate(baseStr) || new Date()
+        const currentDueDate = tpl.last_auto_generated_date || (tpl.due_date ? tpl.due_date.slice(0, 10) : '') || tpl.assigned_date || todayIso
+
+        // ONLY generate next cycle AFTER current cycle due date has completed/passed (today > currentDueDate) or status is Done
+        const isCurrentCycleCompleted = todayIso > currentDueDate || tpl.status === 'Done' || tpl.status === 'Completed'
+        if (!isCurrentCycleCompleted) continue
+
+        const baseDate = parseAnyDate(currentDueDate) || new Date()
         const months = String(tpl.recurring_months || '').split(',').map(s => s.trim()).filter(Boolean)
 
-        // 1. Calculate the due date for the upcoming cycle
+        // 1. Calculate due date for the single upcoming cycle (next week, next month, or next year)
         const nextDueDate = computeRecurringDueDate(tpl.recurring_schedule, tpl.recurring_day, months, baseDate, false)
         if (!nextDueDate) continue
 
-        // 2. Skip if current cycle due date is still in the future and already generated for today
-        const tplDueDate = tpl.due_date ? tpl.due_date.slice(0, 10) : todayIso
-        if (todayIso < tplDueDate && tpl.last_auto_generated_date === todayIso) continue
-
-        // 3. Skip if this nextDueDate cycle was already generated
+        // 2. Skip if this nextDueDate cycle was already generated
         if (tpl.last_auto_generated_date && tpl.last_auto_generated_date >= nextDueDate) continue
 
-        // 4. Atomic claim for nextDueDate cycle
+        // 3. Atomic claim for nextDueDate cycle
         const { data: claimed, error: claimErr } = await supabase
           .from('tasks')
           .update({ last_auto_generated_date: nextDueDate })
@@ -2767,7 +2764,7 @@ export function AppProvider({ children }) {
 
         if (claimErr || !claimed || claimed.length === 0) continue
 
-        // 5. Insert EXACTLY ONE new task row for the upcoming cycle (e.g. Aug 29 or Aug 31)
+        // 4. Insert EXACTLY ONE new task row for the upcoming cycle (next week/month/year)
         const newId = await nextTaskId()
         const dueDateObj = new Date(nextDueDate + 'T12:00:00')
         const monthLabel = dueDateObj.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })
