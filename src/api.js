@@ -384,7 +384,7 @@ async function addTask(payload) {
   if (row.is_recurring && row.due_date && !row.last_auto_generated_date) {
     row.last_auto_generated_date = row.due_date
   }
-  const { error } = await supabase.from('tasks').insert(row)
+  const { error } = await supabase.from('tasks').upsert(row, { onConflict: 'task_id' })
   if (error) throw error
   return { ok: true }
 }

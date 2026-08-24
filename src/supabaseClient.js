@@ -237,5 +237,27 @@ export async function nextClientId() {
 
 export async function nextTaskId() {
   const { data } = await supabase.from('tasks').select('task_id')
-  return 'T-' + String(await nextNumericId((data || []).map((r) => r.task_id))).padStart(3, '0')
+  const existingIds = new Set((data || []).map(r => String(r.task_id || '').trim()))
+  let max = 0
+
+  for (const r of data || []) {
+    const tid = String(r.task_id || '').trim()
+    const m = tid.match(/^T-(\d{1,6})$/i)
+    if (m) {
+      const num = parseInt(m[1], 10)
+      if (!isNaN(num) && num < 100000) {
+        max = Math.max(max, num)
+      }
+    }
+  }
+
+  let candidateNum = max + 1
+  let candidateId = 'T-' + String(candidateNum).padStart(4, '0')
+
+  while (existingIds.has(candidateId)) {
+    candidateNum++
+    candidateId = 'T-' + String(candidateNum).padStart(4, '0')
+  }
+
+  return candidateId
 }
