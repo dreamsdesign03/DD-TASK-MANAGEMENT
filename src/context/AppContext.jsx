@@ -2701,14 +2701,7 @@ export function AppProvider({ children }) {
   // the next task instance with a new task id. A conditional update on
   // last_auto_generated_date makes it idempotent.
   const cleanupBulkRecurringTasks = async () => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .or('is_recurring.eq.AUTO_GENERATED,task_id.eq.{},task_id.is.null')
-    } catch (err) {
-      // silent
-    }
+    // Safety lock: do not auto-delete any task instances from database
   }
 
   // Scheduled check for active recurring task templates:
