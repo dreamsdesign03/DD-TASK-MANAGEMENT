@@ -105,23 +105,41 @@ const mapWebhookTaskToApp = (item, employees = []) => {
     }
   }
 
-  const assigned = formatDate(data["Assigned Date"] || data.assignedDate || data.assigned)
-  const dueDate = formatDate(data["Due Date"] || data.dueDate)
+  const rawStatus = String(data.Status || data.status || 'Pending').trim()
+  const lowerStatus = rawStatus.toLowerCase()
+  let normalizedStatus = 'Pending'
+  if (lowerStatus === 'done' || lowerStatus === 'completed') {
+    normalizedStatus = 'Done'
+  } else if (lowerStatus === 'in progress' || lowerStatus === 'in-progress' || lowerStatus === 'inprogress') {
+    normalizedStatus = 'In Progress'
+  } else if (lowerStatus === 'review') {
+    normalizedStatus = 'Review'
+  } else if (lowerStatus === 'blocked') {
+    normalizedStatus = 'Blocked'
+  } else if (rawStatus) {
+    normalizedStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1)
+  }
 
-  const statusStr = String(data.Status || data.status || 'Pending').trim()
-  const isCompleted = statusStr.toLowerCase() === 'done' || statusStr.toLowerCase() === 'completed'
+  const isDone = normalizedStatus === 'Done'
+
+  const rawDueDate = data["Due Date"] || data.dueDate || ''
+  const assigned = formatDate(data["Assigned Date"] || data.assignedDate || data.assigned)
+  const dueDate = formatDate(rawDueDate)
 
   let isOverdue = false
   let daysOverdueStr = 'No'
 
-  if (!isCompleted && dueDate) {
-    const dueTime = new Date(dueDate).setHours(23, 59, 59, 999)
-    const nowTime = new Date().getTime()
-    if (!isNaN(dueTime) && dueTime < nowTime) {
-      isOverdue = true
-      const diffTime = Math.abs(nowTime - dueTime)
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      daysOverdueStr = `${diffDays} days`
+  if (!isDone && rawDueDate) {
+    const dObj = parseAnyDate(rawDueDate)
+    if (dObj) {
+      const dueTime = new Date(dObj.getFullYear(), dObj.getMonth(), dObj.getDate(), 23, 59, 59, 999).getTime()
+      const nowTime = new Date().getTime()
+      if (dueTime < nowTime) {
+        isOverdue = true
+        const diffTime = Math.abs(nowTime - dueTime)
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        daysOverdueStr = `${diffDays} days`
+      }
     }
   }
 
@@ -151,8 +169,6 @@ const mapWebhookTaskToApp = (item, employees = []) => {
       } catch (e) { }
     }
   }
-
-  const isDone = data.Status === 'Done' || data.status === 'Done' || data.done === true
 
   // Department Mapping
   const rawDept = data.Department || data.department || data.Dept || data.dept || ''
@@ -185,7 +201,7 @@ const mapWebhookTaskToApp = (item, employees = []) => {
     assigned: assigned || formatDateShort(),
     dueDate: dueDate,
     priority: data.Priority || data.priority || 'Medium',
-    status: data.Status || data.status || 'Pending',
+    status: normalizedStatus,
     overdue: !isDone && isOverdue,
     done: isDone,
     department: mappedDept,

@@ -613,7 +613,8 @@ export default function TaskTable() {
 
   // Metrics Logic
   const baseTasksForStats = tasks.filter((t) => {
-    if (t.taskType === 'Sub Task' || t.taskType === 'Subtask') return false;
+    const isSub = t.taskType === 'Sub Task' || t.taskType === 'Subtask' || (t.mainTaskId && String(t.mainTaskId).trim() !== '')
+    if (isSub) return false;
     const matchesClient = selectedClient === 'All Clients' || t.client === selectedClient;
     const matchesUser = selectedUser === 'All Users' || (t.assignedTo || '').includes(selectedUser);
     const matchesDepartment = selectedDepartment === 'All Departments' || (t.department || 'COMMON').toUpperCase() === selectedDepartment;
@@ -623,10 +624,13 @@ export default function TaskTable() {
   const totalTasks = baseTasksForStats.length;
   const pendingTasks = baseTasksForStats.filter(t => t.status === 'Pending').length;
   const inProgressTasks = baseTasksForStats.filter(t => t.status === 'In Progress').length;
-  const completedTasks = baseTasksForStats.filter(t => t.status === 'Done').length;
+  const completedTasks = baseTasksForStats.filter(t => t.status === 'Done' || t.status === 'Completed').length;
   const overdueTasks = baseTasksForStats.filter(t => {
-    if (t.status === 'Done' || !t.dueDate) return false;
+    if (t.status === 'Done' || t.status === 'Completed') return false;
+    if (t.overdue) return true;
+    if (!t.dueDate) return false;
     const due = new Date(t.dueDate);
+    if (isNaN(due.getTime())) return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return due < today;
