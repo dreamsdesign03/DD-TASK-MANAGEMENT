@@ -3137,9 +3137,17 @@ export function AppProvider({ children }) {
       mqttClient.removeListener('message', handleSyncMessage)
     }
   }, [profile])
+  // Re-fetch tasks & team when user logs in or profile updates
+  useEffect(() => {
+    if (profile?.email) {
+      fetchSyncedTasks()
+      fetchTeam()
+    }
+  }, [profile?.email]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const visibleTasks = useMemo(() => {
     if (!profile) return tasks;
-    const role = profile.systemRole || 'Employee';
+    const role = profile.systemRole || profile.role || profile.Role || profile['System Role'] || 'Employee';
     if (role === 'Admin') return tasks;
 
     const normalizeName = (name) => {
@@ -3151,33 +3159,24 @@ export function AppProvider({ children }) {
 
     return tasks.filter(t => {
       const dept = (t.department || '').toUpperCase();
-      if (['HR', 'ACCOUNT', 'SALES'].includes(dept)) {
+      const isRestrictedDept = ['HR', 'ACCOUNT', 'SALES'].includes(dept);
+
+      if (isRestrictedDept) {
         if (role === 'HR' && dept === 'HR') return true;
         if (role === 'Accountant' && dept === 'ACCOUNT') return true;
         if (role === 'Sales' && dept === 'SALES') return true;
-
-        // If the current user is assigned to the task, they should always see it
-        if (myName || myEmail) {
-          const assignees = (t.assignedTo || '').split(',').map(normalizeName).filter(Boolean);
-          const assigneeEmails = (t.assignedEmail || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-
-          let hasAccess = false;
-          if (assignees.includes(myName)) {
-            if (assigneeEmails.length > 0 && myEmail) {
-              hasAccess = assigneeEmails.includes(myEmail);
-            } else {
-              hasAccess = true;
-            }
-          } else if (myEmail && assigneeEmails.includes(myEmail)) {
-            hasAccess = true;
-          }
-
-          if (hasAccess) return true;
-        }
-
-        return false;
       }
-      return true;
+
+      // If assigned to the task, user should always see it
+      if (myName || myEmail) {
+        const assignees = (t.assignedTo || '').split(',').map(normalizeName).filter(Boolean);
+        const assigneeEmails = (t.assignedEmail || t.assignedEmails || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+        const isAssigned = (myName && assignees.some(a => a.includes(myName) || myName.includes(a))) || (myEmail && assigneeEmails.includes(myEmail));
+        if (isAssigned) return true;
+      }
+
+      return !isRestrictedDept;
     });
   }, [tasks, profile]);
 
