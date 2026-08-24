@@ -5,6 +5,7 @@ import TopNav from '../components/TopNav'
 
 import SelectDropdown from '../components/SelectDropdown'
 import { useApp } from '../context/AppContext'
+import { parseAnyDate } from '../utils/dateFormat'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 
@@ -32,10 +33,10 @@ export default function MonthlyReportPage() {
 
   const isInDateRange = (task) => {
     if (!dateFrom && !dateTo) return true
-    const d = task.dueDate ? new Date(task.dueDate) : null
-    if (!d || isNaN(d.getTime())) return !dateFrom && !dateTo
-    const from = dateFrom ? new Date(dateFrom) : null
-    const to = dateTo ? new Date(dateTo) : null
+    const d = task.dueDate ? parseAnyDate(task.dueDate) : null
+    if (!d) return !dateFrom && !dateTo
+    const from = dateFrom ? parseAnyDate(dateFrom) : null
+    const to = dateTo ? parseAnyDate(dateTo) : null
     if (from && d < from) return false
     if (to) {
       const toEnd = new Date(to)
@@ -54,6 +55,10 @@ export default function MonthlyReportPage() {
 
   const filteredTasks = useMemo(() => {
     return (tasks || []).filter((t) => {
+      // Exclude Subtasks from main report metrics
+      const isSub = t.taskType === 'Sub Task' || t.taskType === 'Subtask' || (t.mainTaskId && String(t.mainTaskId).trim() !== '')
+      if (isSub) return false
+
       // If not an admin, strictly only show tasks assigned to this user
       if (!isAdmin) {
         const assignees = (t.assignedTo || '').toLowerCase()
@@ -84,14 +89,17 @@ export default function MonthlyReportPage() {
 
   const overdue = filteredTasks.filter((t) => {
     if (t.status === 'Done' || t.status === 'Completed') return false
+    if (t.overdue) return true
+    if (t.daysOverdue && t.daysOverdue !== 'No' && t.daysOverdue !== 'false' && t.daysOverdue !== '0 days') return true
     if (t.dueDate) {
-      const due = new Date(t.dueDate)
-      if (!isNaN(due.getTime())) {
-        due.setHours(23, 59, 59, 999)
-        return due.getTime() < Date.now()
+      const due = parseAnyDate(t.dueDate)
+      if (due) {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        return due < today
       }
     }
-    return t.daysOverdue && t.daysOverdue !== 'No' && t.daysOverdue !== '0 days'
+    return false
   }).length
 
   const completedPct = totalTasks ? Math.round((completed / totalTasks) * 100) : 0
@@ -616,17 +624,25 @@ export default function MonthlyReportPage() {
                             assignedUsers = assignedUsers.filter(u => u.toLowerCase() === myName)
                           }
 
+                          const isTaskDone = t.status === 'Done' || t.status === 'Completed'
+                          const isTaskOverdue = !isTaskDone && (
+                            t.overdue ||
+                            (t.daysOverdue && t.daysOverdue !== 'No' && t.daysOverdue !== 'false' && t.daysOverdue !== '0 days') ||
+                            (t.dueDate && parseAnyDate(t.dueDate) && parseAnyDate(t.dueDate) < new Date(new Date().setHours(0,0,0,0)))
+                          )
+
                           assignedUsers.forEach(u => {
                             if (!breakdown[company]) breakdown[company] = {}
                             if (!breakdown[company][u]) {
                               breakdown[company][u] = { total: 0, done: 0, inProgress: 0, pending: 0, blocked: 0, overdue: 0 }
                             }
                             breakdown[company][u].total++
-                            if (t.status === 'Done') breakdown[company][u].done++
+                            if (isTaskDone) breakdown[company][u].done++
                             else if (t.status === 'In Progress' || t.status === 'Review') breakdown[company][u].inProgress++
                             else if (t.status === 'Pending') breakdown[company][u].pending++
                             else if (t.status === 'Blocked') breakdown[company][u].blocked++
-                            if (t.overdue && t.status !== 'Done') breakdown[company][u].overdue++
+                            
+                            if (isTaskOverdue) breakdown[company][u].overdue++
                           })
                         })
                         const companyNames = Object.keys(breakdown).sort()

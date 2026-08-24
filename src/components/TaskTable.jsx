@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { getUserColor, getInitials } from '../utils/avatar'
-import { computeRecurringDueDate } from '../utils/dateFormat'
+import { computeRecurringDueDate, parseAnyDate } from '../utils/dateFormat'
 import TaskCalendar from './TaskCalendar'
 import VoiceBot from './VoiceBot'
 import SelectDropdown from './SelectDropdown'
@@ -628,9 +628,10 @@ export default function TaskTable() {
   const overdueTasks = baseTasksForStats.filter(t => {
     if (t.status === 'Done' || t.status === 'Completed') return false;
     if (t.overdue) return true;
+    if (t.daysOverdue && t.daysOverdue !== 'No' && t.daysOverdue !== 'false' && t.daysOverdue !== '0 days') return true;
     if (!t.dueDate) return false;
-    const due = new Date(t.dueDate);
-    if (isNaN(due.getTime())) return false;
+    const due = parseAnyDate(t.dueDate);
+    if (!due) return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return due < today;
