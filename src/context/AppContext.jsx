@@ -2723,7 +2723,7 @@ export function AppProvider({ children }) {
   }
 
   // Scheduled check for active recurring task templates:
-  // Runs once per day (on trigger day), generating EXACTLY ONE instance for the current cycle.
+  // Automatically generates the NEXT upcoming cycle instance when the current cycle's due date has arrived or passed.
   const generateDueRecurringTasks = async () => {
     const now = Date.now()
     if (now - recurringGenLastRunRef.current < 10000) return
@@ -2739,37 +2739,39 @@ export function AppProvider({ children }) {
         ['true', 'yes', '1'].includes(String(t.is_recurring || '').toLowerCase())
       )
       const todayIso = getISTDate()
-      const todayDate = new Date()
 
       let generatedAny = false
       for (const tpl of dueTemplates) {
+        const baseStr = tpl.last_auto_generated_date || (tpl.due_date ? tpl.due_date.slice(0, 10) : '') || tpl.assigned_date || todayIso
+        const baseDate = parseAnyDate(baseStr) || new Date()
         const months = String(tpl.recurring_months || '').split(',').map(s => s.trim()).filter(Boolean)
-        const tplDateStr = tpl.assigned_date || tpl.created_at || tpl.due_date
 
-        // 1. Check if TODAY matches this template's recurrence pattern
-        const isTrigger = isTodayRecurrenceTriggerDay(tpl.recurring_schedule, tpl.recurring_day, months, tplDateStr, todayDate)
-        if (!isTrigger) continue
+        // 1. Calculate the due date for the upcoming cycle
+        const nextDueDate = computeRecurringDueDate(tpl.recurring_schedule, tpl.recurring_day, months, baseDate, false)
+        if (!nextDueDate) continue
 
-        // 2. Check if an instance was already generated for today
-        if (tpl.last_auto_generated_date === todayIso) continue
+        // 2. Skip if current cycle due date is still in the future and already generated for today
+        const tplDueDate = tpl.due_date ? tpl.due_date.slice(0, 10) : todayIso
+        if (todayIso < tplDueDate && tpl.last_auto_generated_date === todayIso) continue
 
-        // 3. Atomic claim for today's run
+        // 3. Skip if this nextDueDate cycle was already generated
+        if (tpl.last_auto_generated_date && tpl.last_auto_generated_date >= nextDueDate) continue
+
+        // 4. Atomic claim for nextDueDate cycle
         const { data: claimed, error: claimErr } = await supabase
           .from('tasks')
-          .update({ last_auto_generated_date: todayIso })
+          .update({ last_auto_generated_date: nextDueDate })
           .eq('task_id', tpl.task_id)
-          .or(`last_auto_generated_date.is.null,last_auto_generated_date.neq.${todayIso}`)
+          .or(`last_auto_generated_date.is.null,last_auto_generated_date.lt.${nextDueDate}`)
           .select('task_id')
 
         if (claimErr || !claimed || claimed.length === 0) continue
 
-        // 4. Compute due date for the single new instance
-        const nextDueDate = computeNextCycleDueDate(tpl.recurring_schedule, tpl.recurring_day, months, tplDateStr, todayDate)
+        // 5. Insert EXACTLY ONE new task row for the upcoming cycle (e.g. Aug 29 or Aug 31)
         const newId = await nextTaskId()
         const dueDateObj = new Date(nextDueDate + 'T12:00:00')
         const monthLabel = dueDateObj.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })
 
-        // 5. Insert EXACTLY ONE task row for this cycle
         await supabase.from('tasks').insert({
           task_id: newId,
           client: tpl.client,
