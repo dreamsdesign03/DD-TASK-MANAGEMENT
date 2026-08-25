@@ -412,9 +412,25 @@ export default function TaskTable() {
 
       let matchesDate = true
       if (selectedDate) {
-        const assignedMatch = t.assignedDate && String(t.assignedDate).startsWith(selectedDate)
-        const dueMatch = t.dueDate && String(t.dueDate).startsWith(selectedDate)
-        matchesDate = assignedMatch || dueMatch
+        const rawAssigned = t['Assigned Date'] || t.assignedDate || t.assigned_date || t.assigned || ''
+        const rawDue = t['Due Date'] || t.dueDate || t.due_date || t.due || ''
+
+        const checkMatch = (raw) => {
+          if (!raw) return false
+          const s = String(raw).trim()
+          if (!s) return false
+          if (s.startsWith(selectedDate)) return true
+          const parsed = parseAnyDate(s)
+          if (parsed) {
+            const y = parsed.getFullYear()
+            const m = String(parsed.getMonth() + 1).padStart(2, '0')
+            const d = String(parsed.getDate()).padStart(2, '0')
+            return `${y}-${m}-${d}` === selectedDate
+          }
+          return false
+        }
+
+        matchesDate = checkMatch(rawAssigned) || checkMatch(rawDue)
       }
 
       const query = searchQuery.toLowerCase()
