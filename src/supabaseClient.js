@@ -236,7 +236,11 @@ export async function nextClientId() {
 }
 
 export async function nextTaskId() {
-  const { data } = await supabase.from('tasks').select('task_id')
+  const { data } = await supabase
+    .from('tasks')
+    .select('task_id')
+    .limit(2500)
+
   const existingIds = new Set((data || []).map(r => String(r.task_id || '').trim()))
   let max = 0
 

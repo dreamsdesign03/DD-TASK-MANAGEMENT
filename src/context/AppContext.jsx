@@ -2750,11 +2750,11 @@ export function AppProvider({ children }) {
         if (claimErr || !claimed || claimed.length === 0) continue
 
         // 4. Insert EXACTLY ONE new task row for the upcoming cycle (next week/month/year)
-        const newId = await nextTaskId()
+        let newId = await nextTaskId()
         const dueDateObj = new Date(nextDueDate + 'T12:00:00')
         const monthLabel = dueDateObj.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })
 
-        await supabase.from('tasks').insert({
+        const taskData = {
           task_id: newId,
           client: tpl.client,
           month: monthLabel,
@@ -2782,7 +2782,14 @@ export function AppProvider({ children }) {
           recurring_day: tpl.recurring_day,
           recurring_months: tpl.recurring_months,
           last_auto_generated_date: todayIso
-        })
+        }
+
+        const { error: insErr } = await supabase.from('tasks').insert(taskData)
+        if (insErr) {
+          // If ID collision occurs, retry with fallback unique timestamp ID
+          taskData.task_id = `T-${Date.now().toString().slice(-6)}`
+          await supabase.from('tasks').insert(taskData)
+        }
 
         generatedAny = true
       }
