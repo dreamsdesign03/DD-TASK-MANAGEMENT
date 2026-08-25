@@ -2784,12 +2784,7 @@ export function AppProvider({ children }) {
           last_auto_generated_date: todayIso
         }
 
-        const { error: insErr } = await supabase.from('tasks').insert(taskData)
-        if (insErr) {
-          // If ID collision occurs, retry with fallback unique timestamp ID
-          taskData.task_id = `T-${Date.now().toString().slice(-6)}`
-          await supabase.from('tasks').insert(taskData)
-        }
+        await supabase.from('tasks').upsert(taskData, { onConflict: 'task_id', ignoreDuplicates: true })
 
         generatedAny = true
       }
