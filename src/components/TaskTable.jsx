@@ -155,6 +155,7 @@ export default function TaskTable() {
   const [selectedClient, setSelectedClient] = useState(location.state?.clientFilter || 'All Clients')
   const [selectedUser, setSelectedUser] = useState(location.pathname === '/my-tasks' ? (profile?.name || 'All Users') : 'All Users')
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments')
+  const [selectedDate, setSelectedDate] = useState('')
 
   const [viewMode, setViewMode] = useState(location.state?.viewMode || 'List') // 'List' | 'Board'
   const [boardGrouping, setBoardGrouping] = useState('Department')
@@ -409,6 +410,13 @@ export default function TaskTable() {
 
       const matchesDepartment = selectedDepartment === 'All Departments' || (t.department || 'COMMON').toUpperCase() === selectedDepartment
 
+      let matchesDate = true
+      if (selectedDate) {
+        const assignedMatch = t.assignedDate && String(t.assignedDate).startsWith(selectedDate)
+        const dueMatch = t.dueDate && String(t.dueDate).startsWith(selectedDate)
+        matchesDate = assignedMatch || dueMatch
+      }
+
       const query = searchQuery.toLowerCase()
       const matchesSearch =
         t.title.toLowerCase().includes(query) ||
@@ -416,7 +424,7 @@ export default function TaskTable() {
         t.id.toLowerCase().includes(query) ||
         (t.assignedTo || '').toLowerCase().includes(query)
 
-      return matchesStatus && matchesSearch && matchesClient && matchesUser && matchesDepartment
+      return matchesStatus && matchesSearch && matchesClient && matchesUser && matchesDepartment && matchesDate
     })
     // 2. Sort tasks
     .sort((a, b) => {
@@ -828,6 +836,26 @@ export default function TaskTable() {
                     value={selectedDepartment} onChange={setSelectedDepartment}
                     options={deduplicatedDepartments}
                     style={{ ...selectBaseStyle }}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5 md:w-[160px]">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] md:text-[11px] font-bold text-[#6B7280] uppercase">Filter by Date</label>
+                    {selectedDate && (
+                      <button
+                        onClick={() => setSelectedDate('')}
+                        className="text-[10px] text-[#ec008c] hover:underline font-bold"
+                        title="Clear Date Filter"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={e => setSelectedDate(e.target.value)}
+                    style={{ ...selectBaseStyle, padding: '8px 12px' }}
                   />
                 </div>
 
