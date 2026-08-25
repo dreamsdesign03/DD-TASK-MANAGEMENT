@@ -3122,39 +3122,8 @@ export function AppProvider({ children }) {
   }, [profile?.email]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const visibleTasks = useMemo(() => {
-    if (!profile) return tasks;
-    const role = profile.systemRole || profile.role || profile.Role || profile['System Role'] || 'Employee';
-    if (role === 'Admin') return tasks;
-
-    const normalizeName = (name) => {
-      if (!name) return '';
-      return String(name).toLowerCase().replace(/[^\w]/g, '').trim();
-    };
-    const myName = normalizeName(profile.name);
-    const myEmail = String(profile.email || '').trim().toLowerCase();
-
-    return tasks.filter(t => {
-      const dept = (t.department || '').toUpperCase();
-      const isRestrictedDept = ['HR', 'ACCOUNT', 'SALES'].includes(dept);
-
-      if (isRestrictedDept) {
-        if (role === 'HR' && dept === 'HR') return true;
-        if (role === 'Accountant' && dept === 'ACCOUNT') return true;
-        if (role === 'Sales' && dept === 'SALES') return true;
-      }
-
-      // If assigned to the task, user should always see it
-      if (myName || myEmail) {
-        const assignees = (t.assignedTo || '').split(',').map(normalizeName).filter(Boolean);
-        const assigneeEmails = (t.assignedEmail || t.assignedEmails || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-
-        const isAssigned = (myName && assignees.some(a => a.includes(myName) || myName.includes(a))) || (myEmail && assigneeEmails.includes(myEmail));
-        if (isAssigned) return true;
-      }
-
-      return !isRestrictedDept;
-    });
-  }, [tasks, profile]);
+    return tasks;
+  }, [tasks]);
 
   // Auto-reload the web app when a new version is deployed
   useEffect(() => {

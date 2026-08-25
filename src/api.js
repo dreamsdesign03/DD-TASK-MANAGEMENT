@@ -369,7 +369,7 @@ async function punchOut(payload) {
 
 /* ─── Tasks ──────────────────────────────────────────────────────────────── */
 async function getTasks() {
-  const { data, error } = await supabase.from('tasks').select('*').order('task_id').limit(2000)
+  const { data, error } = await supabase.from('tasks').select('*').order('task_id').limit(3000)
   if (error) throw error
   return (data || []).map(taskRowToSheet)
 }
