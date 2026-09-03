@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { getUserColor, getInitials } from '../utils/avatar'
 import { computeRecurringDueDate, parseAnyDate } from '../utils/dateFormat'
+import { getISTDate } from '../utils/activityLog'
 import TaskCalendar from './TaskCalendar'
 import VoiceBot from './VoiceBot'
 import SelectDropdown from './SelectDropdown'
@@ -156,6 +157,7 @@ export default function TaskTable() {
   const [selectedUser, setSelectedUser] = useState(location.pathname === '/my-tasks' ? (profile?.name || 'All Users') : 'All Users')
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments')
   const [selectedDate, setSelectedDate] = useState('')
+  const [showAllDone, setShowAllDone] = useState(false)
 
   const [viewMode, setViewMode] = useState(location.state?.viewMode || 'List') // 'List' | 'Board'
   const [boardGrouping, setBoardGrouping] = useState('Department')
@@ -390,6 +392,20 @@ export default function TaskTable() {
     .filter((t) => {
       // Exclude Sub Tasks from main table view
       if (t.taskType === 'Sub Task' || t.taskType === 'Subtask') return false;
+
+      // Hide previous month's Done tasks unless showAllDone is on
+      if (!showAllDone && t.status === 'Done') {
+        const now = new Date(getISTDate())
+        const currentMonth = now.getMonth()
+        const currentYear = now.getFullYear()
+        const taskDate = t.statusUpdatedOn || t.assignedDate || t.assigned_date || t.assigned || ''
+        if (taskDate) {
+          const parsed = parseAnyDate(String(taskDate).trim())
+          if (parsed && (parsed.getMonth() !== currentMonth || parsed.getFullYear() !== currentYear)) {
+            return false
+          }
+        }
+      }
 
       const matchesStatus = activeFilter === 'All' || t.status === activeFilter
       const matchesClient = selectedClient === 'All Clients' || t.client === selectedClient
@@ -708,8 +724,14 @@ export default function TaskTable() {
               <span className="material-symbols-outlined" style={{ color: s.color, fontSize: 22 }}>{s.icon}</span>
             </div>
           </div>
-        ))}
-      </div>
+          ))}
+          <button
+            onClick={() => setShowAllDone(v => !v)}
+            className={`px-4 md:px-5 py-2 rounded-full text-[12px] md:text-[13px] font-semibold transition-all border cursor-pointer ${showAllDone ? 'bg-amber-500 text-white border-amber-500 shadow-[0_4px_12px_rgba(245,158,11,0.3)]' : 'bg-white text-gray-500 border-gray-200 hover:border-amber-400 hover:text-amber-600'}`}
+          >
+            {showAllDone ? 'Showing All Done' : 'Show All Done'}
+          </button>
+        </div>
 
       {/* ─── Filter bar ───────────────────────────────────────────────────────── */}
       {/* FILTERS + VIEW TOGGLE */}
