@@ -4,7 +4,7 @@ import { useToast } from './ToastContext'
 import { updateHeartbeat, logShutdown, getActiveUsers, getAllUsersMonthlyActivity, formatDuration, getAllLoggedUsers, getISTDate, getISTTime, getISTTimeAt, getISTNow } from '../utils/activityLog'
 import { formatDateShort, formatDateTime, computeRecurringDueDate, isTodayRecurrenceTriggerDay, computeNextCycleDueDate, parseAnyDate } from '../utils/dateFormat'
 import { isElectron } from '../utils/isElectron'
-import { DAILY_SHEET_WEB_APP_URL } from '../config'
+import { DAILY_SHEET_WEB_APP_URL, PUNCHOUT_WEBHOOK_URL } from '../config'
 import { api } from '../api'
 import { supabase, nextTaskId } from '../supabaseClient'
 
@@ -753,6 +753,91 @@ export function AppProvider({ children }) {
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: payload
         }).catch(err => console.warn('Daily task sheet sync failed:', err));
+    }
+
+    // Send today's completed/pending tasks to daily work report webhook
+    try {
+      const webhookUrl = PUNCHOUT_WEBHOOK_URL
+      if (webhookUrl && prevEmail) {
+        const todayIST = getISTDate()
+        const myName = (profile?.name || '').trim().toLowerCase()
+        const myFirstName = myName.split(' ')[0]
+        const myEmail = (prevEmail || '').trim().toLowerCase()
+        const myEmpId = String(profile?.employeeId || '').trim()
+
+        const isDateToday = (dateVal) => {
+          if (!dateVal) return true
+          const str = String(dateVal).trim()
+          if (!str) return true
+          if (str.startsWith(todayIST)) return true
+          if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.substring(0, 10) === todayIST
+          const dmY = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/)
+          if (dmY) {
+            const formatted = `${dmY[3]}-${dmY[2].padStart(2, '0')}-${dmY[1].padStart(2, '0')}`
+            return formatted === todayIST
+          }
+          try {
+            const d = new Date(str.replace(' ', 'T'))
+            if (!isNaN(d.getTime())) {
+              const yyyy = d.getFullYear()
+              const mm = String(d.getMonth() + 1).padStart(2, '0')
+              const dd = String(d.getDate()).padStart(2, '0')
+              return `${yyyy}-${mm}-${dd}` === todayIST
+            }
+          } catch (e) {}
+          return true
+        }
+
+        const todaysTasks = (tasks || []).filter(t => {
+          const assignedEmailClean = (t.assignedEmail || '').toLowerCase()
+          const assignedToClean = (t.assignedTo || '').toLowerCase()
+          const taskEmpId = String(t.employeeId || '').trim()
+
+          const isMyTask = (assignedEmailClean && assignedEmailClean === myEmail) ||
+                           (assignedToClean && (assignedToClean.includes(myName) || myName.includes(assignedToClean) || (myFirstName && assignedToClean.includes(myFirstName)))) ||
+                           (myEmpId && taskEmpId && myEmpId === taskEmpId)
+
+          if (!isMyTask) return false
+          return isDateToday(t.statusUpdatedOn || t.assignedDate || t.assigned)
+        })
+
+        const webhookPayload = {
+          sheetId: '1TtffW2oS95WX5Xf0OtH7G-Vqsmv4eHXiTiKgnD_8lnQ',
+          email: prevEmail,
+          name: profile?.name || 'Unknown',
+          employeeId: profile?.employeeId || '',
+          date: todayIST,
+          completedTasks: todaysTasks.filter(t => t.status === 'Done').map(t => ({
+            taskId: t.id,
+            title: t.title,
+            project: t.client || t.project || '',
+            status: t.status,
+            remarks: (t.comments && t.comments.length > 0) ? t.comments[t.comments.length - 1].text : (t.remarks || '')
+          })),
+          pendingTasks: todaysTasks.filter(t => t.status !== 'Done').map(t => ({
+            taskId: t.id,
+            title: t.title,
+            project: t.client || t.project || '',
+            status: t.status,
+            remarks: (t.comments && t.comments.length > 0) ? t.comments[t.comments.length - 1].text : (t.remarks || '')
+          })),
+          allTasks: todaysTasks.map(t => ({
+            taskId: t.id,
+            title: t.title,
+            project: t.client || t.project || '',
+            status: t.status,
+            remarks: (t.comments && t.comments.length > 0) ? t.comments[t.comments.length - 1].text : (t.remarks || '')
+          }))
+        }
+
+        fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(webhookPayload)
+        }).catch(err => console.warn('Punchout webhook sync failed:', err))
+      }
+    } catch (err) {
+      console.warn('Punchout webhook error:', err)
     }
   }
 
