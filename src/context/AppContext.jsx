@@ -2378,7 +2378,20 @@ export function AppProvider({ children }) {
           recurringDay: newTask.recurringDay || '',
           recurringMonths: newTask.recurringMonths || ''
         })
-      if (res && res.ok) {
+      // Update local task with backend-generated clean ID
+      if (res && res.ok && res.taskId) {
+        setTasks(prev => prev.map(t => 
+          isSameTaskId(t.id, newTask.id) ? { ...t, id: res.taskId, rawTaskId: res.taskId } : t
+        ))
+        // Update trackers
+        const oldKey = normalizeTaskIdKey(newTask.id)
+        const newKey = normalizeTaskIdKey(res.taskId)
+        initialTaskIds.current.delete(oldKey)
+        initialTaskIds.current.add(newKey)
+        initialTaskStatuses.current[newKey] = initialTaskStatuses.current[oldKey]
+        initialTaskData.current[newKey] = { ...initialTaskData.current[oldKey], id: res.taskId, rawTaskId: res.taskId }
+        delete initialTaskStatuses.current[oldKey]
+        delete initialTaskData.current[oldKey]
         addToast('Task added successfully!', 'success')
       }
       if (mqttClient && mqttClient.connected) {

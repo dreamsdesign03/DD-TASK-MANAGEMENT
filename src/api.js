@@ -386,7 +386,7 @@ async function addTask(payload) {
   }
   const { error } = await supabase.from('tasks').upsert(row, { onConflict: 'task_id' })
   if (error) throw error
-  return { ok: true }
+  return { ok: true, taskId: row.task_id }
 }
 
 async function updateTask(payload) {
