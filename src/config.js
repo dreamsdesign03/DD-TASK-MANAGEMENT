@@ -12,27 +12,15 @@
 // (features will silently no-op until the new backend is wired up).
 
 // Main backend: tasks, team, clients, payments, activities, chat, auth.
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.REACT_APP_API_BASE_URL ||
-  ''
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 // Daily task sheet backend: punch in/out + per-task timer rows.
 export const DAILY_SHEET_WEB_APP_URL =
   import.meta.env.VITE_DAILY_SHEET_WEB_APP_URL ||
-  import.meta.env.REACT_APP_DAILY_SHEET_WEB_APP_URL ||
   'https://script.google.com/macros/s/AKfycbw86Ttol6GkUPh0Er5Ge83D7oWCpx7DTNmFLo6vh-cEk-jWZy8q5OUhSndB3Vo4jbsI/exec'
 
 // Pending task daily email backend (Google Apps Script).
 // Deploy pending_task_email_script.js and paste the URL here.
 export const PENDING_EMAIL_WEB_APP_URL =
   import.meta.env.VITE_PENDING_EMAIL_WEB_APP_URL ||
-  import.meta.env.REACT_APP_PENDING_EMAIL_WEB_APP_URL ||
   'https://script.google.com/macros/s/AKfycbxPjHXObDTl9z1kvbEOy8qktbGA7dLoFLj5z8sRs_h0F6R7mZg-yQnB9grftusdz-EV/exec'
-
-// Daily work report webhook for Google Sheet
-export const PUNCHOUT_WEBHOOK_URL =
-  import.meta.env.VITE_PUNCHOUT_WEBHOOK_URL ||
-  import.meta.env.REACT_APP_PUNCHOUT_WEBHOOK_URL ||
-  (typeof process !== 'undefined' && process.env && process.env.REACT_APP_PUNCHOUT_WEBHOOK_URL) ||
-  ''
