@@ -31,6 +31,17 @@ export function formatTaskId(id) {
     }
   }
 
+  // Handle legacy format: T-0001605212 (T- + 4 digit task num + 6 digit suffix)
+  // Extract just the task number part (first 4 digits after T-)
+  const legacyMatch = str.match(/^T-(\d{10,})$/)
+  if (legacyMatch) {
+    const numStr = legacyMatch[1]
+    if (numStr.length >= 4) {
+      const taskNum = numStr.substring(0, 4)
+      str = `T-${taskNum}`
+    }
+  }
+
   return str
 }
 

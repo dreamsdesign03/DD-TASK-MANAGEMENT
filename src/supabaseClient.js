@@ -246,9 +246,22 @@ export async function nextTaskId() {
 
   for (const r of data || []) {
     const tid = String(r.task_id || '').trim()
-    const m = tid.match(/^T-(\d{1,6})$/i)
+    // Match both old format (T-0001605212) and new format (T-0001)
+    // Old: T- + 4 digit task num + 6 digit suffix = 10 digits
+    // New: T- + 4-6 digits
+    const m = tid.match(/^T-(\d{4,10})$/i)
     if (m) {
-      const num = parseInt(m[1], 10)
+      const numStr = m[1]
+      // For old format, extract first 4 digits as task number
+      // For new format, use the whole number
+      let num
+      if (numStr.length > 6) {
+        // Old format: T-0001605212 -> task number is first 4 digits (0001)
+        num = parseInt(numStr.substring(0, 4), 10)
+      } else {
+        // New format: T-0001 or T-000123
+        num = parseInt(numStr, 10)
+      }
       if (!isNaN(num) && num < 100000) {
         max = Math.max(max, num)
       }
