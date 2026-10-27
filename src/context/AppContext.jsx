@@ -5,7 +5,6 @@ import { updateHeartbeat, logShutdown, getActiveUsers, getAllUsersMonthlyActivit
 import { formatDateShort, formatDateTime, computeRecurringDueDate, isTodayRecurrenceTriggerDay, computeNextCycleDueDate, parseAnyDate } from '../utils/dateFormat'
 import { isElectron } from '../utils/isElectron'
 import { formatTaskId, normalizeTaskIdKey, isSameTaskId, deduplicateTasks } from '../utils/formatTaskId'
-import { DAILY_SHEET_WEB_APP_URL } from '../config'
 import { api } from '../api'
 import { supabase, nextTaskId } from '../supabaseClient'
 
@@ -645,23 +644,6 @@ export function AppProvider({ children }) {
     api.post({ action: 'punch_in', email: profile.email })
       .then(t => console.log('Punch in response:', t))
       .catch(e => console.warn('Punch in failed:', e))
-    if (profile?.email && DAILY_SHEET_WEB_APP_URL) {
-      const payload = JSON.stringify({
-        action: 'log_punch_in',
-        email: profile?.email,
-        employeeId: profile?.employeeId || '',
-        name: profile?.name || 'Unknown',
-        date: getISTDate(),
-        startTime: inTime,
-        firstPunchIn: inTime
-      });
-      fetch(DAILY_SHEET_WEB_APP_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: payload
-      }).catch(() => { })
-    }
   }
 
   const handlePunchOut = () => {
@@ -680,85 +662,6 @@ export function AppProvider({ children }) {
     api.post({ action: 'punch_out', email: prevEmail })
       .then(t => console.log('Punch out response:', t))
       .catch(e => console.warn('Punch out failed:', e))
-
-    // Log daily tasks & punch out to daily sheet
-    if (prevEmail && DAILY_SHEET_WEB_APP_URL) {
-        const todayIST = getISTDate();
-        const myFirstPunchIn = (todaysSessions && todaysSessions.length > 0 && todaysSessions[0].in)
-          ? todaysSessions[0].in
-          : (punchInTime || outTime);
-
-        const myName = (profile?.name || '').trim().toLowerCase();
-        const myFirstName = myName.split(' ')[0];
-        const myEmail = (prevEmail || '').trim().toLowerCase();
-        const myEmpId = String(profile?.employeeId || '').trim();
-
-        // Robust date helper comparing date value against todayIST (YYYY-MM-DD)
-        const isDateToday = (dateVal) => {
-          if (!dateVal) return true;
-          const str = String(dateVal).trim();
-          if (!str) return true;
-          if (str.startsWith(todayIST)) return true;
-          if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.substring(0, 10) === todayIST;
-          const dmY = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-          if (dmY) {
-            const formatted = `${dmY[3]}-${dmY[2].padStart(2, '0')}-${dmY[1].padStart(2, '0')}`;
-            return formatted === todayIST;
-          }
-          try {
-            const d = new Date(str.replace(' ', 'T'));
-            if (!isNaN(d.getTime())) {
-              const yyyy = d.getFullYear();
-              const mm = String(d.getMonth() + 1).padStart(2, '0');
-              const dd = String(d.getDate()).padStart(2, '0');
-              return `${yyyy}-${mm}-${dd}` === todayIST;
-            }
-          } catch (e) {}
-          return true;
-        };
-
-        // Filter all tasks assigned/worked on today by this user (Pending, In Progress, Done)
-        const todaysTasks = (tasks || []).filter(t => {
-          const assignedEmailClean = (t.assignedEmail || '').toLowerCase();
-          const assignedToClean = (t.assignedTo || '').toLowerCase();
-          const taskEmpId = String(t.employeeId || '').trim();
-
-          const isMyTask = (assignedEmailClean && assignedEmailClean === myEmail) ||
-                           (assignedToClean && (assignedToClean.includes(myName) || myName.includes(assignedToClean) || (myFirstName && assignedToClean.includes(myFirstName)))) ||
-                           (myEmpId && taskEmpId && myEmpId === taskEmpId);
-
-          if (!isMyTask) return false;
-
-          return isDateToday(t.statusUpdatedOn || t.assignedDate || t.assigned);
-        });
-
-        console.log('Todays Tasks count for Daily Sheet:', todaysTasks.length);
-
-        const payload = JSON.stringify({
-          action: 'log_daily_tasks',
-          email: prevEmail,
-          name: profile?.name || 'Unknown',
-          employeeId: profile?.employeeId || '',
-          date: todayIST,
-          firstPunchIn: myFirstPunchIn,
-          lastPunchOut: outTime,
-          tasks: todaysTasks.map(t => ({
-            project: t.client || t.project || t.projectName || '',
-            title: t.title || '',
-            status: t.status || 'Pending',
-            startTime: t.startTime || (t.status === 'Done' ? myFirstPunchIn : ''),
-            endTime: t.endTime || (t.status === 'Done' ? outTime : ''),
-            remark: (t.comments && t.comments.length > 0) ? t.comments[t.comments.length - 1].text : (t.remarks || '')
-          }))
-        });
-
-        fetch(DAILY_SHEET_WEB_APP_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: payload
-        }).catch(err => console.warn('Daily task sheet sync failed:', err));
-    }
   }
 
   // Auto punch-out: if the user forgot to punch out on a previous day, close that
@@ -810,38 +713,12 @@ export function AppProvider({ children }) {
     const rawEnds = dayTasks.map(t => t.endTime).filter(Boolean)
     const autoOutTime = rawEnds.length > 0 ? rawEnds.sort().slice(-1)[0] : '23:59'
 
-    // 1. Close the open session on the main backend
+    // Close the open session on the main backend
     api.post({ action: 'punch_out', email: profile?.email })
       .then(t => console.log('Auto punch out response:', t))
       .catch(e => console.warn('Auto punch out failed:', e))
 
-    // 2. Log that day's tasks to the daily task sheet
-    if (profile?.email && DAILY_SHEET_WEB_APP_URL) {
-      const payload = JSON.stringify({
-        action: 'log_daily_tasks',
-        email: profile?.email,
-        name: profile?.name || 'Unknown',
-        employeeId: profile?.employeeId || '',
-        date: sessionDate,
-        firstPunchIn: sessionIn,
-        lastPunchOut: autoOutTime,
-        tasks: dayTasks.map(t => ({
-          project: t.client || t.project || t.projectName || '',
-          title: t.title || '',
-          status: t.status || 'Pending',
-          startTime: t.startTime || (t.status === 'Done' ? sessionIn : ''),
-          endTime: t.endTime || (t.status === 'Done' ? autoOutTime : ''),
-          remark: (t.comments && t.comments.length > 0) ? t.comments[t.comments.length - 1].text : (t.remarks || '')
-        }))
-      })
-      fetch(DAILY_SHEET_WEB_APP_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: payload
-      }).catch(err => console.warn('Auto daily task sheet sync failed:', err))
-    }
-
-    addToast(`Auto punched out for ${sessionDate} and logged your tasks`, 'success')
+    addToast(`Auto punched out for ${sessionDate}`, 'success')
   }, [profile, tasks, addToast])
 
   // Trigger auto punch-out once the day's tasks have been synced
@@ -2157,24 +2034,6 @@ export function AppProvider({ children }) {
     } catch (err) {
       console.warn('Failed to sync task update to DB:', err)
     }
-
-    // Sync status change to daily sheet row
-    if (hasStatusChange && profile?.email && isPunchedIn && DAILY_SHEET_WEB_APP_URL) {
-      fetch(DAILY_SHEET_WEB_APP_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'log_task_status_update',
-          email: profile.email,
-          name: profile?.name || 'Unknown',
-          date: getISTDate(),
-          title: mergedTask.title,
-          status: mergedTask.status,
-          startTime: mergedTask.startTime || getISTTime(),
-          endTime: mergedTask.status === 'Done' ? (mergedTask.endTime || getISTTime()) : (mergedTask.endTime || '')
-        })
-      }).catch(() => {})
-    }
   }
 
   const markAllNotificationsRead = () => {
@@ -2205,21 +2064,6 @@ export function AppProvider({ children }) {
       const startIST = activeTimer.istStartTime || taskToToggle.startTime || nowIST;
       updateTask(taskToToggle.id, { timeTaken: buildMultiUserTimeStr(timeData), startTime: startIST, endTime: endIST });
       setActiveTimer(null);
-
-      if (profile?.email && DAILY_SHEET_WEB_APP_URL) {
-        fetch(DAILY_SHEET_WEB_APP_URL, {
-          method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'log_task_end',
-            email: profile.email,
-            name: profile?.name || 'Unknown',
-            date: getISTDate(),
-            title: taskToToggle.title,
-            endTime: endIST
-          })
-        }).catch(() => {})
-      }
     } else {
       // Don't start timer for completed tasks
       if (taskToToggle.status === 'Done') {
@@ -2235,23 +2079,6 @@ export function AppProvider({ children }) {
       const startIST = getISTTimeAt(startMs);
       updateTask(taskToToggle.id, { startTime: startIST, endTime: '' });
       setActiveTimer({ taskId: taskToToggle.id, taskTitle: taskToToggle.title, startTime: startMs, istStartTime: startIST });
-
-      if (profile?.email && DAILY_SHEET_WEB_APP_URL) {
-        fetch(DAILY_SHEET_WEB_APP_URL, {
-          method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'log_task_start',
-            email: profile.email,
-            name: profile?.name || 'Unknown',
-            date: getISTDate(),
-            project: taskToToggle.client || taskToToggle.project || '',
-            title: taskToToggle.title,
-            status: taskToToggle.status || '',
-            startTime: startIST
-          })
-        }).catch(() => {})
-      }
     }
   }, [activeTimer, profile, addToast])
 
