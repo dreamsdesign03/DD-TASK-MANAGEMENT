@@ -1,9 +1,6 @@
-// ─────────────────────────────────────────────────────────────
 // DAILY TASK SHEET GOOGLE APPS SCRIPT (SUPABASE DIRECT INTEGRATION)
-// ─────────────────────────────────────────────────────────────
 // Active Spreadsheet: Daily Task List
 // Backend Database: Supabase Postgres API
-// ─────────────────────────────────────────────────────────────
 
 var SUPABASE_URL = "https://balrgagdbbfagmgryrwv.supabase.co";
 var SUPABASE_KEY =
@@ -128,12 +125,10 @@ function getStatusColor(status) {
   return "#ffffff";
 }
 
-/* ─────────────────────────────────────────────────────────────
- * SUPABASE DATABASE FETCH HELPERS
- * ───────────────────────────────────────────────────────────── */
+/* SUPABASE DATABASE FETCH HELPERS */
 
 /**
- * Fetches punch-in / punch-out activity times directly from Supabase `employee_activities` table
+ * Fetches punch-in / punch-out activity times directly from Supabase `activity` table
  */
 function fetchActivityTimes(employeeId, email, date) {
   try {
@@ -143,7 +138,7 @@ function fetchActivityTimes(employeeId, email, date) {
       searchDate = parts[2] + "-" + parts[1] + "-" + parts[0];
     }
 
-    var url = SUPABASE_URL + "/rest/v1/employee_activities?select=*";
+    var url = SUPABASE_URL + "/rest/v1/activity?select=*";
     var options = {
       method: "get",
       headers: {
@@ -166,7 +161,7 @@ function fetchActivityTimes(employeeId, email, date) {
     for (var i = 0; i < json.length; i++) {
       var r = json[i];
       var rEmpId = String(r["employee_id"] || r["Employee ID"] || "").trim().toLowerCase();
-      var rName = String(r["employee_name"] || r["Employee Name"] || "").trim().toLowerCase();
+      var rName = String(r["full_name"] || r["Full Name"] || "").trim().toLowerCase();
       var loginStr = String(r["login_date_and_time"] || r["Login Date and Time"] || "");
       var logoutStr = String(r["logout_date_and_time"] || r["Logout Date and Time"] || "");
 
@@ -277,8 +272,8 @@ function generateTodaySheetFromDB() {
   var dd = String(now.getDate()).padStart(2, '0');
   var dateStr = yyyy + "-" + mm + "-" + dd;
 
-  // Fetch employees list from Supabase
-  var url = SUPABASE_URL + "/rest/v1/employees?select=*";
+  // Fetch employees list from Supabase (team table)
+  var url = SUPABASE_URL + "/rest/v1/team?select=*";
   var options = {
     method: "get",
     headers: {
@@ -323,9 +318,7 @@ function generateTodaySheetFromDB() {
   SpreadsheetApp.getUi().alert("Daily Task Sheet generated successfully from Database for " + dateStr + "!");
 }
 
-/* ─────────────────────────────────────────────────────────────
- * CORE SHEET WRITER
- * ───────────────────────────────────────────────────────────── */
+/* CORE SHEET WRITER */
 
 function writeDailyBlockToSheet(data) {
   var fullName = data.name || "Unknown";
@@ -491,9 +484,7 @@ function writeDailyBlockToSheet(data) {
   sheet.appendRow(["", "", "", "", "", ""]);
 }
 
-/* ─────────────────────────────────────────────────────────────
- * WEBHOOK ENDPOINTS (doPost & doGet)
- * ───────────────────────────────────────────────────────────── */
+/* WEBHOOK ENDPOINTS (doPost & doGet) */
 
 function doPost(e) {
   try {
@@ -662,7 +653,7 @@ function doPost(e) {
         }
       }
 
-      return ContentService.createTextOutput(JSON.stringify({ status: updated ? "success" : "skipped", action: "task_end_logged" })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: updated ? "success" : "skipped", action: "task_end_logged", updated: updated })).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (action === "log_task_status_update") {
@@ -707,7 +698,7 @@ function doPost(e) {
         }
       }
 
-      return ContentService.createTextOutput(JSON.stringify({ status: updated ? "success" : "skipped", action: "task_status_updated" })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: updated ? "success" : "skipped", action: "task_status_updated", updated: updated })).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (action === "log_punch_out") {
