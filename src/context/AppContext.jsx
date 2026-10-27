@@ -2397,6 +2397,11 @@ export function AppProvider({ children }) {
         initialTaskData.current[newKey] = { ...initialTaskData.current[oldKey], id: res.taskId, rawTaskId: res.taskId }
         delete initialTaskStatuses.current[oldKey]
         delete initialTaskData.current[oldKey]
+        // Also update recentTaskUpdates key to prevent duplicate injection on sync
+        if (recentTaskUpdates.current[oldKey]) {
+          recentTaskUpdates.current[newKey] = { ...recentTaskUpdates.current[oldKey], fields: { ...recentTaskUpdates.current[oldKey].fields, id: res.taskId, rawTaskId: res.taskId } }
+          delete recentTaskUpdates.current[oldKey]
+        }
         addToast('Task added successfully!', 'success')
       }
       if (mqttClient && mqttClient.connected) {
