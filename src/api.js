@@ -391,12 +391,14 @@ async function addTask(payload) {
 
 async function updateTask(payload) {
   const taskId = String(payload.taskId || payload.task_id || '')
+  console.log('[api.updateTask] Received taskId:', taskId)
   if (!taskId) return { ok: false, error: 'Task ID missing.' }
   const { data: existing } = await supabase
     .from('tasks')
     .select('task_id')
     .eq('task_id', taskId)
     .maybeSingle()
+  console.log('[api.updateTask] Existing task in DB:', existing)
   if (!existing) return { ok: false, error: 'not_found' }
   const row = sheetToDb(payload, TASK_MAP)
   delete row.task_id

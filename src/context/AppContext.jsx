@@ -2117,9 +2117,11 @@ export function AppProvider({ children }) {
     }
 
     try {
+      const taskIdToSend = mergedTask.rawTaskId || mergedTask.id
+      console.log('[updateTask] Sending to DB:', { taskId: taskIdToSend, status: mergedTask.status, rawTaskId: mergedTask.rawTaskId, id: mergedTask.id })
       const data = await api.post({
         action: 'update_task',
-          taskId: mergedTask.rawTaskId || mergedTask.id,
+          taskId: taskIdToSend,
           client: mergedTask.client,
           month: mergedTask.project || '',
           taskTitle: mergedTask.title,
