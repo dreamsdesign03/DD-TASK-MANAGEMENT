@@ -4,6 +4,7 @@ import { useToast } from './ToastContext'
 import { updateHeartbeat, logShutdown, getActiveUsers, getAllUsersMonthlyActivity, formatDuration, getAllLoggedUsers, getISTDate, getISTTime, getISTTimeAt, getISTNow } from '../utils/activityLog'
 import { formatDateShort, formatDateTime, computeRecurringDueDate, isTodayRecurrenceTriggerDay, computeNextCycleDueDate, parseAnyDate } from '../utils/dateFormat'
 import { isElectron } from '../utils/isElectron'
+import { formatTaskId, normalizeTaskIdKey, isSameTaskId, deduplicateTasks } from '../utils/formatTaskId'
 import { DAILY_SHEET_WEB_APP_URL } from '../config'
 import { api } from '../api'
 import { supabase, nextTaskId } from '../supabaseClient'
@@ -191,8 +192,12 @@ const mapWebhookTaskToApp = (item, employees = []) => {
   const displayAssignedTo = resolveAssigneeValue(rawAssignedTo, idToName)
   const displayAssignedBy = isEmpId(rawAssignedBy) ? (idToName[String(rawAssignedBy).trim()] || rawAssignedBy) : (rawAssignedBy || 'User')
 
+  const formattedId = formatTaskId(finalId)
+  const rawTaskId = String(finalId || formattedId).trim()
+
   return {
-    id: finalId,
+    id: formattedId,
+    rawTaskId: rawTaskId,
     title: title,
     taskType: taskType,
     mainTaskId: mainTaskId,
@@ -2025,10 +2030,10 @@ export function AppProvider({ children }) {
 
   const updateTask = async (id, fields) => {
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...fields } : t))
+      prev.map((t) => (isSameTaskId(t.id, id) || (t.rawTaskId && isSameTaskId(t.rawTaskId, id)) ? { ...t, ...fields } : t))
     )
 
-    const currentTask = tasks.find((t) => t.id === id)
+    const currentTask = tasks.find((t) => isSameTaskId(t.id, id) || (t.rawTaskId && isSameTaskId(t.rawTaskId, id)))
     if (!currentTask) return
 
     let hasStatusChange = fields.status !== undefined && fields.status !== currentTask.status;
@@ -2044,14 +2049,20 @@ export function AppProvider({ children }) {
     let updateTitle = `Task ${id} Updated`
     let updateSubtitle = mergedTask.title
 
+    const normKey = normalizeTaskIdKey(currentTask.id)
+    const rawKey = currentTask.rawTaskId ? normalizeTaskIdKey(currentTask.rawTaskId) : ''
+
     // Update our tracker so we don't notify ourselves
-    initialTaskData.current[id] = mergedTask
-    recentTaskUpdates.current[id] = { timestamp: Date.now(), fields }
+    initialTaskData.current[normKey] = mergedTask
+    if (rawKey) initialTaskData.current[rawKey] = mergedTask
+    recentTaskUpdates.current[normKey] = { timestamp: Date.now(), fields }
+    if (rawKey) recentTaskUpdates.current[rawKey] = { timestamp: Date.now(), fields }
 
     let shouldNotify = true
 
     if (hasStatusChange) {
-      initialTaskStatuses.current[id] = fields.status
+      initialTaskStatuses.current[normKey] = fields.status
+      if (rawKey) initialTaskStatuses.current[rawKey] = fields.status
       updateTitle = `Task ${id} status updated to ${fields.status}`
 
       if (fields.status === 'Done' || fields.status === 'Completed') {
@@ -2107,7 +2118,7 @@ export function AppProvider({ children }) {
     try {
       const data = await api.post({
         action: 'update_task',
-          taskId: mergedTask.id,
+          taskId: mergedTask.rawTaskId || mergedTask.id,
           client: mergedTask.client,
           month: mergedTask.project || '',
           taskTitle: mergedTask.title,
@@ -2326,15 +2337,16 @@ export function AppProvider({ children }) {
     if (!initialTaskIds.current) {
       initialTaskIds.current = new Set()
     }
-    initialTaskIds.current.add(newTask.id)
-    initialTaskStatuses.current[newTask.id] = newTask.status
+    const newTaskKey = normalizeTaskIdKey(newTask.id)
+    initialTaskIds.current.add(newTaskKey)
+    initialTaskStatuses.current[newTaskKey] = newTask.status
 
     // Prevent this new task from being wiped out by an immediate sync
-    recentTaskUpdates.current[newTask.id] = { timestamp: Date.now(), fields: newTask, isNew: true }
+    recentTaskUpdates.current[newTaskKey] = { timestamp: Date.now(), fields: newTask, isNew: true }
     try {
       const res = await api.post({
         action: 'add_task',
-        taskId: newTask.id,
+        taskId: newTask.rawTaskId || newTask.id,
           client: newTask.client,
           month: newTask.project || '',
           taskTitle: newTask.title,
@@ -2376,23 +2388,27 @@ export function AppProvider({ children }) {
   }
 
   const deleteTask = async (id) => {
+    // Find the task to get its rawTaskId for the API call
+    const taskToDelete = tasks.find((t) => isSameTaskId(t.id, id) || (t.rawTaskId && isSameTaskId(t.rawTaskId, id)))
+    const taskIdToSend = taskToDelete?.rawTaskId || id
+
     try {
       const data = await api.post({
         action: 'delete_task',
-        taskId: id,
+        taskId: taskIdToSend,
         userEmail: profile?.email
       })
       if (data && data.ok) {
-        setTasks((prev) => prev.filter((t) => t.id !== id && String(t.mainTaskId || t.main_task_id) !== String(id)))
+        setTasks((prev) => prev.filter((t) => !isSameTaskId(t.id, id) && !(t.rawTaskId && isSameTaskId(t.rawTaskId, id))))
         if (mqttClient && mqttClient.connected) {
           mqttClient.publish('dd_task_engine_v1/sync', JSON.stringify({ action: 'sync' }))
         }
       } else {
-        setTasks((prev) => prev.filter((t) => t.id !== id && String(t.mainTaskId || t.main_task_id) !== String(id)))
+        setTasks((prev) => prev.filter((t) => !isSameTaskId(t.id, id) && !(t.rawTaskId && isSameTaskId(t.rawTaskId, id))))
       }
     } catch (err) {
       console.warn('Delete task failed:', err)
-      setTasks((prev) => prev.filter((t) => t.id !== id && String(t.mainTaskId || t.main_task_id) !== String(id)))
+      setTasks((prev) => prev.filter((t) => !isSameTaskId(t.id, id) && !(t.rawTaskId && isSameTaskId(t.rawTaskId, id))))
     }
   }
 
@@ -2407,7 +2423,7 @@ export function AppProvider({ children }) {
       const data = await api.post(payload)
       if (data && data.ok) {
         setTasks(prev => prev.map(t => {
-          if (t.id !== taskId) return t
+          if (!isSameTaskId(t.id, taskId) && !(t.rawTaskId && isSameTaskId(t.rawTaskId, taskId))) return t
           const names = (t.assignedTo || '').split(',').map(s => s.trim()).filter(Boolean)
           const emails = (t.assignedEmail || '').split(',').map(s => s.trim()).filter(Boolean)
           const ids = (t.employeeIds || t.assignedToIds || '').split(',').map(s => s.trim()).filter(Boolean)
@@ -2453,7 +2469,8 @@ export function AppProvider({ children }) {
     const handleSetTasksWithNotification = (newTasksList) => {
       // OVERRIDE server state immediately if we updated this task locally in the last 15 seconds
       newTasksList.forEach(nt => {
-        const recent = recentTaskUpdates.current[nt.id]
+        const ntKey = normalizeTaskIdKey(nt.id)
+        const recent = recentTaskUpdates.current[ntKey]
         if (recent && Date.now() - recent.timestamp < 15000) {
           Object.assign(nt, recent.fields)
           if (recent.isNew) recent.isNew = false // Task has arrived from server
@@ -2463,7 +2480,7 @@ export function AppProvider({ children }) {
       // INJECT newly created tasks that haven't made it to the server yet
       Object.entries(recentTaskUpdates.current).forEach(([id, recent]) => {
         if (recent.isNew && Date.now() - recent.timestamp < 15000) {
-          if (!newTasksList.find(t => t.id === id)) {
+          if (!newTasksList.find(t => normalizeTaskIdKey(t.id) === normalizeTaskIdKey(id))) {
             newTasksList.unshift(recent.fields)
           }
         }
@@ -2471,12 +2488,13 @@ export function AppProvider({ children }) {
 
       if (newTasksList.length > 0) {
         if (initialTaskIds.current === null) {
-          initialTaskIds.current = new Set(newTasksList.map(t => t.id))
+          initialTaskIds.current = new Set(newTasksList.map(t => normalizeTaskIdKey(t.id)))
           const myName = String(profile?.name || 'User').trim().toLowerCase()
           const notifiedAssign = loadNotifiedAssignments()
           newTasksList.forEach(t => {
-            initialTaskStatuses.current[t.id] = t.status
-            initialTaskData.current[t.id] = { ...t }
+            const tKey = normalizeTaskIdKey(t.id)
+            initialTaskStatuses.current[tKey] = t.status
+            initialTaskData.current[tKey] = { ...t }
             const assigneesArr = (t.assignedTo || '').split(',').map(s => s.trim().toLowerCase())
             if (assigneesArr.includes(myName)) {
               notifiedAssign[`${t.id}_${myName}`] = Date.now()
@@ -2485,11 +2503,12 @@ export function AppProvider({ children }) {
           saveNotifiedAssignments(notifiedAssign)
         } else {
           newTasksList.forEach(nt => {
-            const hasId = initialTaskIds.current.has(nt.id)
+            const ntKey = normalizeTaskIdKey(nt.id)
+            const hasId = initialTaskIds.current.has(ntKey)
             if (!hasId) {
-              initialTaskIds.current.add(nt.id)
-              initialTaskStatuses.current[nt.id] = nt.status
-              initialTaskData.current[nt.id] = { ...nt }
+              initialTaskIds.current.add(ntKey)
+              initialTaskStatuses.current[ntKey] = nt.status
+              initialTaskData.current[ntKey] = { ...nt }
 
               const myName = String(profile?.name || 'User').trim().toLowerCase()
               const assigneesArr = (nt.assignedTo || '').split(',').map(s => s.trim().toLowerCase())
@@ -2572,8 +2591,9 @@ export function AppProvider({ children }) {
               }
 
               if (justAssignedToMe) {
-                initialTaskStatuses.current[nt.id] = nt.status
-                initialTaskData.current[nt.id] = { ...nt }
+                const ntKey = normalizeTaskIdKey(nt.id)
+                initialTaskStatuses.current[ntKey] = nt.status
+                initialTaskData.current[ntKey] = { ...nt }
                 const isDone = nt.status === 'Done' || nt.status === 'Blocked'
                 const notifiedAssign = loadNotifiedAssignments()
                 const alreadyNotified = notifiedAssign[`${nt.id}_${myName}`]
@@ -2588,8 +2608,9 @@ export function AppProvider({ children }) {
                   saveNotifiedAssignments(notifiedAssign)
                 }
               } else if (updatedFields.length > 0 && isRelated) {
-                initialTaskStatuses.current[nt.id] = nt.status
-                initialTaskData.current[nt.id] = { ...nt }
+                const ntKey = normalizeTaskIdKey(nt.id)
+                initialTaskStatuses.current[ntKey] = nt.status
+                initialTaskData.current[ntKey] = { ...nt }
                 addSystemAndWebNotification(
                   'Status Updates',
                   `Task ${nt.id} Updated`,
@@ -2605,12 +2626,13 @@ export function AppProvider({ children }) {
               } catch (e) { }
 
               let isCompletedOrBlocked = nt.status === 'Done' || nt.status === 'Blocked'
+              const ntKey = normalizeTaskIdKey(nt.id)
               if (nt.overdue && !isCompletedOrBlocked) {
                 if (notifiedHistory[nt.id] !== todayStr && isRelated) {
                   notifiedHistory[nt.id] = todayStr
                   localStorage.setItem('dd_overdue_notified', JSON.stringify(notifiedHistory))
 
-                  initialTaskOverdueStatuses.current[nt.id] = true
+                  initialTaskOverdueStatuses.current[ntKey] = true
                   const prioText = nt.priority === 'High' ? '🔴 High Priority: ' : (nt.priority === 'Medium' ? '🟡 Medium Priority: ' : '')
                   addSystemAndWebNotification(
                     'Overdue Alerts',
@@ -2621,7 +2643,7 @@ export function AppProvider({ children }) {
                 }
               } else {
                 if (!nt.overdue) {
-                  initialTaskOverdueStatuses.current[nt.id] = false
+                  initialTaskOverdueStatuses.current[ntKey] = false
                 }
 
                 // Check if due today
@@ -2646,7 +2668,7 @@ export function AppProvider({ children }) {
         }
         setTasks((prevTasks) => {
           const finalTasks = newTasksList.map(newTask => {
-            const existingTask = prevTasks.find(t => t.id === newTask.id)
+            const existingTask = prevTasks.find(t => isSameTaskId(t.id, newTask.id) || (t.rawTaskId && isSameTaskId(t.rawTaskId, newTask.id)))
             if (existingTask && existingTask.comments && existingTask.comments.length > 0) {
               const mergedComments = [...existingTask.comments]
               if (newTask.comments) {
