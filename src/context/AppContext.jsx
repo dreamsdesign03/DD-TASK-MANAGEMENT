@@ -2030,11 +2030,15 @@ export function AppProvider({ children }) {
   }
 
   const updateTask = async (id, fields) => {
-    setTasks((prev) =>
-      prev.map((t) => (isSameTaskId(t.id, id) || (t.rawTaskId && isSameTaskId(t.rawTaskId, id)) ? { ...t, ...fields } : t))
-    )
+    console.log('[updateTask] Called with:', { id, fields })
+    setTasks((prev) => {
+      const result = prev.map((t) => (isSameTaskId(t.id, id) || (t.rawTaskId && isSameTaskId(t.rawTaskId, id)) ? { ...t, ...fields } : t))
+      console.log('[updateTask] setTasks result:', result.map(t => ({ id: t.id, rawTaskId: t.rawTaskId, status: t.status })))
+      return result
+    })
 
     const currentTask = tasks.find((t) => isSameTaskId(t.id, id) || (t.rawTaskId && isSameTaskId(t.rawTaskId, id)))
+    console.log('[updateTask] Found currentTask:', currentTask ? { id: currentTask.id, rawTaskId: currentTask.rawTaskId, status: currentTask.status, title: currentTask.title } : 'NOT FOUND')
     if (!currentTask) return
 
     let hasStatusChange = fields.status !== undefined && fields.status !== currentTask.status;
@@ -2148,6 +2152,7 @@ export function AppProvider({ children }) {
           recurringDay: mergedTask.recurringDay || '',
           recurringMonths: mergedTask.recurringMonths || ''
         })
+      console.log('[updateTask] API response:', data)
       if (!data.ok) {
         console.error('DB Error (update_task):', data.error)
         addToast('Failed to sync task: ' + data.error, 'error')
