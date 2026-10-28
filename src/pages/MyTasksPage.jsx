@@ -6,6 +6,7 @@ import Sidebar from '../components/Sidebar'
 import TopNav from '../components/TopNav'
 import TaskTable from '../components/TaskTable'
 import SelectDropdown from '../components/SelectDropdown'
+import UserActivityReminder from '../components/UserActivityReminder'
 import { useApp } from '../context/AppContext'
 
 export default function MyTasksPage() {
@@ -243,7 +244,10 @@ export default function MyTasksPage() {
                 <p className="text-[14px]">Please Punch In from the top navigation bar to view and manage your tasks.</p>
               </div>
             ) : (
-              <TaskTable key={location.pathname} />
+              <>
+                <UserActivityReminder />
+                <TaskTable key={location.pathname} />
+              </>
             )}
           </div>
         </div>

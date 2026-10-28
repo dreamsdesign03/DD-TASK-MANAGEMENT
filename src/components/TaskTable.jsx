@@ -12,6 +12,7 @@ import { getISTDate } from '../utils/activityLog'
 import TaskCalendar from './TaskCalendar'
 import VoiceBot from './VoiceBot'
 import SelectDropdown from './SelectDropdown'
+import AdminBoardView from './AdminBoardView'
 import { api } from '../api'
 
 const PRIORITY_STYLES = {
@@ -149,8 +150,9 @@ function InlineStatusSelect({ value, onChange, disabled }) {
 
 
 export default function TaskTable() {
-  const { tasks, searchQuery, deleteTask, profile, employees, messagesByChatId, lastSeenTimestamps, updateTask, addTask, addToast, setShowNewTaskModal, setNewTaskPrefillDept, clients } = useApp()
+  const { tasks, searchQuery, deleteTask, profile, employees, messagesByChatId, lastSeenTimestamps, updateTask, addTask, addToast, setShowNewTaskModal, setNewTaskPrefillDept, clients, fetchSyncedTasks, tasksLoaded } = useApp()
   const location = useLocation()
+  const isAdmin = profile?.systemRole === 'Admin'
   const [activeFilter, setActiveFilter] = useState('All')
   const [sortBy, setSortBy] = useState('Task ID (Descending)')
   const [selectedClient, setSelectedClient] = useState(location.state?.clientFilter || 'All Clients')
@@ -159,8 +161,13 @@ export default function TaskTable() {
   const [selectedDate, setSelectedDate] = useState('')
   const [showAllDone, setShowAllDone] = useState(false)
 
-  const [viewMode, setViewMode] = useState(location.state?.viewMode || 'List') // 'List' | 'Board'
+  const [viewMode, setViewMode] = useState(location.state?.viewMode || 'List') // 'List' | 'Board' | 'Calendar' | 'Admin'
   const [boardGrouping, setBoardGrouping] = useState('Department')
+
+  // Security: only admins can access Admin view
+  useEffect(() => {
+    if (viewMode === 'Admin' && !isAdmin) setViewMode('List')
+  }, [viewMode, isAdmin])
 
   useEffect(() => {
     if (location.pathname === '/my-tasks') {
@@ -775,6 +782,11 @@ export default function TaskTable() {
             <button onClick={() => setViewMode('Calendar')} className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-colors ${viewMode === 'Calendar' ? 'bg-[#F9F4FB] text-[#702c91]' : 'bg-transparent text-gray-400 hover:text-gray-600'}`}>
               <span className="material-symbols-outlined text-[20px]">calendar_month</span>
             </button>
+            {isAdmin && (
+              <button onClick={() => setViewMode('Admin')} className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-colors ${viewMode === 'Admin' ? 'bg-[#F9F4FB] text-[#702c91]' : 'bg-transparent text-gray-400 hover:text-gray-600'}`} title="Admin Board">
+                <span className="material-symbols-outlined text-[20px]">admin_panel_settings</span>
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2 md:gap-4">
             <button
@@ -1433,6 +1445,28 @@ export default function TaskTable() {
               </div>
             </div>
           </div>
+        ) : viewMode === 'Calendar' ? (
+          <div className="mt-6">
+            <TaskCalendar tasks={filtered} />
+          </div>
+        ) : viewMode === 'Admin' ? (
+          <AdminBoardView
+            tasks={filtered}
+            searchQuery={searchQuery}
+            showAllTasks={showAllDone}
+            onOpenTask={(task) => {
+              if (!canAccessTask(task)) {
+                setUnauthorizedTaskTitle(task.title)
+                return
+              }
+              navigate(`/tasks/${task.id}`)
+            }}
+            activeFilter={activeFilter}
+            floatingActive={false}
+            refreshTasks={fetchSyncedTasks}
+            allEmployees={employees}
+            tasksLoaded={tasksLoaded}
+          />
         ) : viewMode === 'Board' ? (
           <div
             ref={boardRef}
